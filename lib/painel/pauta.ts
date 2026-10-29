@@ -38,7 +38,7 @@ export function montarPauta({
     concluidas: tarefas.filter((t) => {
       if (t.status !== "feito" || !t.concluido_em) return false;
       const c = new Date(t.concluido_em).getTime();
-      return c > desde && c <= Math.max(ate, agora.getTime());
+      return c > desde && c <= Math.min(ate, agora.getTime());
     }),
     contatosNovos: contatos.filter((c) => c.status === "novo"),
   };

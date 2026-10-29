@@ -20,6 +20,8 @@ import {
 import { Pin } from "./logo";
 
 const CHAVE_TURNSTILE = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+// em desenvolvimento, sem chave, o envio funciona sem a verificação (o servidor faz o mesmo)
+const SEM_VERIFICACAO = !CHAVE_TURNSTILE && process.env.NODE_ENV !== "production";
 
 type Estado = { tipo: "livre" } | { tipo: "enviado"; email: string } | { tipo: "falha"; mensagem: string };
 
@@ -55,7 +57,7 @@ export function FormularioContato() {
 
   async function enviar(dados: DadosContato) {
     setEstado({ tipo: "livre" });
-    if (!token) {
+    if (!token && !SEM_VERIFICACAO) {
       setErroToken("Aguarde a verificação anti-spam terminar e tente de novo.");
       return;
     }
@@ -63,7 +65,7 @@ export function FormularioContato() {
       const resposta = await fetch("/api/contato", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...dados, token }),
+        body: JSON.stringify({ ...dados, token: token ?? "desenvolvimento" }),
       });
       const corpo = await resposta.json().catch(() => null);
       if (resposta.ok) {
@@ -273,7 +275,7 @@ export function FormularioContato() {
             onExpire={() => setToken(null)}
             onError={() => setErroToken("A verificação anti-spam falhou. Recarregue a página e tente de novo.")}
           />
-        ) : (
+        ) : SEM_VERIFICACAO ? null : (
           <p className="t-pequeno text-alerta">Verificação anti-spam não configurada (NEXT_PUBLIC_TURNSTILE_SITE_KEY).</p>
         )}
         {erroToken && (

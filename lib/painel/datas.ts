@@ -54,7 +54,12 @@ export function semanaAtual<S extends Pick<Semana, "numero" | "inicio" | "fim">>
 
 // Fim da semana às 23:59 de Brasília, em ISO (prazo padrão de uma tarefa).
 export function fimDaSemanaIso(fim: string) {
-  return new TZDate(`${fim}T23:59:00`, FUSO).toISOString();
+  return fimDoDia(fim);
+}
+
+// 23:59 de Brasília no dia dado, em ISO UTC ("...Z"), igual ao que o banco devolve.
+function fimDoDia(dia: string) {
+  return new Date(new TZDate(`${dia}T23:59:00`, FUSO).getTime()).toISOString();
 }
 
 // Dias de calendário (Brasília) entre hoje e o prazo: negativo = atrasado.
@@ -82,7 +87,7 @@ export function paraCampoData(iso: string | null) {
 
 // De <input type="date"> para o prazo (fim do dia em Brasília).
 export function deCampoData(valor: string) {
-  return valor ? new TZDate(`${valor}T23:59:00`, FUSO).toISOString() : null;
+  return valor ? fimDoDia(valor) : null;
 }
 
 // Próxima ocorrência do dia/hora da reunião semanal, a partir de agora.

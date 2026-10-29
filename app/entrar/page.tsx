@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BotaoGoogle } from "@/components/painel/botao-google";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
@@ -84,7 +85,7 @@ export default async function Entrar({ searchParams }: { searchParams: Promise<{
         )}
 
         <Botao asChild variante="fantasma" tamanho="painel" className="mt-6 -ml-3.5">
-          <a href="/">Voltar para o site</a>
+          <Link href="/">Voltar para o site</Link>
         </Botao>
       </div>
     </main>

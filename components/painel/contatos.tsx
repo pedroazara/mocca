@@ -222,7 +222,7 @@ function PainelContato({ contato: c, aoFechar }: { contato: Contato; aoFechar: (
 
             {c.tarefa_id && (
               <Link href={`/painel/tarefas/${c.tarefa_id}`} className="link mt-4 inline-flex items-center gap-1.5">
-                <ExternalLink aria-hidden strokeWidth={1.75} className="size-4" /> Ver a tarefa "Responder contato"
+                <ExternalLink aria-hidden strokeWidth={1.75} className="size-4" /> Ver a tarefa “Responder contato”
               </Link>
             )}
 

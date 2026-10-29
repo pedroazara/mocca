@@ -1,11 +1,12 @@
 import { createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { BancoIndisponivel, comoServico } from "@/lib/banco";
 import { esquemaContato, paraRegistro } from "@/lib/validacao/contato";
 
 // POST /api/contato (seção 6.6): valida, confere o Turnstile, limita a 5 envios
-// por IP por hora e grava pelo service role. A função registrar_contato (SQL)
-// faz tudo numa transação: limite, contato, tarefa "Responder contato" e atribuição.
+// por IP por hora e grava pelo service role (Postgres do Supabase, ou o banco local).
+// A função registrar_contato (SQL) faz tudo numa transação: limite, contato,
+// tarefa "Responder contato" e atribuição.
 
 export const runtime = "nodejs";
 
@@ -24,7 +25,8 @@ function ipDe(req: Request) {
 
 async function conferirTurnstile(token: string, ip: string) {
   const segredo = process.env.TURNSTILE_SECRET_KEY;
-  if (!segredo) return false;
+  // em desenvolvimento, sem as chaves do Turnstile, a verificação fica desligada
+  if (!segredo) return process.env.NODE_ENV !== "production";
   const corpo = new URLSearchParams({ secret: segredo, response: token });
   if (ip) corpo.set("remoteip", ip);
   try {
@@ -67,29 +69,29 @@ export async function POST(req: Request) {
     return erro(400, "verificacao_falhou", "A verificação anti-spam não passou. Tente enviar de novo.");
   }
 
-  const db = supabaseAdmin();
-  if (!db) {
-    console.error("[contato] Supabase não configurado (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
-    return erro(503, "indisponivel", "O envio está fora do ar no momento. Tente de novo mais tarde.");
-  }
-
   // O IP nunca é guardado: só um HMAC dele, para o limite de envios por hora.
-  const ipHash = createHmac("sha256", process.env.TURNSTILE_SECRET_KEY!)
+  const ipHash = createHmac("sha256", process.env.TURNSTILE_SECRET_KEY ?? "desenvolvimento")
     .update(ip || "sem-ip")
     .digest("hex");
 
-  const { data, error } = await db.rpc("registrar_contato", {
-    p_dados: paraRegistro(validacao.data),
-    p_ip_hash: ipHash,
-  });
-
-  if (error) {
-    if (error.code === "P0429" || error.message.includes("limite_de_envios")) {
+  let id: string;
+  try {
+    const [linha] = await comoServico((q) =>
+      q<{ id: string }>("select registrar_contato($1::jsonb, $2) as id", [JSON.stringify(paraRegistro(validacao.data)), ipHash]),
+    );
+    id = linha.id;
+  } catch (e) {
+    if (e instanceof BancoIndisponivel) {
+      console.error("[contato] banco não configurado (DATABASE_URL).");
+      return erro(503, "indisponivel", "O envio está fora do ar no momento. Tente de novo mais tarde.");
+    }
+    const codigo = (e as { code?: string }).code;
+    if (codigo === "P0429" || String(e).includes("limite_de_envios")) {
       return erro(429, "limite", "Você já enviou várias mensagens na última hora. Tente de novo mais tarde.");
     }
-    console.error("[contato] falha ao gravar:", error);
+    console.error("[contato] falha ao gravar:", e);
     return erro(500, "falha", "Não conseguimos gravar sua mensagem. Tente de novo em alguns minutos.");
   }
 
-  return NextResponse.json({ ok: true, id: data }, { status: 201 });
+  return NextResponse.json({ ok: true, id }, { status: 201 });
 }

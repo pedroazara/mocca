@@ -170,7 +170,7 @@ export function VisaoSemana({
           </ul>
         ) : (
           <p className="mt-3 text-[0.875rem] text-texto-2">
-            Nenhuma tarefa ligada à entrega ainda. Marque "Ligada à entrega do programa" numa tarefa da semana.
+            Nenhuma tarefa ligada à entrega ainda. Marque “Ligada à entrega do programa” numa tarefa da semana.
           </p>
         )}
       </section>
