@@ -18,17 +18,30 @@ async function criar() {
   mkdirSync(pasta, { recursive: true });
   const db = new PGlite(pasta);
   await db.waitReady;
+  const ler = (...p: string[]) => readFileSync(join(raiz, "supabase", ...p), "utf8");
+  const migracoes = readdirSync(join(raiz, "supabase", "migrations")).sort();
   const pronto = await db.query<{ ok: string | null }>("select to_regclass('public.pessoa')::text as ok");
+  // as migrações aplicadas ficam anotadas fora do esquema public
+  await db.exec("create schema if not exists local_meta; create table if not exists local_meta.migracoes (nome text primary key)");
+
   if (!pronto.rows[0]?.ok) {
-    const ler = (...p: string[]) => readFileSync(join(raiz, "supabase", ...p), "utf8");
     await db.exec(ler("local", "auth-stub.sql"));
-    const migracoes = readdirSync(join(raiz, "supabase", "migrations")).sort();
-    for (const m of migracoes) await db.exec(ler("migrations", m));
+    for (const m of migracoes) {
+      await db.exec(ler("migrations", m));
+      await db.query("insert into local_meta.migracoes values ($1)", [m]);
+    }
     await db.exec(ler("seed.sql"));
     await db.exec(ler("seed-dev.sql"));
     // um "login" por pessoa; o gatilho liga auth.users -> pessoa pelo e-mail
     await db.exec("insert into auth.users (email) select email from pessoa");
     console.log("[banco local] criado em .dados-locais/pg com os dados de exemplo");
+  } else {
+    const feitas = new Set((await db.query<{ nome: string }>("select nome from local_meta.migracoes")).rows.map((r) => r.nome));
+    for (const m of migracoes.filter((x) => !feitas.has(x))) {
+      await db.exec(ler("migrations", m));
+      await db.query("insert into local_meta.migracoes values ($1)", [m]);
+      console.log(`[banco local] migração aplicada: ${m}`);
+    }
   }
   return db;
 }

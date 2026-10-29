@@ -85,7 +85,7 @@ export async function tarefa(q: Consulta, id: string): Promise<TarefaCompleta | 
     `select ${CAMPOS_TAREFA}, t.descricao, t.criado_por, t.reuniao_id, t.contato_id, t.arquivada,
        coalesce((select json_agg(json_build_object('id', d.id, 'titulo', d.titulo, 'url', d.url, 'tipo', d.tipo, 'criado_em', d.criado_em) order by d.criado_em)
                    from documento d where d.tarefa_id = t.id), '[]'::json) as lista_documentos,
-       coalesce((select json_agg(json_build_object('id', c.id, 'autor_id', c.autor_id, 'texto', c.texto, 'criado_em', c.criado_em) order by c.criado_em)
+       coalesce((select json_agg(json_build_object('id', c.id, 'autor_id', c.autor_id, 'via_api', c.via_api, 'texto', c.texto, 'criado_em', c.criado_em) order by c.criado_em)
                    from comentario c where c.tarefa_id = t.id), '[]'::json) as lista_comentarios,
        coalesce((select json_agg(json_build_object('id', h.id, 'autor_id', h.autor_id, 'via_api', h.via_api, 'acao', h.acao, 'detalhe', h.detalhe, 'criado_em', h.criado_em) order by h.criado_em desc, h.id desc)
                    from historico h where h.tarefa_id = t.id), '[]'::json) as historico

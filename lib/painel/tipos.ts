@@ -118,7 +118,8 @@ export type Documento = {
 
 export type Comentario = {
   id: string;
-  autor_id: string;
+  autor_id: string | null;
+  via_api: boolean;
   texto: string;
   criado_em: string;
 };

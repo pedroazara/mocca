@@ -68,6 +68,9 @@ function useRodar(): [boolean, Rodar] {
 
 const rotulo = "t-rotulo text-texto-2";
 
+// comentários feitos pela API aparecem como "Claude"
+const CLAUDE = { id: "claude", nome: "Claude", apelido: "Claude", cor: "#B9733F" };
+
 export function DetalheTarefa({ tarefa: t }: { tarefa: TarefaCompleta }) {
   const { podeEditar } = usePainel();
   const semResponsavel = t.status !== "feito" && !t.atribuicoes.some((a) => a.papel === "responsavel");
@@ -836,14 +839,14 @@ function ComentariosEHistorico({ t }: { t: TarefaCompleta }) {
         <>
           <ul className="flex flex-col gap-4">
             {t.lista_comentarios.map((c) => {
-              const autor = pessoa(c.autor_id);
+              const autor = c.via_api ? CLAUDE : pessoa(c.autor_id);
               return (
                 <li key={c.id} className="group flex gap-3">
                   <Avatar pessoa={autor} tamanho={28} />
                   <div className="min-w-0 flex-1">
                     <p className="text-[0.8125rem] text-texto-2">
                       <span className="font-semibold text-texto">{autor?.apelido ?? autor?.nome}</span> · {dataHora(c.criado_em)}
-                      {(c.autor_id === eu.id || ehAdmin) && (
+                      {((c.autor_id && c.autor_id === eu.id) || ehAdmin) && (
                         <button
                           type="button"
                           onClick={() => rodar(() => acoes.apagarComentario(c.id))}
