@@ -4,7 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { pessoaLogada, type PessoaLogada } from "@/lib/auth";
 import { comoUsuario, mensagemDeErro, type Consulta } from "@/lib/banco";
-import { configuracao, semanas as listarSemanas } from "@/lib/painel/dados";
+import { buscar, configuracao, semanas as listarSemanas } from "@/lib/painel/dados";
 import { fimDaSemanaIso, proximaReuniao } from "@/lib/painel/datas";
 import { planejarImportacao, type TrelloJson } from "@/lib/painel/trello";
 import type {
@@ -596,4 +596,14 @@ export async function importarTrello(json: TrelloJson) {
         );
     return { criadas, puladas };
   });
+}
+
+// ---------------------------------------------------------------- paleta de comandos
+
+// Só leitura: não passa por agir(), que revalida as páginas.
+export async function buscarNoPainel(termo: string) {
+  const eu = await pessoaLogada();
+  const t = String(termo ?? "").trim().slice(0, 100);
+  if (!eu || t.length < 2) return { tarefas: [], reunioes: [] };
+  return comoUsuario(eu.authId, (q) => buscar(q, t));
 }

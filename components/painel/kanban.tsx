@@ -20,7 +20,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { criarTarefa, moverTarefa } from "@/app/painel/acoes";
 import { estiloControle } from "@/components/ui/campo";
 import { STATUS, rotuloStatus, type Status, type TarefaResumo } from "@/lib/painel/tipos";
@@ -61,6 +61,8 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
     if (!ativo) setColunas(agrupar(tarefas));
   }, [tarefas, ativo]);
 
+  // id estável: sem ele, o dnd-kit gera ids diferentes no servidor e no navegador
+  const idDnd = useId();
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -147,6 +149,7 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
 
   return (
     <DndContext
+      id={idDnd}
       sensors={sensores}
       collisionDetection={closestCorners}
       onDragStart={inicio}

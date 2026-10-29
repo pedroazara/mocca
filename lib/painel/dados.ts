@@ -160,17 +160,25 @@ export async function documentosDaSemana(q: Consulta, semanaId: string) {
   );
 }
 
-// Busca simples para a paleta de comandos.
+// Busca da paleta de comandos, sem diferenciar maiúsculas nem acentos
+// (translate em vez da extensão unaccent, que o banco local não tem).
+const semAcento = (expr: string) =>
+  `translate(lower(${expr}), 'áàâãäéèêëíìîïóòôõöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')`;
+
 export async function buscar(q: Consulta, termo: string) {
-  const like = `%${termo.replace(/[%_]/g, "")}%`;
+  const like = `%${termo.replace(/[%_\\]/g, "")}%`;
   const [t, r] = [
-    await q<{ id: string; titulo: string; semana: number | null }>(
-      `select t.id, t.titulo, s.numero as semana from tarefa t left join semana s on s.id = t.semana_id
-        where not t.arquivada and t.titulo ilike $1 order by t.criado_em desc limit 8`,
+    await q<{ id: string; titulo: string; status: Status; semana: number | null }>(
+      `select t.id, t.titulo, t.status::text as status, s.numero as semana
+         from tarefa t left join semana s on s.id = t.semana_id
+        where not t.arquivada and ${semAcento("t.titulo")} like ${semAcento("$1")}
+        order by t.status = 'feito', t.criado_em desc limit 8`,
       [like],
     ),
     await q<{ id: string; data: string }>(
-      "select id, data from reuniao where anotacoes ilike $1 order by data desc limit 4",
+      `select id, data from reuniao
+        where ${semAcento("coalesce(anotacoes, '')")} like ${semAcento("$1")}
+        order by data desc limit 4`,
       [like],
     ),
   ];

@@ -1,15 +1,16 @@
 "use client";
 
-import { ChevronRight, Menu, Plus } from "lucide-react";
+import { ChevronRight, Menu, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Botao } from "@/components/ui/botao";
 import { EVENTO_ABRIR_MENU } from "./barra-lateral";
 import { usePainel } from "./contexto";
 import { DialogoNovaTarefa } from "./nova-tarefa";
+import { EVENTO_NOVA_TAREFA, EVENTO_PALETA } from "./paleta";
 
-// Barra superior de cada página do painel (seção 8.1): título, migalhas e o
-// botão "Nova tarefa" (atalho N).
+// Barra superior de cada página do painel (seção 8.1): título, migalhas, busca
+// (abre a paleta de comandos) e o botão "Nova tarefa" (atalho N).
 
 export function TopoPagina({
   titulo,
@@ -24,6 +25,14 @@ export function TopoPagina({
 }) {
   const { podeEditar } = usePainel();
   const [nova, setNova] = useState(false);
+  const [mac, setMac] = useState(false);
+
+  useEffect(() => {
+    setMac(/Mac|iPhone|iPad/.test(navigator.platform));
+    const abrir = () => setNova(true);
+    window.addEventListener(EVENTO_NOVA_TAREFA, abrir);
+    return () => window.removeEventListener(EVENTO_NOVA_TAREFA, abrir);
+  }, []);
 
   useEffect(() => {
     if (!podeEditar) return;
@@ -61,6 +70,17 @@ export function TopoPagina({
           ))}
           <h1 className="truncate font-titulo text-[1.25rem] font-semibold text-texto">{titulo}</h1>
         </div>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event(EVENTO_PALETA))}
+          aria-label="Buscar"
+          aria-keyshortcuts="Control+K Meta+K"
+          className="flex h-10 shrink-0 items-center gap-2 rounded-p p-2.5 text-texto-2 hover:bg-superficie-2 hover:text-texto md:w-56 md:border md:border-linha md:bg-superficie md:px-3"
+        >
+          <Search aria-hidden strokeWidth={1.75} className="size-[18px] shrink-0" />
+          <span className="hidden flex-1 text-left text-[0.9375rem] md:inline">Buscar…</span>
+          <kbd className="t-dado hidden rounded-p border border-linha px-1.5 text-[0.6875rem] md:inline">{mac ? "⌘K" : "Ctrl K"}</kbd>
+        </button>
         {acoes}
         {podeEditar && (
           <Botao tamanho="painel" onClick={() => setNova(true)} title="Nova tarefa (N)">

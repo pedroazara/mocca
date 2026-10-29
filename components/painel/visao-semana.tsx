@@ -158,7 +158,7 @@ export function VisaoSemana({
           )}
         </div>
         {entrega.length > 0 ? (
-          <ul className="mt-4 grid gap-2 md:grid-cols-2">
+          <ul className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
             {entrega.map((t) => (
               <li key={t.id} className="flex items-center gap-3 rounded-m bg-superficie px-3 py-2.5">
                 <Chip estado={estadoStatus[t.status]}>{rotuloStatus(t.status).toLowerCase()}</Chip>
@@ -206,7 +206,7 @@ export function VisaoSemana({
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         {/* 3. atenção */}
         <section aria-labelledby="atencao" className="rounded-g border border-linha bg-superficie p-5">
           <h2 id="atencao" className="t-rotulo text-texto-2">

@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useOptimistic, useRef, useState, useTransition } from "react";
 import * as acoes from "@/app/painel/acoes";
 import { Botao } from "@/components/ui/botao";
 import { estiloControle } from "@/components/ui/campo";
@@ -478,6 +478,7 @@ function BlocoPessoa({ a }: { a: Atribuicao }) {
   const [ordem, setOrdem] = useState(a.itens);
   const [, rodar] = useRodar();
   useEffect(() => setOrdem(a.itens), [a.itens]);
+  const idDnd = useId();
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -538,7 +539,7 @@ function BlocoPessoa({ a }: { a: Atribuicao }) {
       {confirmar && (
         <p className="mt-2 text-[0.8125rem] text-texto-2">Remover {p?.apelido ?? p?.nome} e os itens dele desta tarefa?</p>
       )}
-      <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={soltar}>
+      <DndContext id={idDnd} sensors={sensores} collisionDetection={closestCenter} onDragEnd={soltar}>
         <SortableContext items={ordem.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           <ul className="mt-2 flex flex-col">
             {ordem.map((i) => (

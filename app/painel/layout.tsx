@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AoVivo } from "@/components/painel/ao-vivo";
 import { BarraLateral } from "@/components/painel/barra-lateral";
 import { ProvedorPainel } from "@/components/painel/contexto";
+import { PaletaComandos } from "@/components/painel/paleta";
 import { exigirPessoa } from "@/lib/auth";
 import { comoUsuario } from "@/lib/banco";
 import { base, contadores } from "@/lib/painel/dados";
@@ -37,6 +38,7 @@ export default async function LayoutPainel({
       </div>
       {painel}
       <AoVivo />
+      <PaletaComandos />
     </ProvedorPainel>
   );
 }

@@ -105,7 +105,7 @@ export function PaginaReuniao({ reuniao: r, pauta, criadas }: { reuniao: Reuniao
   const bloco = "rounded-g border border-linha bg-superficie p-5";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
       <div className="flex flex-col gap-6">
         <section aria-labelledby="pauta" className={bloco}>
           <h2 id="pauta" className="t-rotulo text-texto-2">

@@ -71,12 +71,12 @@ export function ListaTarefasPessoa({ tarefas, pessoaId }: { tarefas: TarefaResum
             </button>
           ))}
         </div>
-        <div className="flex gap-2">
+        <div className="flex min-w-0 gap-2">
           <select
             value={etiqueta}
             onChange={(e) => setEtiqueta(e.target.value)}
             aria-label="Filtrar por etiqueta"
-            className={cn(estiloControle, "h-9 w-auto")}
+            className={cn(estiloControle, "h-9 w-auto min-w-0 shrink")}
           >
             <option value="">Todas as etiquetas</option>
             {etiquetas.map((e) => (
@@ -85,14 +85,14 @@ export function ListaTarefasPessoa({ tarefas, pessoaId }: { tarefas: TarefaResum
               </option>
             ))}
           </select>
-          <label className="relative">
+          <label className="relative min-w-0 flex-1 sm:flex-none">
             <Search aria-hidden strokeWidth={1.75} className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-texto-2" />
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar"
               aria-label="Buscar nas tarefas"
-              className={cn(estiloControle, "h-9 w-44 pl-8")}
+              className={cn(estiloControle, "h-9 pl-8 sm:w-44")}
             />
           </label>
         </div>

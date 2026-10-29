@@ -2,7 +2,7 @@
 
 Site público do MoCCa (Monitoramento de Colheita de Café, equipe da UFLA) e painel de tarefas da equipe. A especificação completa está em [`ESPECIFICACAO.md`](ESPECIFICACAO.md); o que foi decidido de forma diferente e o que falta fazer estão em [`DUVIDAS.md`](DUVIDAS.md).
 
-**Estado atual:** fase 1 (site público), fase 2 (painel), fase 3 (API e MCP do Claude) e a importação do Trello prontas. Da fase 4 faltam os e-mails (Resend) e a paleta de comandos.
+**Estado atual:** fase 1 (site público), fase 2 (painel), fase 3 (API e MCP do Claude) e a importação do Trello prontas. Da fase 4 faltam os e-mails (Resend).
 
 Stack: Next.js 15 (App Router) + TypeScript, Tailwind CSS 4, Radix, lucide-react, react-hook-form + zod, dnd-kit, Postgres do Supabase (com RLS), Supabase Auth (Google), Cloudflare Turnstile, MCP SDK, Vitest.
 
@@ -85,6 +85,8 @@ Em `/painel`, só para quem está na equipe. Admin (Pedro) edita tudo e acessa C
 | **Reuniões** | Pauta gerada da próxima reunião (entrega da semana, atrasadas, concluídas desde a última, contatos novos), presença, anotações, decisões e tarefas criadas na reunião |
 | **Contatos** | Mensagens do formulário do site, com status, responsável, notas e exportação em CSV. Cada contato novo cria a tarefa "Responder contato" |
 | **Configurações** (admin) | Reunião semanal, responsável pelos contatos, datas do programa, tokens da API, importação do Trello e tema |
+
+**Paleta de comandos:** `Ctrl/Cmd + K` ou `/` busca tarefas, pessoas, semanas, etiquetas e reuniões, e tem as ações rápidas (nova tarefa, nova reunião, alternar tema). Outros atalhos: `N` nova tarefa, `G S` / `G M` / `G Q` para Semana, Minhas tarefas e Quadro, e `?` mostra a lista.
 
 Mudanças feitas por outras pessoas aparecem sozinhas (Supabase Realtime em produção; a cada 15 s no modo local).
 

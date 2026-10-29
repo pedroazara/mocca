@@ -46,3 +46,4 @@ Registro do que foi feito de forma diferente da `ESPECIFICACAO.md`, e por quê (
 - [ ] Criar o token do Claude em Configurações depois do deploy e adicionar o conector (README, "API e conector do Claude").
 - [ ] Importar o quadro do Trello (Configurações › Importar do Trello) e apagar as tarefas `[EXEMPLO]`, se o seed de desenvolvimento tiver ido para o banco real por engano (ele não deve ir).
 - [ ] Fase 4: e-mails pelo Resend (lembrete na véspera do prazo e aviso de contato novo).
+- [ ] Atalhos dentro da tarefa aberta da seção 8.3 (`E` editar título, `A` atribuir, `D` prazo). Os outros atalhos e a paleta de comandos estão prontos.

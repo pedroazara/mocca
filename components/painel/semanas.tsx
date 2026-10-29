@@ -171,7 +171,7 @@ export function DetalhesSemana({
   const campo = cn(estiloControle, "h-9");
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <section aria-labelledby="anotacoes" className="rounded-g border border-linha bg-superficie p-5">
         <div className="flex items-center justify-between">
           <h2 id="anotacoes" className="t-rotulo text-texto-2">
