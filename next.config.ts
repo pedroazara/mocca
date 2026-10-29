@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   // banco embutido do modo local (WASM) e o driver do Postgres ficam fora do bundle
   serverExternalPackages: ["@electric-sql/pglite", "postgres"],
   experimental: {
+    // o JSON do Trello (já enxugado no navegador) pode passar de 1 MB
+    serverActions: { bodySizeLimit: "8mb" },
     // CSS no próprio HTML: sem requisição bloqueante antes da primeira pintura
     inlineCss: true,
   },

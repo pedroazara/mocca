@@ -6,6 +6,7 @@ import { pessoaLogada, type PessoaLogada } from "@/lib/auth";
 import { comoUsuario, mensagemDeErro, type Consulta } from "@/lib/banco";
 import { configuracao, semanas as listarSemanas } from "@/lib/painel/dados";
 import { fimDaSemanaIso, proximaReuniao } from "@/lib/painel/datas";
+import { planejarImportacao, type TrelloJson } from "@/lib/painel/trello";
 import type {
   PapelAtribuicao,
   PapelPainel,
@@ -541,4 +542,58 @@ export async function semanasDisponiveis() {
   const eu = await pessoaLogada();
   if (!eu) return [];
   return comoUsuario(eu.authId, (q) => listarSemanas(q));
+}
+
+// ---------------------------------------------------------------- importação do Trello (admin)
+
+export async function importarTrello(json: TrelloJson) {
+  return agir(async (q, eu) => {
+    if (eu.papel !== "admin") throw new Recusa("Só o admin importa o Trello.");
+    const [ps, es, ss] = [
+      await q<{ id: string; nome: string; apelido: string | null }>("select id, nome, apelido from pessoa where ativo"),
+      await q<{ id: string; nome: string }>("select id, nome from etiqueta"),
+      await q<{ id: string; numero: number }>("select id, numero from semana"),
+    ];
+    const plano = planejarImportacao(json, ps, es, ss);
+    const semanaId = new Map(ss.map((s) => [s.numero, s.id]));
+    let criadas = 0;
+    let puladas = 0;
+    let pos = 1;
+    for (const t of plano.tarefas) {
+      const [nova] = await q<{ id: string }>(
+        `insert into tarefa (titulo, descricao, status, semana_id, prazo, origem, trello_id, criado_por, posicao)
+         values ($1, $2, $3::status_tarefa, $4, $5, 'trello', $6, $7, $8)
+         on conflict (trello_id) do nothing returning id`,
+        [t.titulo, t.descricao, t.status, t.semana ? semanaId.get(t.semana) ?? null : null, t.prazo, t.trello_id, eu.id, pos++],
+      );
+      if (!nova) {
+        puladas++;
+        continue;
+      }
+      criadas++;
+      for (const e of t.etiquetas)
+        await q("insert into tarefa_etiqueta (tarefa_id, etiqueta_id) values ($1, $2) on conflict do nothing", [nova.id, e]);
+      let ordem = 0;
+      for (const a of t.atribuicoes) {
+        const [at] = await q<{ id: string }>(
+          "insert into atribuicao (tarefa_id, pessoa_id, papel, posicao) values ($1, $2, $3::papel_atrib, $4) returning id",
+          [nova.id, a.pessoa_id, a.papel, ordem++],
+        );
+        let i = 0;
+        for (const item of a.itens)
+          await q("insert into item (atribuicao_id, texto, feito, posicao) values ($1, $2, $3, $4)", [at.id, item.texto.slice(0, 500), item.feito, ++i]);
+      }
+      for (const d of t.documentos)
+        await q("insert into documento (tarefa_id, titulo, url, tipo) values ($1, $2, $3, 'outro')", [nova.id, d.titulo, d.url]);
+    }
+    const s1 = semanaId.get(1);
+    if (s1)
+      for (const d of plano.documentosSemana1)
+        await q(
+          `insert into documento (semana_id, titulo, url, tipo)
+           select $1, $2, $3, 'outro' where not exists (select 1 from documento where semana_id = $1 and url = $3)`,
+          [s1, d.titulo.slice(0, 200), d.url],
+        );
+    return { criadas, puladas };
+  });
 }
