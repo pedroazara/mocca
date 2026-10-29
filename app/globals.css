@@ -1,0 +1,396 @@
+@import "tailwindcss";
+
+/* Tokens de design (seção 4.4 da especificação). Componentes usam só estes tokens. */
+:root {
+  /* marca */
+  --espresso: #4A2C1D;
+  --caramelo: #B9733F;
+  --caramelo-texto: #96592A;
+  --torra: #8A5A3B;
+  --creme: #F6F1E7;
+
+  /* superfícies e texto (tema claro) */
+  --fundo: #F6F1E7;          /* creme */
+  --superficie: #FFFCF7;     /* cartões, painéis */
+  --superficie-2: #EFE6DA;   /* cabeçalho de tabela, hover */
+  --linha: #E3D6C5;          /* bordas, divisórias */
+  --texto: #2B1A11;          /* 14,8:1 no fundo */
+  --texto-2: #6E5444;        /* 6,2:1 no fundo */
+  --link: #96592A;
+  --foco: #B9733F;
+
+  /* botões */
+  --botao-primario: #4A2C1D;
+  --botao-primario-texto: #F6F1E7;
+  --botao-primario-hover: #5E3A27;
+
+  /* estados (semânticas, separadas da marca) */
+  --ok: #3F7A4A;      --ok-fundo: #E1EEDF;
+  --alerta: #8F6210;  --alerta-fundo: #F5E8C8;
+  --erro: #A2412F;    --erro-fundo: #F5DED7;
+  --info: #2F5F86;    --info-fundo: #DDE8F1;
+
+  /* etiquetas das tarefas (seção 9.3) */
+  --et-entregas: #A2412F;
+  --et-validacao: #2F5F86;
+  --et-tecnico: #3F7A4A;
+  --et-negocio: #8F6210;
+  --et-marketing: #7A3F7A;
+
+  /* tipografia (as variáveis --font-* vêm do next/font em app/layout.tsx) */
+  --fonte-titulo: var(--font-sora), "Sora", "Segoe UI", system-ui, sans-serif;
+  --fonte-texto: var(--font-public-sans), "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --fonte-dado: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, Consolas, monospace;
+
+  /* raio e sombra */
+  --raio-p: 6px;   /* chips, inputs */
+  --raio-m: 10px;  /* cartões, botões */
+  --raio-g: 16px;  /* blocos do site público */
+  --sombra-cartao: 0 1px 2px rgb(74 44 29 / 0.06), 0 2px 8px rgb(74 44 29 / 0.05);
+  --sombra-flutuante: 0 8px 24px rgb(74 44 29 / 0.14);
+
+  /* derivados (ver DUVIDAS.md): fundo do rodapé e os 5 tons da grade de talhões,
+     do creme ao espresso, misturados a partir das cores da marca */
+  --rodape-fundo: var(--espresso);
+  --talhao-1: var(--linha);
+  --talhao-2: color-mix(in oklab, var(--caramelo) 45%, var(--linha));
+  --talhao-3: var(--caramelo);
+  --talhao-4: var(--torra);
+  --talhao-5: var(--espresso);
+
+  /* frutos de café na vinheta "Mede": cores físicas, iguais nos dois temas */
+  --fruto-cereja: #A2412F;
+  --fruto-verde: #4F8A4A;
+  --fruto-amarelo: #D3A23A;
+  --fruto-passa: #6E4630;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --fundo: #1A120D;
+    --superficie: #241912;
+    --superficie-2: #2F2118;
+    --linha: #3B2B21;
+    --texto: #F3E9DC;          /* 15,4:1 */
+    --texto-2: #B79E8A;        /* 7,3:1 */
+    --link: #D49360;
+    --foco: #D49360;
+    --caramelo: #D49360;
+    --botao-primario: #D49360;
+    --botao-primario-texto: #1A120D;
+    --botao-primario-hover: #E0A676;
+    --ok: #8CC795;     --ok-fundo: #20311F;
+    --alerta: #E3B862; --alerta-fundo: #362B14;
+    --erro: #E58B78;   --erro-fundo: #3A211B;
+    --info: #8DB8DD;   --info-fundo: #1C2A36;
+    --et-entregas: #E58B78; --et-validacao: #8DB8DD; --et-tecnico: #8CC795;
+    --et-negocio: #E3B862;  --et-marketing: #D39BD3;
+    color-scheme: dark;
+
+    --rodape-fundo: #120C08;
+    --talhao-1: color-mix(in oklab, var(--torra) 28%, var(--superficie-2));
+    --talhao-2: color-mix(in oklab, var(--torra) 64%, var(--superficie-2));
+    --talhao-3: var(--torra);
+    --talhao-4: var(--caramelo);
+    --talhao-5: color-mix(in oklab, var(--caramelo) 45%, var(--creme));
+  }
+}
+:root[data-tema="escuro"] {
+  --fundo: #1A120D;
+  --superficie: #241912;
+  --superficie-2: #2F2118;
+  --linha: #3B2B21;
+  --texto: #F3E9DC;          /* 15,4:1 */
+  --texto-2: #B79E8A;        /* 7,3:1 */
+  --link: #D49360;
+  --foco: #D49360;
+  --caramelo: #D49360;
+  --botao-primario: #D49360;
+  --botao-primario-texto: #1A120D;
+  --botao-primario-hover: #E0A676;
+  --ok: #8CC795;     --ok-fundo: #20311F;
+  --alerta: #E3B862; --alerta-fundo: #362B14;
+  --erro: #E58B78;   --erro-fundo: #3A211B;
+  --info: #8DB8DD;   --info-fundo: #1C2A36;
+  --et-entregas: #E58B78; --et-validacao: #8DB8DD; --et-tecnico: #8CC795;
+  --et-negocio: #E3B862;  --et-marketing: #D39BD3;
+  color-scheme: dark;
+
+  --rodape-fundo: #120C08;
+  --talhao-1: color-mix(in oklab, var(--torra) 28%, var(--superficie-2));
+  --talhao-2: color-mix(in oklab, var(--torra) 64%, var(--superficie-2));
+  --talhao-3: var(--torra);
+  --talhao-4: var(--caramelo);
+  --talhao-5: color-mix(in oklab, var(--caramelo) 45%, var(--creme));
+}
+
+/* Tokens expostos ao Tailwind: bg-fundo, text-texto-2, border-linha, rounded-m, font-titulo... */
+@theme inline {
+  --color-espresso: var(--espresso);
+  --color-caramelo: var(--caramelo);
+  --color-caramelo-texto: var(--caramelo-texto);
+  --color-torra: var(--torra);
+  --color-creme: var(--creme);
+  --color-fundo: var(--fundo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-linha: var(--linha);
+  --color-texto: var(--texto);
+  --color-texto-2: var(--texto-2);
+  --color-link: var(--link);
+  --color-foco: var(--foco);
+  --color-botao-primario: var(--botao-primario);
+  --color-botao-primario-texto: var(--botao-primario-texto);
+  --color-botao-primario-hover: var(--botao-primario-hover);
+  --color-ok: var(--ok);
+  --color-ok-fundo: var(--ok-fundo);
+  --color-alerta: var(--alerta);
+  --color-alerta-fundo: var(--alerta-fundo);
+  --color-erro: var(--erro);
+  --color-erro-fundo: var(--erro-fundo);
+  --color-info: var(--info);
+  --color-info-fundo: var(--info-fundo);
+  --color-et-entregas: var(--et-entregas);
+  --color-et-validacao: var(--et-validacao);
+  --color-et-tecnico: var(--et-tecnico);
+  --color-et-negocio: var(--et-negocio);
+  --color-et-marketing: var(--et-marketing);
+  --color-rodape-fundo: var(--rodape-fundo);
+  --color-talhao-1: var(--talhao-1);
+  --color-talhao-2: var(--talhao-2);
+  --color-talhao-3: var(--talhao-3);
+  --color-talhao-4: var(--talhao-4);
+  --color-talhao-5: var(--talhao-5);
+  --color-fruto-cereja: var(--fruto-cereja);
+  --color-fruto-verde: var(--fruto-verde);
+  --color-fruto-amarelo: var(--fruto-amarelo);
+  --color-fruto-passa: var(--fruto-passa);
+
+  --font-titulo: var(--fonte-titulo);
+  --font-texto: var(--fonte-texto);
+  --font-dado: var(--fonte-dado);
+
+  --radius-p: var(--raio-p);
+  --radius-m: var(--raio-m);
+  --radius-g: var(--raio-g);
+
+  --shadow-cartao: var(--sombra-cartao);
+  --shadow-flutuante: var(--sombra-flutuante);
+
+  --ease-saida: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html {
+    background: var(--fundo);
+    color: var(--texto);
+    font-family: var(--fonte-texto);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--fundo);
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--foco);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--caramelo) 30%, transparent);
+  }
+}
+
+@layer components {
+  /* tipografia (seção 4.5) */
+  .t-display {
+    font-family: var(--fonte-titulo);
+    font-weight: 700;
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  .t-h1 {
+    font-family: var(--fonte-titulo);
+    font-weight: 700;
+    font-size: 2.25rem;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+  .t-h2 {
+    font-family: var(--fonte-titulo);
+    font-weight: 600;
+    font-size: 1.625rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  .t-h3 {
+    font-family: var(--fonte-titulo);
+    font-weight: 600;
+    font-size: 1.25rem;
+    line-height: 1.3;
+  }
+  .t-pequeno {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+  .t-rotulo {
+    font-family: var(--fonte-dado);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .t-dado {
+    font-family: var(--fonte-dado);
+    font-variant-numeric: tabular-nums;
+  }
+  .medida {
+    max-width: 68ch;
+  }
+
+  .link {
+    color: var(--link);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+    transition: text-decoration-thickness 150ms ease-out;
+  }
+  .link:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  /* layout do site público (seção 4.6) */
+  .conteiner {
+    --calha: max(clamp(16px, 4vw, 40px), env(safe-area-inset-left), env(safe-area-inset-right));
+    width: min(1200px, calc(100% - 2 * var(--calha)));
+    margin-inline: auto;
+  }
+  .secao {
+    padding-block: 64px;
+  }
+  @media (min-width: 768px) {
+    .secao {
+      padding-block: 96px;
+    }
+  }
+
+  /* troca de logo por tema (seção 4.2): .so-claro some no escuro e vice-versa */
+  .so-escuro {
+    display: none;
+  }
+  :root[data-tema="escuro"] .so-claro {
+    display: none;
+  }
+  :root[data-tema="escuro"] .so-escuro {
+    display: block;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-tema="claro"]) .so-claro {
+      display: none;
+    }
+    :root:not([data-tema="claro"]) .so-escuro {
+      display: block;
+    }
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes acordeao-abre {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+@keyframes acordeao-fecha {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@keyframes menu-entra {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* vinheta "Mede" (passos-ilustrados.tsx): esteira andando e laser.
+   As durações vêm do componente, para o café e a correia andarem juntos. */
+.esteira-cafe {
+  animation: esteira-cafe linear infinite;
+}
+@keyframes esteira-cafe {
+  from {
+    transform: translateX(calc(-1px * var(--periodo)));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.esteira-correia {
+  animation: esteira-correia linear infinite;
+}
+.esteira-volta {
+  animation-direction: reverse;
+}
+@keyframes esteira-correia {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+.esteira-rolete {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: esteira-rolete linear infinite;
+}
+@keyframes esteira-rolete {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.laser-pulso {
+  animation: laser-pulso 1.4s ease-in-out infinite;
+}
+@keyframes laser-pulso {
+  0%,
+  100% {
+    stroke-opacity: 0.55;
+  }
+  50% {
+    stroke-opacity: 1;
+  }
+}
