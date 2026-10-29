@@ -394,3 +394,14 @@
     stroke-opacity: 1;
   }
 }
+
+@keyframes painel-entra {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}

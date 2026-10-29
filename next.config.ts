@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // banco embutido do modo local (WASM) e o driver do Postgres ficam fora do bundle
+  serverExternalPackages: ["@electric-sql/pglite", "postgres"],
   experimental: {
     // CSS no próprio HTML: sem requisição bloqueante antes da primeira pintura
     inlineCss: true,
