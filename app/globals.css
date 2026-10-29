@@ -58,6 +58,10 @@
   --talhao-4: var(--torra);
   --talhao-5: var(--espresso);
 
+  /* fundo branco das logos de instituições parceiras (os arquivos vêm com fundo branco),
+     igual nos dois temas */
+  --logo-parceiro: #FFFFFF;
+
   /* frutos de café na vinheta "Mede": cores físicas, iguais nos dois temas */
   --fruto-cereja: #A2412F;
   --fruto-verde: #4F8A4A;
@@ -161,6 +165,7 @@
   --color-talhao-3: var(--talhao-3);
   --color-talhao-4: var(--talhao-4);
   --color-talhao-5: var(--talhao-5);
+  --color-logo-parceiro: var(--logo-parceiro);
   --color-fruto-cereja: var(--fruto-cereja);
   --color-fruto-verde: var(--fruto-verde);
   --color-fruto-amarelo: var(--fruto-amarelo);

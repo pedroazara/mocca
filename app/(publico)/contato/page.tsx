@@ -1,5 +1,6 @@
 import { Clock, Sprout } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { FormularioContato } from "@/components/publico/formulario-contato";
 import { COORDENADA_LAVRAS } from "@/components/publico/navegacao";
@@ -10,6 +11,12 @@ export const metadata: Metadata = {
     "Fale com a equipe do MoCCa. Produtores interessados nos testes de campo podem contar o tamanho da área e o tipo de colheita.",
   alternates: { canonical: "/contato" },
 };
+
+// Logos com fundo branco (arquivos em public/parceiros); a equipe fica no Departamento de Física.
+const LOGOS = [
+  { src: "/parceiros/ufla.png", alt: "Universidade Federal de Lavras", largura: 300, altura: 122 },
+  { src: "/parceiros/dfi.png", alt: "Departamento de Física da UFLA", largura: 259, altura: 295 },
+];
 
 export default function Contato() {
   return (
@@ -44,6 +51,13 @@ export default function Contato() {
               <p className="text-texto">Universidade Federal de Lavras</p>
               <p className="text-texto-2">Lavras, MG</p>
               <p className="t-dado mt-2 text-[0.8125rem] text-texto-2">{COORDENADA_LAVRAS}</p>
+              <ul className="mt-5 flex flex-wrap items-center gap-3" aria-label="Instituições">
+                {LOGOS.map((l) => (
+                  <li key={l.src} className="flex h-16 items-center rounded-m border border-linha bg-logo-parceiro px-4">
+                    <Image src={l.src} alt={l.alt} width={l.largura} height={l.altura} className="h-10 w-auto" />
+                  </li>
+                ))}
+              </ul>
             </div>
           </aside>
         </div>
