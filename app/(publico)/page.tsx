@@ -81,15 +81,8 @@ export default function Inicio() {
   return (
     <>
       {/* 1. Hero */}
+      {/* as curvas de nível do fundo vêm do próprio mapa (ver MapaProdutividade) */}
       <section className="relative isolate overflow-hidden">
-        <CurvasDeNivel
-          conjunto="hero"
-          className={cn(
-            "absolute inset-0 -z-10 h-full w-full text-caramelo/30",
-            "[mask-image:linear-gradient(to_bottom,transparent_35%,black_75%)]",
-            "lg:[mask-image:linear-gradient(to_right,transparent_30%,black_62%)]",
-          )}
-        />
         <div className="conteiner grid items-center gap-12 pt-10 pb-16 md:pt-16 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pt-20 lg:pb-24">
           <div>
             <p className="t-rotulo text-link">Monitoramento de colheita de café</p>

@@ -40,7 +40,8 @@ export default function Contato() {
             </div>
             <div className="mt-2 rounded-g border border-linha p-6">
               <p className="t-rotulo text-texto-2">Onde estamos</p>
-              <p className="mt-3 text-texto">Universidade Federal de Lavras</p>
+              <p className="mt-3 text-texto">Departamento de Física</p>
+              <p className="text-texto">Universidade Federal de Lavras</p>
               <p className="text-texto-2">Lavras, MG</p>
               <p className="t-dado mt-2 text-[0.8125rem] text-texto-2">{COORDENADA_LAVRAS}</p>
             </div>

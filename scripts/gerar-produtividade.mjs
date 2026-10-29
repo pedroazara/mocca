@@ -1,86 +1,90 @@
-// Gera o mapa de produtividade ilustrativo do hero: uma lavoura com manchas de
-// produção em 5 faixas, como num mapa de colheita. Os valores são inventados
-// para a ilustração. Grava components/publico/produtividade-dados.ts.
+// Gera o mapa de produtividade ilustrativo do hero. As curvas de nível do fundo
+// continuam por dentro da lavoura, e as faixas entre elas vão ganhando as cores
+// de produção aos poucos, até a mais alta, onde fica o pin. Os valores são
+// inventados para a ilustração. Grava components/publico/produtividade-dados.ts.
 // Rodar com: npm run gerar:produtividade
 
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { caminho, costurar, eFechada, isolinha, morro, suavizar } from "./relevo.mjs";
+import { aleatorio, caminho, costurar, eFechada, extremos, isolinha, morro, suavizar } from "./relevo.mjs";
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-const LARGURA = 600;
-const ALTURA = 460;
-const PASSO = 3;
+// Quadro grande: o centro (600 × 460) é o espaço do mapa na página; o resto
+// são as curvas em volta, que se apagam nas bordas.
+const LARGURA = 1500;
+const ALTURA = 1000;
+const CENTRO = [750, 500];
+const PASSO = 6;
+const NIVEIS = 26;
 
-// Contorno da lavoura: forma orgânica suave (raio que varia com o ângulo).
-const C = [300, 232];
-function raio(theta) {
-  return (
-    1 +
-    0.08 * Math.cos(2 * theta + 0.6) +
-    0.05 * Math.cos(3 * theta + 2.0) +
-    0.03 * Math.cos(5 * theta + 0.4)
-  );
-}
-const contornoPts = [];
-for (let k = 0; k < 64; k++) {
-  const a = (k / 64) * Math.PI * 2;
-  contornoPts.push([C[0] + 262 * raio(a) * Math.cos(a), C[1] + 186 * raio(a) * Math.sin(a)]);
-}
-function dentro([x, y]) {
-  const a = Math.atan2((y - C[1]) / 186, (x - C[0]) / 262);
-  const r = Math.hypot((x - C[0]) / 262, (y - C[1]) / 186);
-  return r < raio(a);
-}
-
-// Produção: duas manchas fortes, uma média e uma área fraca, mais ondulação.
-// A janela zera a função na borda do quadro, para todas as curvas fecharem.
-const manchas = [
-  morro({ x: 400, y: 160, sx: 95, sy: 70, a: 1, ang: -0.4 }),
-  morro({ x: 185, y: 300, sx: 80, sy: 60, a: 0.85, ang: 0.5 }),
-  morro({ x: 300, y: 200, sx: 140, sy: 120, a: 0.35 }),
-  morro({ x: 470, y: 330, sx: 60, sy: 48, a: 0.55, ang: 0.2 }),
+// Lavoura: um morro largo com duas manchas fortes e uma área mais fraca.
+const lavoura = [
+  morro({ x: 750, y: 505, sx: 260, sy: 175, a: 0.85, ang: -0.12 }),
+  morro({ x: 870, y: 440, sx: 112, sy: 58, a: 0.6, ang: -0.5 }),
+  morro({ x: 630, y: 570, sx: 100, sy: 56, a: 0.68, ang: 0.35 }),
+  morro({ x: 748, y: 505, sx: 55, sy: 70, a: -0.16, ang: 0.6 }),
+  morro({ x: 700, y: 420, sx: 60, sy: 45, a: -0.12 }),
 ];
-const fraca = morro({ x: 250, y: 120, sx: 70, sy: 50, a: 0.45 });
-const f = (x, y) => {
-  let z = 0.25;
-  for (const m of manchas) z += m(x, y);
-  z -= fraca(x, y);
-  // variação fina: bordas irregulares e pequenas ilhas, como num mapa de colheita real
-  z += 0.07 * Math.sin(x / 37) * Math.cos(y / 29);
-  z += 0.06 * Math.sin(x / 19 + 1.3) * Math.cos(y / 23 + 0.4);
-  z += 0.04 * Math.sin((x + 1.7 * y) / 15);
-  const janela = Math.pow(Math.sin((Math.PI * x) / LARGURA) * Math.sin((Math.PI * y) / ALTURA), 0.35);
-  return Math.max(0.001, z) * janela;
-};
 
-// níveis pelos quantis dentro da lavoura: as 5 faixas ficam com áreas parecidas
-const valores = [];
-for (let y = 0; y <= ALTURA; y += 4)
-  for (let x = 0; x <= LARGURA; x += 4) if (dentro([x, y])) valores.push(f(x, y));
-valores.sort((a, b) => a - b);
-const quantil = (q) => valores[Math.floor(q * (valores.length - 1))];
-const niveis = [0.24, 0.46, 0.66, 0.84].map(quantil);
-
-const faixas = niveis.map((nivel) =>
-  costurar(isolinha(f, LARGURA, ALTURA, PASSO, nivel))
-    .filter((l) => l.length > 24) // descarta pontinhos soltos
-    .map((l) => {
-      if (!eFechada(l)) throw new Error("curva de produção aberta: ajuste a janela");
-      const { pts } = suavizar(l, 0.35);
-      return caminho(pts, true);
-    })
-    .join(""),
+// Em volta: morros baixos espalhados, só para as curvas atravessarem o quadro.
+const r = aleatorio(31);
+const entorno = Array.from({ length: 9 }, () =>
+  morro({
+    x: LARGURA * (0.03 + r() * 0.94),
+    y: ALTURA * (0.03 + r() * 0.94),
+    sx: 120 + r() * 160,
+    sy: 140 + r() * 200,
+    a: 0.18 + r() * 0.28,
+    ang: r() * Math.PI,
+  }),
 );
 
-// pin no ponto de maior produção dentro da lavoura
+const f = (x, y) => {
+  let z = 0;
+  for (const m of lavoura) z += m(x, y);
+  for (const m of entorno) z += m(x, y);
+  return z + 0.05 * Math.sin(x / 97) * Math.cos(y / 71);
+};
+
+// a lavoura é a região perto do centro (elipse)
+const naLavoura = ([x, y]) => ((x - CENTRO[0]) / 380) ** 2 + ((y - CENTRO[1]) / 290) ** 2 < 1;
+
+const { min, max } = extremos(f, LARGURA, ALTURA, PASSO);
+const linhas = [];
+const aneis = []; // por nível: anéis fechados dentro da lavoura
+for (let k = 1; k <= NIVEIS; k++) {
+  const nivel = min + ((max - min) * k) / (NIVEIS + 1);
+  const doNivel = [];
+  for (const l of costurar(isolinha(f, LARGURA, ALTURA, PASSO, nivel))) {
+    if (l.length < 6) continue;
+    const { pts, fechada } = suavizar(l);
+    const d = caminho(pts, fechada);
+    linhas.push(d);
+    if (fechada && eFechada(l) && l.every(naLavoura) && l.length > 30) doNivel.push(d);
+  }
+  aneis.push(doNivel);
+}
+
+// As faixas coloridas começam no primeiro nível que fecha um anel na lavoura.
+// As 3 primeiras entram com opacidade crescente (a transição); depois, cheias.
+const primeiro = aneis.findIndex((a) => a.length > 0);
+const coloridos = aneis.slice(primeiro).filter((a) => a.length > 0);
+const total = coloridos.length;
+const faixas = coloridos.map((a, i) => ({
+  d: a.join(""),
+  // 5 cores da legenda, da mais baixa para a mais alta
+  cor: 1 + Math.min(4, Math.floor((i / total) * 5)),
+  opacidade: [0.25, 0.5, 0.78][i] ?? 1,
+}));
+
+// pin no ponto mais alto
 let pin = [0, 0];
 let maior = -Infinity;
 for (let y = 0; y <= ALTURA; y += 2)
   for (let x = 0; x <= LARGURA; x += 2)
-    if (dentro([x, y]) && f(x, y) > maior) {
+    if (f(x, y) > maior) {
       maior = f(x, y);
       pin = [x, y];
     }
@@ -88,7 +92,9 @@ for (let y = 0; y <= ALTURA; y += 2)
 const dados = {
   largura: LARGURA,
   altura: ALTURA,
-  contorno: caminho(contornoPts, true),
+  // retângulo do mapa dentro do quadro (o que ocupa o espaço da figura)
+  janela: { x: CENTRO[0] - 300, y: CENTRO[1] - 230, largura: 600, altura: 460 },
+  linhas: linhas.join(""),
   faixas,
   pin,
 };
@@ -97,4 +103,6 @@ const saida =
   "// Arquivo gerado por scripts/gerar-produtividade.mjs. Não editar à mão.\n\n" +
   `export const produtividade = ${JSON.stringify(dados)} as const;\n`;
 writeFileSync(join(raiz, "components", "publico", "produtividade-dados.ts"), saida);
-console.log(`produtividade: ${(saida.length / 1024).toFixed(1)} KB | pin em ${pin}`);
+console.log(
+  `produtividade: ${(saida.length / 1024).toFixed(1)} KB | ${linhas.length} linhas | ${total} faixas a partir do nível ${primeiro + 1} | pin em ${pin}`,
+);

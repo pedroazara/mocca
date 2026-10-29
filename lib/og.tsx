@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { curvas } from "@/components/publico/curvas-dados";
 import { produtividade } from "@/components/publico/produtividade-dados";
 import { marca, temaClaro } from "./tokens";
 
@@ -13,28 +12,30 @@ export const tamanhoOg = { width: 1200, height: 630 };
 // os 5 tons de --talhao-1..5 no tema claro, já resolvidos (aqui não há CSS)
 const tons = [temaClaro.linha, "#D2A47B", marca.caramelo, marca.torra, marca.espresso];
 
-// O mesmo mapa de produtividade do hero, com as cores escritas no SVG. O pin vai
+// O mesmo mapa de produtividade do hero, com as cores escritas no SVG: as curvas
+// cobrem o fundo e ganham cor na lavoura, que fica no retângulo MAPA. O pin vai
 // numa imagem separada por cima (o renderizador não desenha imagem dentro de SVG).
 const MAPA = { direita: 40, topo: 116, largura: 520 };
-const escalaMapa = MAPA.largura / produtividade.largura;
+const escalaMapa = MAPA.largura / produtividade.janela.largura;
+const QUADRO = {
+  esquerda: 1200 - MAPA.direita - MAPA.largura - produtividade.janela.x * escalaMapa,
+  topo: MAPA.topo - produtividade.janela.y * escalaMapa,
+  largura: produtividade.largura * escalaMapa,
+  altura: produtividade.altura * escalaMapa,
+};
 function svgMapa() {
-  const { largura, altura, contorno, faixas, pin } = produtividade;
-  const manchas = faixas.map((d, i) => `<path d="${d}" fill="${tons[i + 1]}" fill-rule="evenodd"/>`).join("");
-  const divisas = faixas.map((d) => `<path d="${d}"/>`).join("");
+  const { largura, altura, linhas, faixas, pin } = produtividade;
+  const manchas = faixas
+    .map((f) => `<path d="${f.d}" fill="${tons[f.cor - 1]}" fill-opacity="${f.opacidade}" fill-rule="evenodd"/>`)
+    .join("");
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${largura} ${altura}" width="${largura}" height="${altura}">
-    <defs><clipPath id="l"><path d="${contorno}"/></clipPath></defs>
-    <g clip-path="url(#l)">
-      <rect width="${largura}" height="${altura}" fill="${tons[0]}"/>${manchas}
-      <g fill="none" stroke="${marca.creme}" stroke-opacity="0.6" stroke-width="1.2">${divisas}</g>
-    </g>
-    <path d="${contorno}" fill="none" stroke="${temaClaro.texto}" stroke-opacity="0.45" stroke-width="1.5"/>
+    <defs>
+      <radialGradient id="g" cx="0.5" cy="0.5" r="0.5"><stop offset="0.42" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+      <mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="${largura}" height="${altura}"><rect width="${largura}" height="${altura}" fill="url(#g)"/></mask>
+    </defs>
+    <g mask="url(#m)">${manchas}<path d="${linhas}" fill="none" stroke="${marca.caramelo}" stroke-opacity="0.4" stroke-width="1.6"/></g>
     <circle cx="${pin[0]}" cy="${pin[1]}" r="4.5" fill="${temaClaro.texto}" stroke="${marca.creme}" stroke-width="2"/>
   </svg>`;
-}
-
-function svgCurvas() {
-  const c = curvas.hero;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${c.largura} ${c.altura}" width="1200" height="630" preserveAspectRatio="xMidYMid slice"><path d="${c.d}" fill="none" stroke="${marca.caramelo}" stroke-opacity="0.28" stroke-width="1.6"/></svg>`;
 }
 
 const dataUri = (svg: string) => `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
@@ -60,15 +61,13 @@ export async function imagemOg(titulo: string) {
           fontFamily: "Sora",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={dataUri(svgCurvas())} width={1200} height={630} alt="" style={{ position: "absolute", inset: 0 }} />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={dataUri(svgMapa())}
-          width={MAPA.largura}
-          height={Math.round(produtividade.altura * escalaMapa)}
+          width={Math.round(QUADRO.largura)}
+          height={Math.round(QUADRO.altura)}
           alt=""
-          style={{ position: "absolute", right: MAPA.direita, top: MAPA.topo }}
+          style={{ position: "absolute", left: QUADRO.esquerda, top: QUADRO.topo }}
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -78,8 +77,8 @@ export async function imagemOg(titulo: string) {
           alt=""
           style={{
             position: "absolute",
-            left: 1200 - MAPA.direita - MAPA.largura + produtividade.pin[0] * escalaMapa - 13,
-            top: MAPA.topo + produtividade.pin[1] * escalaMapa - 40,
+            left: QUADRO.esquerda + produtividade.pin[0] * escalaMapa - 13,
+            top: QUADRO.topo + produtividade.pin[1] * escalaMapa - 40,
           }}
         />
         <div style={{ display: "flex", flexDirection: "column", padding: "52px 64px", width: 700, height: "100%" }}>
