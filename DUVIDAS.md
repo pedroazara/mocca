@@ -5,7 +5,7 @@ Registro do que foi feito de forma diferente da `ESPECIFICACAO.md`, e por quê (
 ## Decisões pedidas pelo Pedro (sobrepõem a especificação)
 
 1. **Nada de "sensor" no site.** A seção 1.1 permitia "sensor de profundidade". O Pedro pediu para não citar o sensor de forma nenhuma: o site fala em "uma tecnologia instalada na colhedora" ou "o equipamento". Vale para Início, Como funciona, metadados e imagens de compartilhamento.
-2. **Ponto de medição no tubo de saída.** O equipamento fica no alto da colhedora, no tubo de saída por onde passa todo o café antes de cair no depósito. O esquema de `/como-funciona` e o texto da seção "Onde o equipamento fica" seguem isso.
+2. **Ponto de medição no tubo de saída.** O equipamento fica no alto da colhedora, no tubo de saída por onde passa todo o café. A colhedora não tem depósito: o tubo leva o café até o reservatório puxado por outro trator, na rua ao lado. O desenho de `/como-funciona`, o painel "Fabricantes e locadoras" do Início e o texto da seção "Onde o equipamento fica" seguem isso. O ponto de medição leva o símbolo do MoCCa, a pedido do Pedro: é a única exceção à regra de usar o símbolo só no logo. A posição do selo ao longo do tubo é uma proposta e falta o Pedro confirmar.
 3. **Hero com mapa de produtividade, parado.** A seção 4.7 pedia uma grade de retângulos irregulares no hero, e a 4.9, uma animação de entrada dos talhões. A pedido do Pedro, o hero mostra um mapa de produtividade ilustrativo feito das próprias curvas de nível do fundo: elas atravessam a lavoura, e as faixas entre elas ganham as 5 cores da legenda aos poucos, até a mancha mais forte, marcada com um anel e um ponto ("cada saca tem um endereço"). Não há contorno de lavoura. Sem animação. Foram descartados, nesta ordem: a grade de retângulos, uma fazenda em curvas de nível com talhões e carreadores (com e sem animação da colhedora) e uma lavoura com contorno arredondado e manchas soltas por dentro. **O site deve ser simples e informativo**, porque é usado para apresentar o MoCCa ao agro. A grade de retângulos continua na seção "O que você passa a ver".
 
 4a. **Vinheta "Mede" animada (pedido do Pedro).** Na página inicial, a vinheta do passo "Mede" mostra frutos de café (cereja, verde, amarelo e passa) andando na esteira e passando sob um laser; o café que já passou sai com o perfil medido desenhado por cima. É só CSS e fica parada com movimento reduzido. O texto do site continua sem citar o sensor.
@@ -44,7 +44,7 @@ Registro do que foi feito de forma diferente da `ESPECIFICACAO.md`, e por quê (
 
 ## Pendências
 
-- [ ] **Redesenhar o esquema da colhedora** de `/como-funciona` como um desenho técnico de verdade (pedido do Pedro). O atual é um esquema simples, já com o ponto de medição no tubo de saída.
+- [x] **Redesenhar o esquema da colhedora** como um desenho técnico (pedido do Pedro). Feito em `components/publico/diagrama-colhedora.tsx`, usado em `/como-funciona` e no painel "Fabricantes e locadoras". Vista de frente: ela não mostra o engate do reservatório, por isso o rótulo "Reservatório, em outro trator" explica essa parte.
 - [ ] Criar o projeto no Supabase, aplicar as migrações e o seed, e preencher `.env.local` e as variáveis na Vercel (ver README).
 - [ ] Gerar as chaves reais do Cloudflare Turnstile para o domínio.
 - [ ] Conferir no Supabase real o envio do formulário (aceite da fase 1: "contato enviado aparece na tabela `contato`"). Localmente foi testado com um Postgres embutido (PGlite).

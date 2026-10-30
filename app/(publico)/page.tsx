@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChamadaFinal } from "@/components/publico/chamada-final";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
-import { ColhedoraLinha, RamoCafe } from "@/components/publico/ilustracoes-publico";
+import { DiagramaColhedora } from "@/components/publico/diagrama-colhedora";
+import { RamoCafe } from "@/components/publico/ilustracoes-publico";
 import { MapaProdutividade } from "@/components/publico/mapa-produtividade";
 import { GradeTalhoes, LegendaProducao, mapas } from "@/components/publico/grade-talhoes";
 import { MapaTalhoesInterativo } from "@/components/publico/mapa-talhoes-interativo";
@@ -95,8 +96,8 @@ const publicos = [
     botao: "Quero ser parceiro",
     href: "/contato",
     fundo: "bg-torra",
-    Ilustracao: ColhedoraLinha,
-    lugar: "md:right-6 md:bottom-5 md:w-[42%] md:max-w-[18rem]",
+    Ilustracao: DiagramaColhedora,
+    lugar: "[--desenho-destaque:var(--creme)] [--fundo-desenho:var(--torra)] -mr-3 w-full md:mr-0 md:right-6 md:bottom-6 md:w-[46%] md:max-w-[24rem]",
   },
 ];
 
@@ -298,7 +299,7 @@ export default function Inicio() {
             {publicos.map(({ nome, texto, botao, href, fundo, Ilustracao, lugar }) => (
               <article
                 key={nome}
-                className={cn("relative isolate flex flex-col overflow-hidden rounded-g p-7 text-creme md:min-h-[22rem] md:p-9 xl:min-h-[27rem]", fundo)}
+                className={cn("relative isolate flex flex-col overflow-hidden rounded-g p-7 text-creme md:min-h-[22rem] md:p-9 xl:min-h-[29rem]", fundo)}
               >
                 <CurvasDeNivel
                   conjunto="cartao"

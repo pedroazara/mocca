@@ -134,7 +134,7 @@ export default function ComoFunciona() {
             <CabecalhoSecao numero="01" titulo="Onde o equipamento fica na colhedora" />
             <p className="medida mt-5 text-texto-2">
               A colhedora passa por cima da fileira de café. As hastes vibram, o café cai, sobe pela lateral da
-              máquina e sai por um tubo no alto, caindo no depósito.
+              máquina e sai por um tubo no alto, que leva o café até o reservatório, puxado por outro trator.
             </p>
             <p className="medida mt-4 text-texto-2">
               O equipamento do MoCCa fica nesse tubo de saída, por onde passa todo o café colhido. Assim ele mede a
@@ -142,7 +142,7 @@ export default function ComoFunciona() {
             </p>
           </div>
           <figure className="rounded-g border border-linha bg-superficie p-5 md:p-8">
-            <DiagramaColhedora />
+            <DiagramaColhedora rotulos className="text-texto [--desenho-destaque:var(--caramelo)] [--fundo-desenho:var(--superficie)]" />
             <figcaption className="t-pequeno mt-4 text-texto-2">Esquema ilustrativo, sem escala.</figcaption>
           </figure>
         </div>

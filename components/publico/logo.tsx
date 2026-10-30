@@ -118,7 +118,8 @@ export function LogoVertical({ largura = 220, className }: { largura?: number; c
 }
 
 // Símbolo (grão com pin): é o logo compacto (barra lateral recolhida do painel).
-// Fora do logo, o site não usa o símbolo como marcador (pedido do Pedro).
+// Fora do logo, o site não usa o símbolo como marcador (pedido do Pedro). A única exceção,
+// também pedida por ele, é o ponto de medição no desenho da colhedora.
 export function Pin({ tamanho = 20, className }: { tamanho?: number; className?: string }) {
   const largura = Math.round(tamanho * PROPORCAO_SIMBOLO);
   return (

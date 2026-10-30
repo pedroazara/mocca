@@ -1,146 +1,186 @@
 import { cn } from "@/lib/utils";
 
-// Esquema simplificado de uma colhedora de café vista de frente, com o ponto de
-// medição (no tubo de saída, no alto da máquina) marcado pelo pin.
-// TODO(pedro): trocar por um desenho técnico de verdade (seção 6.4 e DUVIDAS.md).
-// Não indica marca, modelo nem tipo de equipamento de medição.
+// Colhedora de café vista de frente, passando por cima da fileira. O tubo de saída
+// sai do alto da máquina, passa por cima da fileira vizinha e despeja o café no
+// reservatório puxado por outro trator, na rua ao lado (a colhedora não tem
+// depósito). O ponto de medição fica nesse tubo, marcado com o símbolo do MoCCa.
+// Proporções de uma colhedora automotriz genérica, com 100 unidades = 1 m. Não
+// indica marca, modelo nem tipo de equipamento de medição.
+//
+// As cores vêm de três variáveis, que quem usa define conforme o fundo:
+// --fundo-desenho (a cor atrás do desenho), --desenho-destaque (o tubo).
 
-const frutos: { x: number; y: number; tom: "fill-erro" | "fill-ok" | "fill-torra" }[] = [
-  { x: 252, y: 186, tom: "fill-erro" },
-  { x: 300, y: 178, tom: "fill-ok" },
-  { x: 236, y: 222, tom: "fill-erro" },
-  { x: 276, y: 210, tom: "fill-erro" },
-  { x: 318, y: 214, tom: "fill-torra" },
-  { x: 228, y: 262, tom: "fill-ok" },
-  { x: 262, y: 250, tom: "fill-erro" },
-  { x: 300, y: 246, tom: "fill-erro" },
-  { x: 332, y: 258, tom: "fill-erro" },
-  { x: 246, y: 292, tom: "fill-torra" },
-  { x: 284, y: 284, tom: "fill-erro" },
-  { x: 318, y: 296, tom: "fill-ok" },
+const X0 = 30;
+const LARGURA = 846;
+const ALTURA = 492;
+const ALTURA_COM_ROTULOS = 528;
+
+const LINHA = {
+  fill: "none",
+  stroke: "currentColor",
+  strokeLinecap: "butt",
+  strokeLinejoin: "miter",
+  vectorEffect: "non-scaling-stroke",
+} as const;
+
+// tons chapados, misturados com o fundo: funcionam em qualquer tema
+const tom = (p: number) => `color-mix(in oklab, currentColor ${p}%, var(--fundo-desenho))`;
+const PNEU = "color-mix(in oklab, var(--espresso) 72%, var(--fundo-desenho))";
+
+function Peca({ d, cor, fina = false }: { d: string; cor: string; fina?: boolean }) {
+  return <path d={d} {...LINHA} style={{ fill: cor }} strokeWidth={fina ? 1 : 1.6} />;
+}
+
+// Pé de café em silhueta: copa oval, tronco fino e cachos vermelhos, com o mesmo traço
+// do resto do desenho. Coordenadas relativas ao centro do pé.
+const COPA = "M0 214C42 214 66 276 69 340C71 394 52 432 24 440H-24C-52 432 -71 394 -69 340C-66 276 -42 214 0 214Z";
+const TRONCO = "M-5 466L-3 440H3L5 466Z";
+const CACHOS: [number, number][] = [
+  [-13, 268], [15, 280],
+  [-30, 306], [3, 316], [34, 304],
+  [-46, 348], [-14, 356], [20, 346], [50, 356],
+  [-34, 394], [0, 400], [33, 390],
+];
+const VERDE_COPA = "color-mix(in oklab, var(--fruto-verde) 72%, var(--espresso))";
+
+function PeDeCafe({ x }: { x: number }) {
+  return (
+    <g transform={`translate(${x} 0)`}>
+      <path d={TRONCO} {...LINHA} className="fill-fruto-passa" strokeWidth={1.6} />
+      <path d={COPA} {...LINHA} style={{ fill: VERDE_COPA }} strokeWidth={1.6} />
+      {CACHOS.map(([cx, cy], i) => (
+        <g key={`${cx} ${cy}`} className="fill-fruto-cereja" transform={`rotate(${(i * 47) % 120} ${cx} ${cy})`}>
+          <circle cx={cx - 4.4} cy={cy + 2} r={4.6} />
+          <circle cx={cx + 4.4} cy={cy + 2} r={4.6} />
+          <circle cx={cx} cy={cy - 4.6} r={4.6} />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+const RISCOS_CHAO = [
+  [79, 125],
+  [349, 395],
+  [674, 846],
+]
+  .flatMap(([a, b]) => Array.from({ length: Math.floor((b - a) / 14) + 1 }, (_, i) => `M${a + i * 14} 466l-12 12`))
+  .join("");
+
+// No celular "Colhedora" e "Tubo de saída" saem: não cabem em volta do selo.
+const ROTULOS: { x: number; y: number; texto: string; destaque?: boolean; alinhar?: "direita"; soTelaGrande?: boolean }[] = [
+  { x: 262, y: 22, texto: "Colhedora", soTelaGrande: true },
+  { x: 470, y: 24, texto: "Ponto de medição", destaque: true },
+  { x: 622, y: 124, texto: "Tubo de saída", soTelaGrande: true },
+  { x: 235, y: 506, texto: "Fileira de café" },
+  { x: 876, y: 506, texto: "Reservatório, em outro trator", alinhar: "direita" },
 ];
 
-// o café sobe pelo elevador na lateral e sai por um tubo no alto, caindo no depósito
-const tuboSaida = "M404 270 V 34 Q 404 10 380 10 H 356 Q 340 10 340 26 V 40";
-const caminhoCafe = "M318 330 C 350 330, 384 322, 404 300 V 34 Q 404 10 380 10 H 356 Q 340 10 340 26 V 44";
-// ponto de medição: no tubo de saída, no alto da máquina
-const MEDICAO = { x: 384, y: 10 };
-
-export function DiagramaColhedora({ className }: { className?: string }) {
+export function DiagramaColhedora({ className, rotulos = false }: { className?: string; rotulos?: boolean }) {
+  const altura = rotulos ? ALTURA_COM_ROTULOS : ALTURA;
   return (
-    <svg
-      viewBox="0 -40 560 420"
-      role="img"
-      aria-label="Esquema de uma colhedora de café vista de frente, passando por cima da fileira de café. O café derriçado desce, sobe pela lateral da máquina e sai por um tubo no alto, caindo no depósito. O ponto de medição, marcado com o pin, fica nesse tubo de saída."
-      className={cn("h-auto w-full", className)}
-    >
-      <defs>
-        <marker id="seta-cafe" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto">
-          <path d="M1 1L9 5L1 9" fill="none" className="stroke-caramelo" strokeWidth={1.8} strokeLinecap="round" />
-        </marker>
-      </defs>
+    <div className={cn("relative", className)}>
+      <svg
+        viewBox={`${X0} 0 ${LARGURA} ${altura}`}
+        role="img"
+        aria-label="Desenho da colhedora de café vista de frente, passando por cima da fileira. No alto da máquina, o tubo de saída leva o café até o reservatório puxado por outro trator, que anda na rua ao lado. O ponto de medição fica nesse tubo."
+        className="block h-auto w-full"
+      >
+        {/* chão */}
+        <path d="M35 466H870" {...LINHA} strokeWidth={1.6} />
+        <path d={RISCOS_CHAO} {...LINHA} strokeWidth={0.7} />
 
-      {/* chão */}
-      <path d="M24 340H536" className="stroke-linha" strokeWidth={2} />
-      <path d="M60 346h40M140 350h24M440 348h44M500 352h18" className="stroke-linha" strokeWidth={1.5} strokeLinecap="round" />
+        {/* as duas fileiras de café: a que passa pelo túnel e a vizinha */}
+        <PeDeCafe x={235} />
+        <PeDeCafe x={585} />
 
-      {/* pé de café */}
-      <path
-        d="M280 140 C 330 146, 356 196, 352 250 C 350 300, 330 336, 280 338 C 230 336, 210 300, 208 250 C 204 196, 230 146, 280 140 Z"
-        className="fill-ok-fundo stroke-ok"
-        strokeWidth={1.5}
-      />
-      <path d="M280 338V160M280 200l-26 -18M280 236l30 -20M280 272l-30 -16M280 300l24 -12" className="stroke-ok" strokeOpacity={0.6} strokeWidth={1.2} strokeLinecap="round" fill="none" />
-      {frutos.map((f) => (
-        <circle key={`${f.x}-${f.y}`} cx={f.x} cy={f.y} r={4} className={f.tom} />
-      ))}
+        {/* colhedora: pórtico, rodas, motor, cabine e escada */}
+        <Peca d="M163 186V436H133V342L75 302V136H395V302L337 342V436H307V186Z" cor={tom(16)} />
+        <path d="M133 342V166M337 342V166M199 166H395" {...LINHA} strokeWidth={1} strokeOpacity={0.7} />
+        <path d="M85 308.9V166M117 331V166M85 281H117M85 242H117M85 203H117" {...LINHA} strokeWidth={1} />
+        {[75, 345].map((x) => (
+          <g key={x}>
+            <Peca d={`M${x + 3} 466H${x + 47}L${x + 50} 463V354L${x + 47} 351H${x + 3}L${x} 354V463Z`} cor={PNEU} />
+            <path d={`M${x + 12} 466V351M${x + 38} 466V351`} {...LINHA} strokeWidth={1} strokeOpacity={0.6} />
+          </g>
+        ))}
+        <Peca d="M261 136V114L273 102H357V136Z" cor={tom(26)} />
+        <Peca d="M296 102V64H306V102Z" cor={tom(26)} fina />
+        <Peca d="M357 136H395V81H357Z" cor={tom(26)} />
+        <Peca d="M75 166H205V136L199 36H81L75 136Z" cor={tom(26)} />
+        <Peca d="M71 36H209V26H71Z" cor={tom(40)} />
+        <Peca d="M83 152H197L190 46H90Z" cor={tom(52)} fina />
+        <path d="M148 46V152" {...LINHA} strokeWidth={1} />
+        <path d="M79.5 60L53 54" {...LINHA} strokeWidth={1} />
+        <Peca d="M43 90H53V48H43Z" cor={tom(26)} fina />
 
-      {/* hastes que derriçam (um cilindro de cada lado da planta) */}
-      {[186, 360].map((x) => (
-        <g key={x}>
-          <rect x={x} y={136} width={14} height={176} rx={7} className="fill-superficie-2 stroke-texto-2" strokeWidth={1.5} />
-          {Array.from({ length: 8 }, (_, i) => 150 + i * 21).map((y) => (
+        {/* reservatório cheio de café, atrás do trator que o puxa */}
+        <path d="M668 198Q700 158 742 156Q770 140 800 160Q836 168 852 198Z" className="fill-fruto-cereja" stroke="currentColor" strokeOpacity={0.6} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+        <path d="M700 182Q716 170 734 172M764 164Q782 160 798 172M744 186Q760 180 776 186" fill="none" className="stroke-creme" strokeOpacity={0.35} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+        <Peca d="M681 366H839L855 196H665Z" cor={tom(22)} />
+        <path d="M665.9 206H854.1" {...LINHA} strokeWidth={1} />
+        {[670, 822].map((x) => (
+          <Peca key={x} d={`M${x + 3} 466H${x + 25}L${x + 28} 463V384L${x + 25} 381H${x + 3}L${x} 384V463Z`} cor={PNEU} />
+        ))}
+
+        {/* trator, com o arco de proteção */}
+        {[686, 804].map((x) => (
+          <Peca key={x} d={`M${x + 3} 466H${x + 27}L${x + 30} 463V344L${x + 27} 341H${x + 3}L${x} 344V463Z`} cor={PNEU} />
+        ))}
+        <path d="M682 332H722M798 332H838M706 332V254M814 332V254" {...LINHA} strokeWidth={1.6} />
+        <Peca d="M694 254H826V246H694Z" cor={tom(40)} />
+        <Peca d="M738 410H782V324L774 316H746L738 324Z" cor={tom(40)} />
+        <path d="M732 420H788" {...LINHA} strokeWidth={1.6} />
+        {[714, 788].map((x) => (
+          <Peca key={x} d={`M${x + 3} 466H${x + 15}L${x + 18} 463V384L${x + 15} 381H${x + 3}L${x} 384V463Z`} cor={PNEU} />
+        ))}
+
+        {/* o café cai da bica para dentro do reservatório */}
+        <path d="M722 126H738L734 170H726Z" className="fill-fruto-cereja" stroke="currentColor" strokeOpacity={0.6} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+
+        {/* tubo de saída, em destaque, com setas no sentido do café */}
+        <path d="M395 121.2V90.8L727 36.3L745 54V126H715V68.7Z" {...LINHA} style={{ fill: "var(--desenho-destaque)" }} strokeWidth={1.6} />
+        <path d="M527.6 99L532.4 68.6M627.6 82.6L632.4 52.2M715 114H745" fill="none" stroke="var(--fundo-desenho)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+        {[556, 592, 662].map((x) => {
+          const y = 106 - (x - 395) * 0.164;
+          return (
             <path
-              key={y}
-              d={x < 280 ? `M${x + 14} ${y}q12 -4 24 2` : `M${x} ${y}q-12 -4 -24 2`}
+              key={x}
+              d={`M${x - 6} ${y - 9}L${x + 4} ${y - 1}L${x - 3} ${y + 9}`}
               fill="none"
-              className="stroke-texto-2"
-              strokeWidth={1.4}
-              strokeLinecap="round"
+              stroke="var(--fundo-desenho)"
+              strokeWidth={2}
+              vectorEffect="non-scaling-stroke"
             />
-          ))}
-        </g>
-      ))}
+          );
+        })}
 
-      {/* pórtico: a máquina passa por cima da fileira */}
-      <path
-        d="M140 312 V 120 Q 140 100 160 100 H 400 Q 420 100 420 120 V 312"
-        fill="none"
-        className="stroke-texto"
-        strokeWidth={3}
-        strokeLinejoin="round"
-      />
-      <path d="M170 312V128H390V312" fill="none" className="stroke-texto-2" strokeWidth={1.5} strokeLinejoin="round" />
+        {/* ponto de medição: selo creme com o símbolo do MoCCa, igual nos dois temas */}
+        <circle cx={470} cy={93.7} r={50} fill="none" stroke="var(--fundo-desenho)" strokeWidth={10} vectorEffect="non-scaling-stroke" />
+        <circle cx={470} cy={93.7} r={50} className="fill-creme" stroke="var(--vermelho)" strokeWidth={3.5} vectorEffect="non-scaling-stroke" />
+        <image href="/logo/mocca-site-simbolo.svg" x={439.1} y={57.7} width={61.8} height={72} />
+      </svg>
 
-      {/* cabine e depósito */}
-      <rect x={160} y={38} width={92} height={62} rx={8} className="fill-superficie stroke-texto" strokeWidth={2} />
-      <rect x={172} y={50} width={68} height={30} rx={4} className="fill-superficie-2 stroke-texto-2" strokeWidth={1.2} />
-      <path d="M282 100 L 292 46 H 384 L 392 100 Z" className="fill-superficie-2 stroke-texto" strokeWidth={2} strokeLinejoin="round" />
-      {[304, 326, 348, 368].map((x, i) => (
-        <circle key={x} cx={x} cy={88 - (i % 2) * 6} r={4.5} className={i % 2 ? "fill-torra" : "fill-caramelo"} />
-      ))}
-
-      {/* elevador e tubo de saída: paredes do tubo em dois traços */}
-      <path d={tuboSaida} fill="none" className="stroke-texto" strokeWidth={15} strokeLinejoin="round" />
-      <path d={tuboSaida} fill="none" className="stroke-superficie-2" strokeWidth={10} strokeLinejoin="round" />
-
-      {/* rodas */}
-      {[155, 405].map((x) => (
-        <g key={x}>
-          <circle cx={x} cy={312} r={28} className="fill-superficie stroke-texto" strokeWidth={2.5} />
-          <circle cx={x} cy={312} r={9} className="fill-superficie-2 stroke-texto-2" strokeWidth={1.5} />
-        </g>
-      ))}
-
-      {/* caminho do café: da base da planta, sobe pelo elevador e sai no alto, no depósito */}
-      <path
-        d={caminhoCafe}
-        fill="none"
-        className="stroke-caramelo"
-        strokeWidth={2.5}
-        strokeDasharray="1 9"
-        strokeLinecap="round"
-        markerEnd="url(#seta-cafe)"
-      />
-
-      {/* ponto de medição: no tubo de saída */}
-      <circle cx={MEDICAO.x} cy={MEDICAO.y} r={20} fill="none" className="stroke-caramelo" strokeOpacity={0.55} strokeWidth={1.2} />
-      <circle cx={MEDICAO.x} cy={MEDICAO.y} r={34} fill="none" className="stroke-caramelo" strokeOpacity={0.25} strokeWidth={1.2} />
-      <circle cx={MEDICAO.x} cy={MEDICAO.y} r={6} className="fill-caramelo stroke-superficie" strokeWidth={2} />
-      <path d={`M${MEDICAO.x + 38} ${MEDICAO.y}H452`} className="stroke-texto-2" strokeWidth={1.2} />
-
-      <g className="font-dado">
-        <text x={458} y={MEDICAO.y - 4} className="fill-texto text-[12px] font-medium tracking-[0.06em]">
-          PONTO DE
-        </text>
-        <text x={458} y={MEDICAO.y + 12} className="fill-texto text-[12px] font-medium tracking-[0.06em]">
-          MEDIÇÃO
-        </text>
-        <text x={430} y={150} className="fill-texto-2 text-[11px] tracking-[0.06em]">
-          TUBO DE SAÍDA
-        </text>
-        <path d="M426 146H412" className="stroke-texto-2" strokeOpacity={0.5} strokeWidth={1} strokeDasharray="2 3" />
-        <text x={300} y={68} className="fill-texto-2 text-[10px] tracking-[0.06em]">
-          DEPÓSITO
-        </text>
-        <text x={24} y={226} className="fill-texto-2 text-[11px] tracking-[0.06em]">
-          HASTES
-        </text>
-        <path d="M76 222H180" className="stroke-texto-2" strokeOpacity={0.5} strokeWidth={1} strokeDasharray="2 3" />
-        <text x={24} y={372} className="fill-texto-2 text-[11px] tracking-[0.06em]">
-          FILEIRA DE CAFÉ
-        </text>
-      </g>
-    </svg>
+      {rotulos &&
+        ROTULOS.map(({ x, y, texto, destaque, alinhar, soTelaGrande }) => (
+          <span
+            key={texto}
+            aria-hidden
+            style={
+              alinhar === "direita"
+                ? { right: 0, top: `${(y / altura) * 100}%` }
+                : { left: `${((x - X0) / LARGURA) * 100}%`, top: `${(y / altura) * 100}%` }
+            }
+            className={cn(
+              "absolute -translate-y-1/2 leading-none whitespace-nowrap",
+              alinhar !== "direita" && "-translate-x-1/2",
+              soTelaGrande && "hidden sm:inline",
+              destaque ? "text-xs font-semibold text-link sm:text-base" : "text-[0.6875rem] text-texto-2 sm:text-[0.8125rem]",
+            )}
+          >
+            {texto}
+          </span>
+        ))}
+    </div>
   );
 }
