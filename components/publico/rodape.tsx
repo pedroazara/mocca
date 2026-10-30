@@ -9,7 +9,7 @@ export function Rodape() {
       <CurvasDeNivel conjunto="rodape" className="absolute inset-0 -z-10 h-full w-full text-creme/[0.08]" />
       <div className="conteiner grid gap-10 pt-14 pb-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1.2fr_auto] lg:gap-12">
         <div className="max-w-xs">
-          <LogoHorizontal altura={64} sempreEscura className="-ml-3" />
+          <LogoHorizontal altura={88} sempreEscura className="-ml-5" />
           <p className="mt-2 text-[0.9375rem] text-creme/80">Monitoramento de colheita de café, talhão por talhão.</p>
         </div>
 

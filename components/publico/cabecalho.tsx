@@ -30,10 +30,10 @@ export function Cabecalho() {
         rolou ? "border-linha" : "border-transparent",
       )}
     >
-      <div className="conteiner flex h-16 items-center justify-between gap-6 md:h-[72px]">
-        <Link href="/" aria-label="MoCCa, página inicial" className="-ml-2 rounded-m">
-          <LogoHorizontal altura={56} prioridade className="md:hidden" />
-          <LogoHorizontal altura={64} prioridade className="hidden md:inline-flex" />
+      <div className="conteiner flex h-[72px] items-center justify-between gap-6 md:h-[88px]">
+        <Link href="/" aria-label="MoCCa, página inicial" className="-ml-3 rounded-m md:-ml-4">
+          <LogoHorizontal altura={68} prioridade className="md:hidden" />
+          <LogoHorizontal altura={84} prioridade className="hidden md:inline-flex" />
         </Link>
 
         <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">
@@ -72,9 +72,9 @@ export function Cabecalho() {
               aria-describedby={undefined}
             >
               <Dialog.Title className="sr-only">Menu</Dialog.Title>
-              <div className="conteiner flex h-16 items-center justify-between">
-                <Link href="/" aria-label="MoCCa, página inicial" className="-ml-2 rounded-m" onClick={() => setAberto(false)}>
-                  <LogoHorizontal altura={56} />
+              <div className="conteiner flex h-[72px] items-center justify-between">
+                <Link href="/" aria-label="MoCCa, página inicial" className="-ml-3 rounded-m" onClick={() => setAberto(false)}>
+                  <LogoHorizontal altura={68} />
                 </Link>
                 <Dialog.Close asChild>
                   <Botao variante="fantasma" tamanho="icone" className="-mr-2 text-texto" aria-label="Fechar menu">

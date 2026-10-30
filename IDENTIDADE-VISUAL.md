@@ -8,14 +8,24 @@ Linguagem de **mapa de lavoura**: curvas de nível, mapa de produtividade e coor
 
 ## Logo
 
+Um grão de café inclinado 30°, dividido pelo vinco em duas metades, com um pin vermelho no centro. As duas metades têm curvas de nível finas, e cada uma desenha as curvas na cor da outra. O vinco e o respiro em volta do pin são vazados (mostram o fundo).
+
 | Uso | Arquivo (`public/logo/`) |
 |---|---|
 | Cabeçalho, fundo claro | `mocca-logo-horizontal.svg` |
 | Cabeçalho, fundo escuro / rodapé | `mocca-logo-horizontal-fundo-escuro.svg` |
 | Versão vertical | `mocca-logo-vertical.svg` / `-fundo-escuro.svg` |
-| Símbolo (pin) | `mocca-simbolo.svg` |
+| Símbolo (grão com pin) | `mocca-simbolo.svg` / `-fundo-escuro.svg` |
+| Símbolo numa cor só (gravação, carimbo) | `mocca-simbolo-mono.svg` |
 | Ícone de app / favicon | `mocca-icone-app.svg` / `.png` |
 
+| Versão | Metade de cima | Metade de baixo | Pin | "MoCCa" |
+|---|---|---|---|---|
+| Fundo claro | `#96592A`, curvas espresso | espresso, curvas `#96592A` | vermelho | "Mo" e "a" espresso, "CC" `#96592A` |
+| Fundo escuro | caramelo, curvas `#96592A` | torra, curvas caramelo | vermelho | "Mo" e "a" creme, "CC" caramelo |
+
+- No fundo escuro as metades sobem um tom porque o espresso sumiria no fundo.
+- O ícone de app tem fundo creme (sobre espresso o pin vermelho some) e vinco mais largo, para aguentar 16–32 px.
 - Altura mínima: horizontal 28 px, símbolo 20 px.
 - Respiro mínimo: a altura do "o" de MoCCa em todos os lados.
 - Não redesenhar, não aplicar sombra, contorno, gradiente, rotação nem cores fora da paleta.
@@ -24,11 +34,12 @@ Linguagem de **mapa de lavoura**: curvas de nível, mapa de produtividade e coor
 
 | Nome | Hex | Uso |
 |---|---|---|
-| Espresso | `#4A2C1D` | Títulos, botão primário, rodapé |
+| Espresso | `#4A2C1D` | Títulos, botão primário, rodapé, metade de baixo do grão |
 | Caramelo | `#B9733F` | Destaques grandes, marcadores, ícones, gráficos, foco |
-| Caramelo (texto) | `#96592A` | Links e texto pequeno em caramelo (5,0:1) |
+| Caramelo (texto) | `#96592A` | Links e texto pequeno em caramelo (5,0:1), metade de cima do grão, "CC" da logo |
 | Marrom-torra | `#8A5A3B` | Texto secundário de marca |
 | Creme | `#F6F1E7` | Fundo do tema claro |
+| Vermelho | `#771900` | Só o pin da logo |
 
 Caramelo `#B9733F` sobre creme dá 3,3:1: só para ícones, gráficos e texto acima de 24 px.
 
@@ -169,7 +180,7 @@ Cartões: borda 1 px `--linha`, fundo `--superficie`, raio `--raio-m`. Sem borda
 2. **Mapa de produtividade** (hero): as curvas de nível do fundo atravessam a lavoura, e as faixas entre elas ganham as 5 cores de produção aos poucos, sem contorno de lavoura, até a mancha mais forte, marcada com um anel e um ponto. Legenda "Baixa → Alta" e o rótulo "Mapa ilustrativo" (`scripts/gerar-produtividade.mjs`).
 3. **Grade de talhões**: retângulos irregulares nas 5 faixas, para a seção "O que você passa a ver" e a vinheta "Mapeia".
 4. **Pilha de camadas**: a mesma lavoura em placas deitadas. De baixo para cima: solo e adubação (pontos de amostragem e zonas de dose, em texto-2), irrigação (mangueiras de gotejo e adutora em `--agua`), satélite ou drone (pés de café em fileiras, coloridos pelo vigor, em `--ndvi-1` a `--ndvi-5`, do vermelho ao verde, como nos mapas de verdade) e, no alto, a colheita nas cores de produção. Sem o MoCCa, a placa da colheita fica só tracejada, com uma interrogação. As placas usam `--camada` (`--superficie` no claro, `--superficie-2` no escuro). As cores do vigor e da água são físicas e iguais nos dois temas (o azul fica um pouco mais claro no escuro), como as cores dos frutos.
-5. **Símbolo**: o grão-pin só aparece como logo (cabeçalho, rodapé, ícone do navegador e barra lateral recolhida do painel). Não é usado como marcador em mapas, listas, passos ou estados vazios: nos mapas, a posição é um anel com um ponto; nas listas, um ponto caramelo (pedido do Pedro).
+5. **Símbolo**: o grão com pin só aparece como logo (cabeçalho, rodapé, ícone do navegador e barra lateral recolhida do painel). Não é usado como marcador em mapas, listas, passos ou estados vazios: nos mapas, a posição é um anel com um ponto; nas listas, um ponto caramelo (pedido do Pedro).
 6. **Coordenadas**: `21°14′S 44°59′W` (Lavras, MG) em JetBrains Mono, como detalhe.
 
 Fotos: reais, cantos de 16 px, sem filtros fortes. Nada de banco de imagens genérico.

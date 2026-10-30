@@ -7,6 +7,7 @@ export const marca = {
   carameloTexto: "#96592A",
   torra: "#8A5A3B",
   creme: "#F6F1E7",
+  vermelho: "#771900",
 } as const;
 
 export const temaClaro = {

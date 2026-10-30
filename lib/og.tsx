@@ -71,7 +71,7 @@ export async function imagemOg(titulo: string) {
         />
         <div style={{ display: "flex", flexDirection: "column", padding: "52px 64px", width: 700, height: "100%" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={dataUri(logo)} width={287} height={120} alt="MoCCa" style={{ marginLeft: -28 }} />
+          <img src={dataUri(logo)} width={300} height={120} alt="MoCCa" style={{ marginLeft: -28 }} />
           <div style={{ display: "flex", flex: 1, alignItems: "center" }}>
             <div
               style={{

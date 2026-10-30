@@ -159,7 +159,7 @@ NEXT_PUBLIC_SITE_URL=https://[PREENCHER].vercel.app
 
 ### 4.1 Conceito
 
-A logo é um grão de café em forma de pin de localização: o grão é a colheita, o pin é o lugar onde ela aconteceu. O site inteiro segue essa ideia. É a linguagem de um **mapa de lavoura**: curvas de nível, grade de talhões, coordenadas, pontos de localização. As cores vêm do café torrado (espresso, caramelo, creme). O resultado deve parecer um instrumento de agricultura de precisão feito por gente que conhece a lavoura, e não um site genérico de tecnologia.
+A logo é um grão de café com um pin de localização no centro e curvas de nível nas duas metades: o grão é a colheita, o pin é o lugar onde ela aconteceu, as curvas são a lavoura. O site inteiro segue essa ideia. É a linguagem de um **mapa de lavoura**: curvas de nível, grade de talhões, coordenadas, pontos de localização. As cores vêm do café torrado (espresso, caramelo, creme). O resultado deve parecer um instrumento de agricultura de precisão feito por gente que conhece a lavoura, e não um site genérico de tecnologia.
 
 ### 4.2 Arquivos da logo (em `assets/logo/`)
 
@@ -168,7 +168,8 @@ A logo é um grão de café em forma de pin de localização: o grão é a colhe
 | Cabeçalho do site e do painel (fundo claro) | `mocca-logo-horizontal.svg` |
 | Cabeçalho no tema escuro | `mocca-logo-horizontal-fundo-escuro.svg` |
 | Hero, página Equipe, materiais | `mocca-logo-vertical.svg` / `-fundo-escuro.svg` |
-| Barra lateral recolhida, carregamento, marca d'água | `mocca-simbolo.svg` |
+| Barra lateral recolhida, carregamento, marca d'água | `mocca-simbolo.svg` / `-fundo-escuro.svg` |
+| Gravação, carimbo, aplicações numa cor só | `mocca-simbolo-mono.svg` |
 | Favicon, ícone de PWA, `apple-touch-icon` | `mocca-icone-app.svg` / `.png` |
 
 Regras:
@@ -186,10 +187,12 @@ Cores da marca (da logo, não alterar):
 
 | Nome | Hex | Uso |
 |---|---|---|
-| Espresso | `#4A2C1D` | Títulos, botão primário, rodapé, "Mo" e "a" da logo |
-| Caramelo | `#B9733F` | Destaques grandes, pin, ícones, gráficos, bordas de foco |
+| Espresso | `#4A2C1D` | Títulos, botão primário, rodapé, "Mo" e "a" da logo, metade de baixo do grão |
+| Caramelo | `#B9733F` | Destaques grandes, ícones, gráficos, bordas de foco |
+| Caramelo (texto) | `#96592A` | Links e texto pequeno em caramelo, metade de cima do grão, "CC" da logo |
 | Marrom-torra | `#8A5A3B` | Texto secundário de marca, subtítulos |
 | Creme | `#F6F1E7` | Fundo principal do tema claro |
+| Vermelho | `#771900` | Só o pin da logo |
 
 **Atenção de contraste:** caramelo `#B9733F` sobre creme dá 3,3:1. Serve para ícones, elementos gráficos e texto acima de 24 px, **não** para texto pequeno nem para texto de botão. Para links e texto pequeno em caramelo use `--caramelo-texto` `#96592A` (5,0:1).
 
@@ -203,6 +206,7 @@ Cores da marca (da logo, não alterar):
   --caramelo-texto: #96592A;
   --torra: #8A5A3B;
   --creme: #F6F1E7;
+  --vermelho: #771900;       /* pin da logo */
 
   /* superfícies e texto (tema claro) */
   --fundo: #F6F1E7;          /* creme */

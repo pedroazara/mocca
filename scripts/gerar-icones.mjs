@@ -11,8 +11,8 @@ const png = (tamanho) => sharp(origem).resize(tamanho, tamanho, { kernel: "lancz
 
 // paleta reduzida: o ícone tem poucas cores e é pedido cedo pelo navegador
 await sharp(origem).resize(512, 512).png({ palette: true, colors: 64, effort: 10 }).toFile(join(raiz, "app", "icon.png"));
-// o iOS aplica a própria máscara arredondada: preenche os cantos com espresso
-await sharp(origem).resize(180, 180).flatten({ background: "#4A2C1D" }).png({ palette: true, colors: 64, effort: 10 }).toFile(join(raiz, "app", "apple-icon.png"));
+// o iOS aplica a própria máscara arredondada: preenche os cantos com o creme do fundo
+await sharp(origem).resize(180, 180).flatten({ background: "#F6F1E7" }).png({ palette: true, colors: 64, effort: 10 }).toFile(join(raiz, "app", "apple-icon.png"));
 
 // ICO com imagens PNG embutidas (aceito por todos os navegadores atuais)
 const tamanhos = [16, 32, 48];

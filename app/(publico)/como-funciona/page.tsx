@@ -128,7 +128,7 @@ export default function ComoFunciona() {
       </section>
 
       {/* 1. Onde fica */}
-      <section id="onde-fica" className="secao scroll-mt-20">
+      <section id="onde-fica" className="secao scroll-mt-24">
         <div className="conteiner grid items-center gap-10 lg:grid-cols-[1fr_1.3fr] lg:gap-16">
           <div>
             <CabecalhoSecao numero="01" titulo="Onde o equipamento fica na colhedora" />
@@ -149,7 +149,7 @@ export default function ComoFunciona() {
       </section>
 
       {/* 2. O que é medido */}
-      <section id="o-que-mede" className="secao scroll-mt-20 bg-superficie">
+      <section id="o-que-mede" className="secao scroll-mt-24 bg-superficie">
         <div className="conteiner">
           <CabecalhoSecao numero="02" titulo="O que é medido" />
           <p className="medida mt-5 text-texto-2">
@@ -170,7 +170,7 @@ export default function ComoFunciona() {
       </section>
 
       {/* 3. Volume e sacas */}
-      <section id="sacas" className="secao scroll-mt-20">
+      <section id="sacas" className="secao scroll-mt-24">
         <div className="conteiner grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
           <div>
             <CabecalhoSecao numero="03" titulo="Como o volume vira sacas" />
@@ -228,7 +228,7 @@ export default function ComoFunciona() {
       </section>
 
       {/* 4. Do campo ao mapa */}
-      <section id="do-campo-ao-mapa" className="secao relative isolate scroll-mt-20 overflow-hidden bg-superficie">
+      <section id="do-campo-ao-mapa" className="secao relative isolate scroll-mt-24 overflow-hidden bg-superficie">
         <CurvasDeNivel
           conjunto="cartao"
           className="absolute -right-40 -bottom-40 -z-10 size-[640px] text-caramelo/15 [mask-image:radial-gradient(circle,black,transparent_70%)]"
@@ -260,7 +260,7 @@ export default function ComoFunciona() {
       </section>
 
       {/* 5. Perguntas frequentes */}
-      <section id="perguntas" className="secao scroll-mt-20">
+      <section id="perguntas" className="secao scroll-mt-24">
         <div className="conteiner grid gap-10 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
           <div>
             <CabecalhoSecao numero="05" titulo="Perguntas frequentes" />
