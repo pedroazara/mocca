@@ -24,6 +24,21 @@ Um grão de café inclinado 30°, dividido pelo vinco em duas metades, com um pi
 | Fundo claro | `#96592A`, curvas espresso | espresso, curvas `#96592A` | vermelho | "Mo" e "a" espresso, "CC" `#96592A` |
 | Fundo escuro | caramelo, curvas `#96592A` | torra, curvas caramelo | vermelho | "Mo" e "a" creme, "CC" caramelo |
 
+### Versão do site
+
+O kit acima é a logo oficial (`assets/logo/`), para materiais e envios. O cabeçalho, o rodapé, o login e o painel usam uma versão só do site (`public/logo/mocca-site-*.svg`), porque com 45 px de altura as curvas viram ruído, e o fundo do site já tem curvas de nível. Ela não tem curvas, tem o vinco mais largo e acompanha o destaque do tema:
+
+| Tema | Metade de cima | Metade de baixo | Volta do pin | "MoCCa" |
+|---|---|---|---|---|
+| Claro | caramelo | espresso | creme | "Mo" e "a" espresso, "CC" caramelo |
+| Escuro / rodapé | `#D49360` | `#96592A` | creme | "Mo" e "a" creme, "CC" `#D49360` |
+
+O vinco é vazado nos dois temas. O contorno creme faz parte do pin, para ele aparecer sobre qualquer fundo e as metades ficarem inteiras. O S do vinco é mais suave que o da logo oficial, para cada metade parecer um grão partido quando abre. A imagem de compartilhamento e o favicon continuam com a logo oficial.
+
+Para o grão poder abrir, o símbolo da logo horizontal é desenhado na página (`GraoAnimado`, com a geometria em `components/publico/logo-dados.ts` e as cores em `--logo-cima` e `--logo-baixo`). Só o "MoCCa" é imagem (`mocca-site-texto.svg`). Se a logo do site mudar, atualizar os dois.
+
+### Regras
+
 - No fundo escuro as metades sobem um tom porque o espresso sumiria no fundo.
 - O ícone de app tem fundo creme (sobre espresso o pin vermelho some) e vinco mais largo, para aguentar 16–32 px.
 - Altura mínima: horizontal 28 px, símbolo 20 px.
@@ -190,6 +205,7 @@ Fotos: reais, cantos de 16 px, sem filtros fortes. Nada de banco de imagens gen�
 - Transições de 150 a 200 ms, `ease-out`.
 - Hero parado.
 - Animação só onde explica o funcionamento: vinheta "Mede" (esteira andando e laser mapeando o café).
+- Exceção: ao passar o mouse na logo do site, o grão abre (as metades se afastam na direção do vinco) e o pin cresce 18% a partir da ponta, com um leve repique (240 ms). Não vale em telas de toque.
 - Tudo desligado com `prefers-reduced-motion: reduce`.
 
 ## Texto e tom

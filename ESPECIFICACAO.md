@@ -174,7 +174,7 @@ A logo é um grão de café com um pin de localização no centro e curvas de n�
 
 Regras:
 
-- Os SVGs têm o texto em curvas. Não redesenhe a logo em código e não troque a fonte dela.
+- Os SVGs têm o texto em curvas. Não redesenhe a logo em código e não troque a fonte dela. Exceção: o símbolo animado do site, que usa a geometria de `components/publico/logo-dados.ts`.
 - Altura mínima da logo horizontal: 28 px. Símbolo sozinho: 20 px.
 - Área de respiro em volta da logo: no mínimo a altura do "o" de MoCCa em todos os lados.
 - Não aplicar sombra, contorno, gradiente, rotação ou cores fora da paleta na logo.
@@ -275,7 +275,7 @@ Cores da marca (da logo, não alterar):
 }
 ```
 
-O bloco do `@media` deve repetir exatamente os valores de `[data-tema="escuro"]`. O tema segue o sistema por padrão; o painel tem um seletor Claro / Escuro / Sistema em Configurações (salvo em `localStorage` e aplicado em `<html data-tema>` antes da pintura, para não piscar).
+O bloco do `@media` deve repetir exatamente os valores de `[data-tema="escuro"]`. O tema segue o sistema por padrão; o cabeçalho do site tem um botão que alterna entre claro e escuro, e o painel tem um seletor Claro / Escuro / Sistema em Configurações (salvo em `localStorage` e aplicado em `<html data-tema>` antes da pintura, para não piscar).
 
 ### 4.5 Tipografia
 

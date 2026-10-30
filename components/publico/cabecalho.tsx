@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Botao } from "@/components/ui/botao";
 import { cn } from "@/lib/utils";
+import { BotaoTema } from "./botao-tema";
 import { CurvasDeNivel } from "./curvas-de-nivel";
 import { LogoHorizontal } from "./logo";
 import { COORDENADA_LAVRAS, linksPublicos } from "./navegacao";
@@ -31,7 +32,7 @@ export function Cabecalho() {
       )}
     >
       <div className="conteiner flex h-[72px] items-center justify-between gap-6 md:h-[88px]">
-        <Link href="/" aria-label="MoCCa, página inicial" className="-ml-3 rounded-m md:-ml-4">
+        <Link href="/" aria-label="MoCCa, página inicial" className="-ml-3 flex rounded-m md:-ml-4">
           <LogoHorizontal altura={68} prioridade className="md:hidden" />
           <LogoHorizontal altura={84} prioridade className="hidden md:inline-flex" />
         </Link>
@@ -55,60 +56,67 @@ export function Cabecalho() {
               </Link>
             );
           })}
+          <BotaoTema className="ml-1" />
           <Botao asChild className="ml-3">
             <Link href="/contato">Fale com a equipe</Link>
           </Botao>
         </nav>
 
-        <Dialog.Root open={aberto} onOpenChange={setAberto}>
-          <Dialog.Trigger asChild>
-            <Botao variante="fantasma" tamanho="icone" className="-mr-2 text-texto md:hidden" aria-label="Abrir menu">
-              <Menu />
-            </Botao>
-          </Dialog.Trigger>
-          <Dialog.Portal>
-            <Dialog.Content
-              className="fixed inset-0 z-50 isolate flex flex-col overflow-hidden bg-fundo data-[state=open]:animate-[menu-entra_200ms_ease-out]"
-              aria-describedby={undefined}
-            >
-              <Dialog.Title className="sr-only">Menu</Dialog.Title>
-              <div className="conteiner flex h-[72px] items-center justify-between">
-                <Link href="/" aria-label="MoCCa, página inicial" className="-ml-3 rounded-m" onClick={() => setAberto(false)}>
-                  <LogoHorizontal altura={68} />
-                </Link>
-                <Dialog.Close asChild>
-                  <Botao variante="fantasma" tamanho="icone" className="-mr-2 text-texto" aria-label="Fechar menu">
-                    <X />
+        <div className="flex items-center md:hidden">
+          <BotaoTema className="text-texto" />
+          <Dialog.Root open={aberto} onOpenChange={setAberto}>
+            <Dialog.Trigger asChild>
+              <Botao variante="fantasma" tamanho="icone" className="-mr-2 text-texto" aria-label="Abrir menu">
+                <Menu />
+              </Botao>
+            </Dialog.Trigger>
+            <Dialog.Portal>
+              <Dialog.Content
+                className="fixed inset-0 z-50 isolate flex flex-col overflow-hidden bg-fundo data-[state=open]:animate-[menu-entra_200ms_ease-out]"
+                aria-describedby={undefined}
+              >
+                <Dialog.Title className="sr-only">Menu</Dialog.Title>
+                <div className="conteiner flex h-[72px] items-center justify-between">
+                  <Link href="/" aria-label="MoCCa, página inicial" className="-ml-3 flex rounded-m" onClick={() => setAberto(false)}>
+                    <LogoHorizontal altura={68} />
+                  </Link>
+                  <div className="flex items-center">
+                    <BotaoTema className="text-texto" />
+                    <Dialog.Close asChild>
+                      <Botao variante="fantasma" tamanho="icone" className="-mr-2 text-texto" aria-label="Fechar menu">
+                        <X />
+                      </Botao>
+                    </Dialog.Close>
+                  </div>
+                </div>
+                <nav aria-label="Principal" className="conteiner mt-6 flex flex-col">
+                  {[{ href: "/", rotulo: "Início" }, ...linksPublicos].map((l) => (
+                    <Link
+                      key={l.href}
+                      href={l.href}
+                      onClick={() => setAberto(false)}
+                      aria-current={caminho === l.href ? "page" : undefined}
+                      className="flex min-h-11 items-center justify-between border-b border-linha py-4 font-titulo text-2xl font-semibold text-texto aria-[current=page]:text-link"
+                    >
+                      {l.rotulo}
+                      <ArrowRight aria-hidden strokeWidth={1.75} className="size-[22px] text-caramelo" />
+                    </Link>
+                  ))}
+                  <Botao asChild className="mt-8 w-full">
+                    <Link href="/contato" onClick={() => setAberto(false)}>
+                      Fale com a equipe
+                    </Link>
                   </Botao>
-                </Dialog.Close>
-              </div>
-              <nav aria-label="Principal" className="conteiner mt-6 flex flex-col">
-                {[{ href: "/", rotulo: "Início" }, ...linksPublicos].map((l) => (
-                  <Link
-                    key={l.href}
-                    href={l.href}
-                    onClick={() => setAberto(false)}
-                    aria-current={caminho === l.href ? "page" : undefined}
-                    className="flex min-h-11 items-center justify-between border-b border-linha py-4 font-titulo text-2xl font-semibold text-texto aria-[current=page]:text-link"
-                  >
-                    {l.rotulo}
-                    <ArrowRight aria-hidden strokeWidth={1.75} className="size-[22px] text-caramelo" />
-                  </Link>
-                ))}
-                <Botao asChild className="mt-8 w-full">
-                  <Link href="/contato" onClick={() => setAberto(false)}>
-                    Fale com a equipe
-                  </Link>
-                </Botao>
-              </nav>
-              <p className="conteiner t-rotulo mt-auto pb-8 text-texto-2">{COORDENADA_LAVRAS} · Lavras, MG</p>
-              <CurvasDeNivel
-                conjunto="rodape"
-                className="absolute inset-x-0 bottom-0 -z-10 h-1/2 w-full text-caramelo/25"
-              />
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
+                </nav>
+                <p className="conteiner t-rotulo mt-auto pb-8 text-texto-2">{COORDENADA_LAVRAS} · Lavras, MG</p>
+                <CurvasDeNivel
+                  conjunto="rodape"
+                  className="absolute inset-x-0 bottom-0 -z-10 h-1/2 w-full text-caramelo/25"
+                />
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
+        </div>
       </div>
     </header>
   );
