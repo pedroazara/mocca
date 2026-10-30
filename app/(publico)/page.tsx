@@ -7,6 +7,7 @@ import { MapaProdutividade } from "@/components/publico/mapa-produtividade";
 import { GradeTalhoes, LegendaProducao, posicaoDoTalhao } from "@/components/publico/grade-talhoes";
 import { Pin } from "@/components/publico/logo";
 import { VinhetaLocaliza, VinhetaMapeia, VinhetaMede } from "@/components/publico/passos-ilustrados";
+import { VinhetaReconstroi } from "@/components/publico/vinheta-reconstroi";
 import { Botao } from "@/components/ui/botao";
 import { Chip, type EstadoChip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
@@ -45,12 +46,18 @@ const passos = [
   },
   {
     numero: "02",
+    titulo: "Reconstrói",
+    texto: "O café medido vira um modelo 3D, com a cor de cada fruto.",
+    Vinheta: VinhetaReconstroi,
+  },
+  {
+    numero: "03",
     titulo: "Localiza",
     texto: "Cada medida recebe a posição por GPS.",
     Vinheta: VinhetaLocaliza,
   },
   {
-    numero: "03",
+    numero: "04",
     titulo: "Mapeia",
     texto: "O volume vira um mapa de produção por talhão.",
     Vinheta: VinhetaMapeia,
@@ -186,9 +193,9 @@ export default function Inicio() {
             </Link>
           </div>
 
-          <ol className="mt-12 grid gap-10 md:grid-cols-3 md:gap-0">
+          <ol className="mt-12 grid gap-10 md:grid-cols-2 md:gap-x-8 xl:grid-cols-4 xl:gap-0">
             {passos.map(({ numero, titulo, texto, Vinheta }, i) => (
-              <li key={numero} className="relative md:pr-8">
+              <li key={numero} className="relative xl:pr-8">
                 <div className="flex aspect-[16/10] items-center justify-center overflow-hidden rounded-g border border-linha bg-superficie p-5">
                   <Vinheta className="max-h-full" />
                 </div>
@@ -196,7 +203,7 @@ export default function Inicio() {
                   className={cn(
                     "mt-6 flex items-center gap-3",
                     i < passos.length - 1 &&
-                      "md:after:ml-2 md:after:h-0 md:after:flex-1 md:after:border-t-2 md:after:border-dotted md:after:border-caramelo/60 md:after:content-['']",
+                      "xl:after:ml-2 xl:after:h-0 xl:after:flex-1 xl:after:border-t-2 xl:after:border-dotted xl:after:border-caramelo/60 xl:after:content-['']",
                   )}
                 >
                   <Pin tamanho={26} />
