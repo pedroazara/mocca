@@ -1,8 +1,9 @@
-import { ArrowRight, Check, Sprout, Tractor } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChamadaFinal } from "@/components/publico/chamada-final";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
+import { ColhedoraLinha, RamoCafe } from "@/components/publico/ilustracoes-publico";
 import { MapaProdutividade } from "@/components/publico/mapa-produtividade";
 import { GradeTalhoes, LegendaProducao, mapas } from "@/components/publico/grade-talhoes";
 import { MapaTalhoesInterativo } from "@/components/publico/mapa-talhoes-interativo";
@@ -75,6 +76,28 @@ const etapas: { texto: string; estado: EstadoChip; rotulo: string }[] = [
   { texto: "Pré-aceleração no programa Avança Café", estado: "info", rotulo: "em andamento" },
   // TODO(pedro): confirmar a previsão dos testes de campo (seção 16).
   { texto: "Testes de campo na safra 2027", estado: "neutro", rotulo: "planejado" },
+];
+
+// os dois públicos da seção "Para quem"; o botão do produtor abre o formulário já em "Produtor"
+const publicos = [
+  {
+    nome: "Produtores de café",
+    texto: "Compare a colheita de cada talhão com os mapas que você já usa e decida onde investir.",
+    botao: "Quero testar na lavoura",
+    href: "/contato?perfil=produtor",
+    fundo: "bg-espresso",
+    Ilustracao: RamoCafe,
+    lugar: "-mr-7 -mb-7 md:mr-0 md:mb-0 md:-right-3 md:-bottom-6 md:w-[56%] md:max-w-[23rem]",
+  },
+  {
+    nome: "Fabricantes e locadoras de máquinas",
+    texto: "Entregue a colhedora de café com o mapa de produção que a agricultura de precisão já usa em grãos.",
+    botao: "Quero ser parceiro",
+    href: "/contato",
+    fundo: "bg-torra",
+    Ilustracao: ColhedoraLinha,
+    lugar: "md:right-6 md:bottom-5 md:w-[42%] md:max-w-[18rem]",
+  },
 ];
 
 // talhão do cartão flutuante na seção "O que você passa a ver"
@@ -271,32 +294,30 @@ export default function Inicio() {
         <div className="conteiner">
           <p className="t-rotulo text-texto-2">Para quem</p>
           <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">Quem ganha com o mapa.</h2>
-          <div className="mt-10 grid gap-4 md:grid-cols-2 md:gap-6">
-            {[
-              {
-                Icone: Sprout,
-                titulo: "Produtores",
-                texto: "Para comparar a colheita de cada talhão com os mapas que já usam e decidir onde investir.",
-              },
-              {
-                Icone: Tractor,
-                titulo: "Fabricantes e locadoras de máquinas",
-                texto: "Para entregar a colhedora de café com o mapa de produção que a agricultura de precisão já usa em grãos.",
-              },
-            ].map(({ Icone, titulo, texto }) => (
+          <div className="mt-10 grid gap-4 md:gap-6 xl:grid-cols-2">
+            {publicos.map(({ nome, texto, botao, href, fundo, Ilustracao, lugar }) => (
               <article
-                key={titulo}
-                className="relative isolate overflow-hidden rounded-g border border-linha bg-superficie p-7 md:p-9"
+                key={nome}
+                className={cn("relative isolate flex flex-col overflow-hidden rounded-g p-7 text-creme md:min-h-[22rem] md:p-9 xl:min-h-[27rem]", fundo)}
               >
                 <CurvasDeNivel
                   conjunto="cartao"
-                  className="absolute -top-16 -right-16 -z-10 size-72 text-caramelo/20 [mask-image:radial-gradient(circle_at_70%_30%,black,transparent_70%)]"
+                  className="absolute -top-20 -left-20 -z-10 size-96 text-creme/15 [mask-image:radial-gradient(circle_at_40%_40%,black,transparent_72%)]"
                 />
-                <span className="inline-flex size-11 items-center justify-center rounded-m bg-superficie-2">
-                  <Icone aria-hidden strokeWidth={1.75} className="size-[22px] text-caramelo" />
-                </span>
-                <h3 className="t-h3 mt-6 text-texto">{titulo}</h3>
-                <p className="mt-2 max-w-[42ch] text-texto-2">{texto}</p>
+                <p className="t-rotulo text-creme/75">Para</p>
+                <h3 className="mt-2 max-w-[12ch] font-titulo text-[2.25rem] leading-[1.06] font-bold md:text-[2.5rem]">
+                  {nome}
+                </h3>
+                <p className="mt-4 text-creme/90 md:max-w-[29ch]">{texto}</p>
+                <div className="mt-6 md:mt-auto md:pt-8">
+                  <Botao asChild variante="claro">
+                    <Link href={href}>
+                      {botao}
+                      <ArrowRight aria-hidden />
+                    </Link>
+                  </Botao>
+                </div>
+                <Ilustracao className={cn("mt-6 ml-auto w-4/5 max-w-[20rem] md:pointer-events-none md:absolute md:mt-0 md:-z-10", lugar)} />
               </article>
             ))}
           </div>

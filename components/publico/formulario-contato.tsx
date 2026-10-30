@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { CircleAlert, LoaderCircle, Send } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Botao } from "@/components/ui/botao";
 import { CaixaSelecao, Campo, descricaoDoCampo, estiloControle } from "@/components/ui/campo";
@@ -50,6 +50,12 @@ export function FormularioContato() {
       mensagem: "",
     },
   });
+
+  // o botão "Quero testar na lavoura" da página inicial já chega com o perfil escolhido
+  useEffect(() => {
+    const perfil = new URLSearchParams(window.location.search).get("perfil");
+    if (perfis.some((p) => p.valor === perfil)) setValue("perfil", perfil as DadosContato["perfil"]);
+  }, [setValue]);
 
   const produtor = watch("perfil") === "produtor";
   const mensagem = watch("mensagem") ?? "";
