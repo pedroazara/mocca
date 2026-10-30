@@ -2,8 +2,9 @@ import { useId } from "react";
 import { cn } from "@/lib/utils";
 import { idCurvas } from "./curvas-de-nivel";
 import { curvas } from "./curvas-dados";
-import { GradeTalhoes } from "./grade-talhoes";
-import { COORDENADA_LAVRAS } from "./navegacao";
+import { mapas } from "./grade-talhoes";
+import { VinhetaLocalizaAnimada } from "./vinheta-localiza";
+import { VinhetaMapeiaAnimada } from "./vinheta-mapeia";
 
 // Vinhetas do passo a passo "Medir enquanto colhe" (seção 6.3, bloco 3).
 // Desenho genérico: não mostra nem sugere marca ou tipo de equipamento.
@@ -190,57 +191,100 @@ export function VinhetaMede({ className }: { className?: string }) {
   );
 }
 
-export function VinhetaLocaliza({ className }: { className?: string }) {
+// --- "Localiza" e "Mapeia": a lavoura do mapa pequeno -------------------------
+// As animações ficam em vinheta-localiza.tsx e vinheta-mapeia.tsx; daqui vão os
+// dados da lavoura (talhões e o caminho da colhedora) e as curvas de nível.
+
+type Xy = [number, number];
+const lavoura = mapas.mini;
+// cada talhão é um polígono: 7 pontos da divisa de cima (da esquerda para a
+// direita) e 7 da divisa de baixo (da direita para a esquerda)
+const poligonos = lavoura.talhoes.map((t) =>
+  t.d
+    .slice(1, -1)
+    .split("L")
+    .map((p) => p.split(" ").map(Number) as Xy),
+);
+
+// os talhões vêm faixa por faixa, da esquerda para a direita
+const faixas: number[][] = [];
+lavoura.talhoes.forEach((t, i) => {
+  if (i === 0 || t.centro[0] < lavoura.talhoes[i - 1].centro[0]) faixas.push([]);
+  faixas[faixas.length - 1].push(i);
+});
+const talhoesDaVinheta = lavoura.talhoes.map((t, i) => ({
+  d: t.d,
+  nivel: t.nivel,
+  faixa: faixas.findIndex((f) => f.includes(i)),
+}));
+
+// curvas de nível por cima, bem leves, como na GradeTalhoes
+function CurvasDaLavoura() {
   const c = curvas.cartao;
-  const pontos: [number, number][] = [
-    [26, 124],
-    [48, 112],
-    [70, 104],
-    [92, 92],
-    [112, 86],
-    [134, 76],
-    [154, 72],
-  ];
-  const [px, py] = pontos[pontos.length - 1];
   return (
-    <svg viewBox="0 0 240 150" aria-hidden className={cn("h-auto w-full", className)}>
-      <use
-        href={`#${idCurvas("cartao")}`}
-        transform={`scale(${240 / c.largura} ${150 / c.altura})`}
-        className="stroke-linha"
-      />
-      <path
-        d={"M" + pontos.map(([x, y]) => `${x} ${y}`).join("L")}
-        fill="none"
-        className="stroke-texto-2"
-        strokeWidth={1.5}
-        strokeDasharray="0.1 6"
-        strokeLinecap="round"
-      />
-      {pontos.slice(0, -1).map(([x, y]) => (
-        <circle key={x} cx={x} cy={y} r={2.6} className="fill-superficie stroke-texto" strokeWidth={1.2} />
-      ))}
-      <circle cx={px} cy={py} r={18} fill="none" className="stroke-caramelo" strokeOpacity={0.45} strokeWidth={1} />
-      <circle cx={px} cy={py} r={30} fill="none" className="stroke-caramelo" strokeOpacity={0.25} strokeWidth={1} />
-      <image href="/logo/mocca-simbolo.svg" x={px - 9} y={py - 24} width={18} height={25} />
-      <g transform="translate(150 22)">
-        <rect width={80} height={22} rx={4} className="fill-superficie stroke-linha" strokeWidth={1} />
-        <text x={40} y={14.5} textAnchor="middle" className="fill-texto font-dado text-[8.5px]">
-          {COORDENADA_LAVRAS}
-        </text>
-      </g>
-      <path d={`M${px + 6} ${py - 18}L176 44`} className="stroke-texto-2" strokeOpacity={0.5} strokeWidth={1} />
-    </svg>
+    <use
+      href={`#${idCurvas("cartao")}`}
+      transform={`scale(${lavoura.largura / c.largura} ${lavoura.altura / c.altura})`}
+      className="stroke-fundo"
+      strokeOpacity={0.3}
+    />
+  );
+}
+
+// O caminho da colhedora: pelo meio de cada faixa de talhões, em ida e volta, de
+// fora a fora da lavoura, com uma meia-volta por fora entre uma faixa e a
+// seguinte. Cada ponto leva a faixa por onde passa (-1 nas manobras).
+function caminhoDaColhedora(): [number, number, number][] {
+  const ordenar = (pts: Xy[]) => [...pts].sort((a, c) => a[0] - c[0]);
+  const cima = faixas.map((f) => ordenar(f.flatMap((i) => poligonos[i].slice(0, 7))));
+  const baixo = faixas.map((f) => ordenar(f.flatMap((i) => poligonos[i].slice(7))));
+  const yNa = (pts: Xy[], x: number) => {
+    const k = Math.max(1, Math.min(pts.length - 1, pts.findIndex((p) => p[0] >= x)));
+    const [[xa, ya], [xb, yb]] = [pts[k - 1], pts[k]];
+    return ya + ((yb - ya) * (x - xa)) / (xb - xa || 1);
+  };
+  const meio = (b: number, x: number) => (yNa(cima[b], x) + yNa(baixo[b], x)) / 2;
+
+  const [x0, x1] = [-4, lavoura.largura + 4];
+  const rota: [number, number, number][] = [];
+  const ponto = (x: number, y: number, faixa: number) =>
+    rota.push([Math.round(x * 10) / 10, Math.round(y * 10) / 10, faixa]);
+  faixas.forEach((_, b) => {
+    const ida = b % 2 === 0;
+    for (let d = 0; d <= x1 - x0; d += 4) {
+      const x = ida ? x0 + d : x1 - d;
+      ponto(x, meio(b, x), b);
+    }
+    if (b === faixas.length - 1) return;
+    const xv = ida ? x1 : x0;
+    const [ya, yb] = [meio(b, xv), meio(b + 1, xv)];
+    const r = (yb - ya) / 2;
+    for (let a = 1; a < 12; a++) {
+      const ang = -Math.PI / 2 + (Math.PI * a) / 12;
+      ponto(xv + (ida ? 1 : -1) * r * Math.cos(ang), ya + r + r * Math.sin(ang), -1);
+    }
+  });
+  return rota;
+}
+
+export function VinhetaLocaliza({ className }: { className?: string }) {
+  return (
+    <VinhetaLocalizaAnimada
+      contorno={lavoura.contorno}
+      talhoes={talhoesDaVinheta}
+      caminho={caminhoDaColhedora()}
+      fundo={<CurvasDaLavoura />}
+      className={className}
+    />
   );
 }
 
 export function VinhetaMapeia({ className }: { className?: string }) {
   return (
-    <GradeTalhoes
-      variante="mini"
-      corDoVao="stroke-superficie"
-      titulo="Mapa de produção ilustrativo"
-      contorno={false}
+    <VinhetaMapeiaAnimada
+      contorno={lavoura.contorno}
+      talhoes={talhoesDaVinheta}
+      fundo={<CurvasDaLavoura />}
       className={className}
     />
   );

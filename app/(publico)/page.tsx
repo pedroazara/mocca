@@ -8,6 +8,7 @@ import { GradeTalhoes, LegendaProducao, posicaoDoTalhao } from "@/components/pub
 import { Pin } from "@/components/publico/logo";
 import { VinhetaLocaliza, VinhetaMapeia, VinhetaMede } from "@/components/publico/passos-ilustrados";
 import { VinhetaReconstroi } from "@/components/publico/vinheta-reconstroi";
+import { VinhetaSacas } from "@/components/publico/vinheta-sacas";
 import { Botao } from "@/components/ui/botao";
 import { Chip, type EstadoChip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
@@ -52,12 +53,18 @@ const passos = [
   },
   {
     numero: "03",
+    titulo: "Calcula",
+    texto: "O volume medido vira uma estimativa de sacas de 60 kg.",
+    Vinheta: VinhetaSacas,
+  },
+  {
+    numero: "04",
     titulo: "Localiza",
     texto: "Cada medida recebe a posição por GPS.",
     Vinheta: VinhetaLocaliza,
   },
   {
-    numero: "04",
+    numero: "05",
     titulo: "Mapeia",
     texto: "O volume vira um mapa de produção por talhão.",
     Vinheta: VinhetaMapeia,
@@ -193,17 +200,26 @@ export default function Inicio() {
             </Link>
           </div>
 
-          <ol className="mt-12 grid gap-10 md:grid-cols-2 md:gap-x-8 xl:grid-cols-4 xl:gap-0">
+          {/* 5 passos: 2 por linha no tablet e, em telas largas, 3 em cima e 2 embaixo, centrados */}
+          <ol className="mt-12 grid gap-10 md:grid-cols-4 md:gap-x-8 lg:grid-cols-6">
             {passos.map(({ numero, titulo, texto, Vinheta }, i) => (
-              <li key={numero} className="relative xl:pr-8">
+              <li
+                key={numero}
+                className={cn(
+                  "relative md:col-span-2",
+                  i === 3 && "lg:col-start-2",
+                  i === passos.length - 1 && "md:col-start-2 lg:col-start-auto",
+                )}
+              >
                 <div className="flex aspect-[16/10] items-center justify-center overflow-hidden rounded-g border border-linha bg-superficie p-5">
                   <Vinheta className="max-h-full" />
                 </div>
                 <div
                   className={cn(
                     "mt-6 flex items-center gap-3",
-                    i < passos.length - 1 &&
-                      "xl:after:ml-2 xl:after:h-0 xl:after:flex-1 xl:after:border-t-2 xl:after:border-dotted xl:after:border-caramelo/60 xl:after:content-['']",
+                    i !== 2 &&
+                      i < passos.length - 1 &&
+                      "lg:after:ml-2 lg:after:-mr-8 lg:after:h-0 lg:after:flex-1 lg:after:border-t-2 lg:after:border-dotted lg:after:border-caramelo/60 lg:after:content-['']",
                   )}
                 >
                   <Pin tamanho={26} />
