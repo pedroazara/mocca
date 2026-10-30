@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Como funciona",
   description:
-    "Como o MoCCa mede o café na colhedora e monta o mapa de produção por talhão, para usar junto com os mapas de solo e adubação.",
+    "Como o MoCCa mede o café na colhedora e monta o mapa de produção de cada talhão.",
   alternates: { canonical: "/como-funciona" },
 };
 

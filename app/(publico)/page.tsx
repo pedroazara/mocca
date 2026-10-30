@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: { absolute: "MoCCa · Monitoramento de colheita de café" },
   description:
-    "O MoCCa mede o café na colhedora e mostra quanto saiu de cada talhão. É a camada da colheita, ao lado dos mapas de solo, adubação e satélite.",
+    "O MoCCa mede o café na colhedora e mostra quantas sacas saíram de cada talhão.",
   alternates: { canonical: "/" },
 };
 
