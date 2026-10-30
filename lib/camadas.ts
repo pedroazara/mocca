@@ -62,7 +62,11 @@ export function montarPilha(
     return [n1(X + ox), n1(Y + oy)];
   };
   // os caminhos do mapa só usam pares absolutos "x y" (M, L e C): a projeção é afim, então é exata
-  const projetar = (d: string) => d.replace(PAR, (_, a, b) => P(+a, +b).join(" "));
+  const projetar = (d: string) => {
+    // só pares absolutos "x y" (M, L, C, Z): comando relativo, vírgula ou expoente quebrariam a conta em silêncio
+    if (/[a-z,]/.test(d)) throw new Error(`projetar: formato inesperado no caminho do mapa: ${d.slice(0, 40)}`);
+    return d.replace(PAR, (_, a, b) => P(+a, +b).join(" "));
+  };
   const poligono = (lista: [number, number][]) => "M" + lista.map(([x, y]) => P(x, y).join(" ")).join("L") + "Z";
 
   const altPlaca = y1 - y0;
@@ -71,12 +75,12 @@ export function montarPilha(
   const largura = Math.ceil(x1 - x0 + 2 * folga);
   const centros = deslocamentos.map((d) => ((d + folga + altPlaca / 2) / altura) * 100);
 
-  // satélite ou drone: mapa de vigor (NDVI) em pixels de 6 × 6, em 5 classes, como sai
+  // satélite ou drone: mapa de vigor (NDVI) em pixels de 10 × 10, em 5 classes, como sai
   // do processamento da imagem. Campo suave (manchas de vigor, uma faixa fraca e
   // um pouco de granulado) e pixels vizinhos da mesma classe juntados por linha,
   // para o caminho ficar pequeno.
   const r = aleatorio(99);
-  const LADO = 6;
+  const LADO = 10;
   const manchas = [
     [60, 40, 55, 34, 0.55],
     [190, 110, 60, 40, 0.5],

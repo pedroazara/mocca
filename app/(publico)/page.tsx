@@ -146,7 +146,7 @@ export default function Inicio() {
               <PilhaCamadas
                 colheita="vazia"
                 titulo="Ilustração: três camadas da mesma lavoura, uma sobre a outra (solo e adubação, irrigação, imagem de satélite ou drone). No alto, a camada da colheita, que mostra o resultado, está vazia. Um fio pontilhado liga o mesmo ponto em todas as camadas e termina numa interrogação. Não se sabe quanto café saiu dali."
-                className="mx-auto max-w-[400px] md:col-start-1 md:row-start-2"
+                className="ml-auto max-w-[400px] md:mx-auto md:col-start-1 md:row-start-2"
               />
               <RotulosCamadas className="md:col-start-2 md:row-start-2" />
 
@@ -156,7 +156,7 @@ export default function Inicio() {
               <PilhaCamadas
                 colheita="talhao"
                 titulo="Ilustração: as mesmas três camadas da lavoura. No alto, a colheita medida pelo MoCCa, com cada talhão numa faixa de produção. O talhão marcado está na faixa mais baixa."
-                className="mx-auto max-w-[400px] md:col-start-3 md:row-start-2"
+                className="ml-auto max-w-[400px] md:mx-auto md:col-start-3 md:row-start-2"
               />
               <RotulosCamadas className="md:hidden" />
             </div>

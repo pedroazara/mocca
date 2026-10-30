@@ -55,26 +55,33 @@ export function PilhaCamadas({
       ))}
       <use href={`#${id}-k`} className={topo} />
       <g clipPath={`url(#${id}-c)`}>{conteudo}</g>
-      {/* a camada do MoCCa ganha a borda na cor da marca */}
-      <use
-        href={`#${id}-k`}
+      {/* a camada do MoCCa ganha a borda na cor da marca. A borda é um <path>, não
+          um <use>: o vector-effect não passa para o conteúdo do <use> */}
+      <path
+        d={p.contorno}
         fill="none"
         className={i === 0 ? "stroke-caramelo" : "stroke-texto-2"}
         strokeOpacity={i === 0 ? 1 : 0.35}
         strokeWidth={i === 0 ? 2 : 1}
         vectorEffect="non-scaling-stroke"
       />
-      {/* fio até a placa de cima (a placa de cima, desenhada depois, cobre o que fica atrás dela) */}
-      {i > 0 && (
-        <path
-          d={`M${mx} ${my}V${my - (p.deslocamentos[i] - p.deslocamentos[i - 1])}`}
-          className="stroke-texto"
-          strokeOpacity={0.6}
-          strokeWidth={1}
-          strokeDasharray="2 3"
-          vectorEffect="non-scaling-stroke"
-        />
-      )}
+      {/* fio até a placa de cima (a placa de cima, desenhada depois, cobre o que
+          fica atrás dela), com um halo para aparecer sobre as cores do vigor */}
+      {i > 0 &&
+        [
+          ["stroke-fundo", 0.85, 3, undefined],
+          ["stroke-texto", 0.8, 1, "2 3"],
+        ].map(([classe, opacidade, largura, tracejado]) => (
+          <path
+            key={classe}
+            d={`M${mx} ${my}V${my - (p.deslocamentos[i] - p.deslocamentos[i - 1])}`}
+            className={classe as string}
+            strokeOpacity={opacidade as number}
+            strokeWidth={largura as number}
+            strokeDasharray={tracejado as string | undefined}
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
       <circle
         cx={mx}
         cy={my}
@@ -234,8 +241,8 @@ export function PilhaCamadas({
         ) : (
           // sem monitoramento: a camada do resultado fica vazia, e o fio termina numa pergunta
           <g>
-            <use
-              href={`#${id}-k`}
+            <path
+              d={p.contorno}
               fill="none"
               className="stroke-texto-2"
               strokeOpacity={0.7}
