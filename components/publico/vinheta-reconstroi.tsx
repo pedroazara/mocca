@@ -44,13 +44,15 @@ const ESFERA: Vetor[] = Array.from({ length: 40 }, (_, k) => {
 });
 const ACHATAR: Vetor = [1, 0.92, 1.06]; // o fruto é um pouco ovalado
 const LUZ = unit([-0.45, 0.85, -0.3]);
-const ESTEIRA = { x: 10.2, z: 4.4 };
+const SOMBRA: Rgb = [20, 10, 5]; // sombra é física: escura nos dois temas
+const ESTEIRA = { x: 8.4, z: 4.4 };
+const ALTURA_CABECA = 6.4;
 
 // Monte de café sobre a esteira: uma camada cheia e, por cima, camadas que
 // sobem mais no meio. Os frutos são café da roça: cereja, verde, amarelo e passa.
 function montarMonte(): Fruto[] {
   const altura = (x: number, z: number) =>
-    4.8 * Math.exp(-(x * x) / 30 - (z * z) / 7) + 1.7 * Math.exp(-((x - 5.6) ** 2) / 5 - (z + 1) ** 2 / 4);
+    4.8 * Math.exp(-(x * x) / 22 - (z * z) / 7) + 1.6 * Math.exp(-((x - 4.6) ** 2) / 4 - (z + 1) ** 2 / 4);
   const base: Omit<Fruto, "pontos" | "colorido">[] = [];
   const normais: Vetor[][] = [];
   const passo = 1.32;
@@ -60,7 +62,7 @@ function montarMonte(): Fruto[] {
     const dx = camada % 2 ? passo / 2 : 0;
     const dz = camada % 2 ? passo * 0.29 : 0;
     for (let z = -3.9 + dz; z <= 3.9; z += passo * 0.87) {
-      for (let x = -9.7 + dx; x <= 9.7; x += passo) {
+      for (let x = -7.9 + dx; x <= 7.9; x += passo) {
         i++;
         if (camada > 0 && y > altura(x, z) + 0.55) continue;
         const k = sorteio(i * 3.1);
@@ -141,9 +143,9 @@ function lerCores(el: Element): Cores {
 
 const CICLO = 12; // segundos por volta
 const VARRE = 7.5; // a varredura dura isto; depois o modelo fica pronto na tela
-const S0 = -12;
-const S1 = 14.5;
-const T_PARADO = (VARRE * (2.5 - S0)) / (S1 - S0); // meio da varredura
+const S0 = -ESTEIRA.x - 1.6;
+const S1 = ESTEIRA.x + 5;
+const T_PARADO = (VARRE * (2 - S0)) / (S1 - S0); // meio da varredura
 
 function momento(t: number) {
   const u = t % CICLO;
@@ -154,9 +156,9 @@ function momento(t: number) {
 
 // ---- câmera -------------------------------------------------------------------
 
-const GIRO = -0.46;
-const BALANCO = 0.22;
-const ELEVACAO = 0.5;
+const GIRO = -0.58;
+const BALANCO = 0.14;
+const ELEVACAO = 0.56;
 const DIST = 30;
 const ALVO: Vetor = [0, 1.4, 0];
 
@@ -179,10 +181,11 @@ function camera(giro: number) {
 }
 
 // Escala e centro que cabem a esteira e o monte no quadro de 240 × 150 (abaixo
-// do rótulo), em qualquer ponto do balanço da câmera.
+// do rótulo), em qualquer ponto do balanço da câmera. A cabeça do feixe fica de
+// fora da conta: ela só desce um pouco quando passaria do teto.
 function enquadrar(W: number, H: number, topo: number) {
   const k = Math.min(W / 240, H / 150);
-  const caixa = { x0: (W - 240 * k) / 2 + 8 * k, x1: (W + 240 * k) / 2 - 8 * k, y0: (H - 150 * k) / 2 + 22 * k, y1: (H + 150 * k) / 2 - 6 * k };
+  const caixa = { x0: (W - 240 * k) / 2 + 4 * k, x1: (W + 240 * k) / 2 - 4 * k, y0: (H - 150 * k) / 2 + 20 * k, y1: (H + 150 * k) / 2 - 4 * k };
   let [x0, x1, y0, y1] = [Infinity, -Infinity, Infinity, -Infinity];
   for (const g of [GIRO - BALANCO, GIRO, GIRO + BALANCO]) {
     const { proj } = camera(g);
@@ -193,8 +196,6 @@ function enquadrar(W: number, H: number, topo: number) {
       [ESTEIRA.x, 0, ESTEIRA.z],
       [-3, topo, 0],
       [3, topo, 0],
-      [-8, 8, 0], // a cabeça do feixe, no alto
-      [8, 8, 0],
     ] as Vetor[]) {
       const [x, y] = proj(p);
       [x0, x1, y0, y1] = [Math.min(x0, x), Math.max(x1, x), Math.min(y0, y), Math.max(y1, y)];
@@ -205,6 +206,7 @@ function enquadrar(W: number, H: number, topo: number) {
     f,
     cx: (caixa.x0 + caixa.x1) / 2 - f * ((x0 + x1) / 2),
     cy: (caixa.y0 + caixa.y1) / 2 - f * ((y0 + y1) / 2),
+    teto: (H - 150 * k) / 2 + 17 * k, // a cabeça do feixe não sobe além disto (fica abaixo do rótulo)
   };
 }
 
@@ -212,13 +214,13 @@ function enquadrar(W: number, H: number, topo: number) {
 
 function desenhar(
   ctx: CanvasRenderingContext2D,
-  quadro: { W: number; H: number; f: number; cx: number; cy: number },
+  quadro: { W: number; H: number; f: number; cx: number; cy: number; teto: number },
   t: number,
   cores: Cores,
   frutos: Fruto[],
   parado: boolean,
 ) {
-  const { W, H, f, cx, cy } = quadro;
+  const { W, H, f, cx, cy, teto } = quadro;
   ctx.clearRect(0, 0, W, H);
   if (!W || !H) return;
 
@@ -243,6 +245,18 @@ function desenhar(
     .filter((fr) => fr.c[0] - fr.r < s)
     .map((fr) => ({ fr, p: proj(fr.c) }))
     .sort((a, b) => b.p[2] - a.p[2]);
+
+  // sombra de contato dos frutos que tocam a esteira
+  for (const { fr } of ordem) {
+    const solido = limitar((s - 3.4 - fr.c[0]) / 1.4);
+    if (fr.c[1] > 1.2 || solido === 0) continue;
+    const [x, y, z] = proj([fr.c[0], 0, fr.c[2]]);
+    const raio = (f * fr.r * 1.15) / z;
+    ctx.fillStyle = rgba(SOMBRA, 0.22 * solido);
+    ctx.beginPath();
+    ctx.ellipse(x, y, raio, raio * 0.42, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   for (const { fr, p } of ordem) {
     const solido = limitar((s - 3.4 - fr.c[0]) / 1.4);
@@ -286,9 +300,11 @@ function desenhar(
   }
 
   // o feixe: sai da cabeça, no alto, e abre até a esteira, como na vinheta "Mede"
-  const visivel = limitar(Math.min((s - S0) / 1.5, (12 - s) / 1.5));
+  const visivel = limitar(Math.min((s - S0) / 1.5, (ESTEIRA.x + 1.6 - s) / 1.5));
   if (visivel > 0) {
-    const [hx, hy] = proj([s, 7.4, 0]);
+    const l = 11 * (f / 240);
+    const [hx, alto] = proj([s, ALTURA_CABECA, 0]);
+    const hy = Math.max(alto, teto + l * 0.9);
     const [ax, ay] = proj([s, 0, -ESTEIRA.z - 0.3]);
     const [bx, by] = proj([s, 0, ESTEIRA.z + 0.3]);
     ctx.beginPath();
@@ -306,7 +322,6 @@ function desenhar(
     ctx.strokeStyle = rgba(cores.ponto, 0.85 * visivel);
     ctx.stroke();
     // cabeça
-    const l = 11 * (f / 240);
     ctx.globalAlpha = visivel;
     ctx.fillStyle = cores.cabeca;
     ctx.strokeStyle = rgba(cores.grade, 1);
@@ -333,7 +348,7 @@ function desenhar(
   // esteira: grade no chão e as bordas
   ctx.beginPath();
   for (let z = -ESTEIRA.z / 2; z <= ESTEIRA.z / 2 + 0.01; z += ESTEIRA.z / 2) linha([-ESTEIRA.x, 0, z], [ESTEIRA.x, 0, z]);
-  for (let x = -ESTEIRA.x; x <= ESTEIRA.x + 0.01; x += 2) linha([x, 0, -ESTEIRA.z], [x, 0, ESTEIRA.z]);
+  for (let x = -ESTEIRA.x; x <= ESTEIRA.x + 0.01; x += ESTEIRA.x / 4) linha([x, 0, -ESTEIRA.z], [x, 0, ESTEIRA.z]);
   ctx.strokeStyle = rgba(cores.grade, 0.16);
   ctx.stroke();
   ctx.beginPath();
@@ -359,7 +374,7 @@ export function VinhetaReconstroi({ className }: { className?: string }) {
     const reduzido = matchMedia("(prefers-reduced-motion: reduce)");
     const escuro = matchMedia("(prefers-color-scheme: dark)");
     let cores = lerCores(div);
-    let quadro = { W: 0, H: 0, f: 1, cx: 0, cy: 0 };
+    let quadro = { W: 0, H: 0, f: 1, cx: 0, cy: 0, teto: 0 };
     let t = T_PARADO; // começa com a varredura no meio, para o primeiro quadro já mostrar tudo
     let ultimo = 0;
     let pedido = 0;

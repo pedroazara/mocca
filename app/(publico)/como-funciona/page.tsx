@@ -183,8 +183,9 @@ export default function ComoFunciona() {
               longo da colheita.
             </p>
             <p className="medida mt-4 text-texto-2">
-              A equipe estuda usar imagem para estimar a maturação e o tamanho do fruto e, com isso, ajustar esse
-              fator.
+              Além do volume, a medição gera uma reconstrução 3D do café que passa, com a cor de cada fruto visto de
+              cima. A equipe estuda usar essa reconstrução para estimar a maturação e o tamanho do fruto e, com isso,
+              ajustar esse fator.
             </p>
           </div>
 

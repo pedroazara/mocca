@@ -10,6 +10,8 @@ Registro do que foi feito de forma diferente da `ESPECIFICACAO.md`, e por quê (
 
 4a. **Vinheta "Mede" animada (pedido do Pedro).** Na página inicial, a vinheta do passo "Mede" mostra frutos de café (cereja, verde, amarelo e passa) andando na esteira e passando sob um laser; o café que já passou sai com o perfil medido desenhado por cima. É só CSS e fica parada com movimento reduzido. O texto do site continua sem citar o sensor.
 
+4b. **Passo "Reconstrói" (pedido do Pedro).** O passo a passo da página inicial ganhou um passo entre "Mede" e "Localiza": o café medido vira um modelo 3D com a cor de cada fruto. A vinheta é animada em canvas 2D (sem bibliotecas): um feixe desce do alto e varre o monte de café na esteira; atrás dele surgem os pontos da superfície e, logo depois, os frutos com cor. Como o equipamento olha de cima, só a camada de cima tem pontos e cor; os frutos escondidos embaixo entram no volume, sem cor. Só anima quando está na tela e fica parada com movimento reduzido. Com 4 passos, a grade mostra 2 colunas até telas largas e 4 a partir de 1280 px. Em "Como o volume vira sacas" (`/como-funciona`), o texto passou a dizer que a reconstrução 3D com cor é o que a equipe estuda usar para estimar maturação e tamanho do fruto.
+
 ## Decisões técnicas
 
 4. **Funções de RLS como `security definer`.** A seção 10.3 define `sou_membro()`, `posso_editar()` e `sou_admin()` como funções SQL comuns. Como elas consultam `pessoa`, e a política de `pessoa` chama essas funções, o Postgres entraria em recursão infinita. Ficaram `security definer` com `search_path` fixo.
