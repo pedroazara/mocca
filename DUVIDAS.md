@@ -41,6 +41,7 @@ Registro do que foi feito de forma diferente da `ESPECIFICACAO.md`, e por quê (
 19. **Limite da API.** As 120 requisições por minuto por token são contadas na memória de cada instância do servidor. Na Vercel, instâncias diferentes contam separado. Para uma equipe de seis pessoas e um token por uso, basta; se precisar de um limite rígido, dá para contar numa tabela.
 20. **Token na URL do MCP.** A tela de conector personalizado do Claude (app e site) não deixa mandar cabeçalho. Por isso o `/api/mcp` também aceita `?token=mocca_...`. O Claude Code usa o cabeçalho `Authorization`. A URL com token deve ser tratada como senha (ver README).
 21. **Prazos em UTC.** Prazos são gravados como timestamp e mostrados no horário de Brasília. Um prazo escolhido só com a data vale até 23:59 de Brasília daquele dia.
+22. **Como funciona no estilo do Início.** A pedido do Pedro, a página foi repaginada. Mudou em relação à seção 6.4: o título agora é "Do pé de café ao mapa."; os quatro passos (medição, envio, processamento, mapa) viraram os mesmos cinco do Início (mede, reconstrói, calcula, localiza, mapeia), com o envio explicado em "Mapeia"; "O que é medido" entrou nos passos; há uma seção nova, "Uma camada a mais nos seus mapas". As perguntas "Substitui os mapas que eu já uso?" e "O MoCCa mede a qualidade do café?" são novas, escritas a partir do que o site já dizia, e o Pedro ainda precisa revisá-las.
 
 ## Pendências
 
