@@ -8,32 +8,30 @@ const PROPORCAO_VERTICAL = 824 / 670;
 const PROPORCAO_SIMBOLO = 322.41 / 375.92;
 
 // O símbolo em peças: cada metade e o pin se movem sozinhos ao passar o mouse, o que uma
-// <img> não permite. Só o vinco corta o grão: o contorno creme faz parte do pin, para as
-// metades abrirem inteiras. As cores vêm dos tokens --logo-* e a geometria de logo-dados.ts.
+// <img> não permite. Cada metade leva a linha creme do vinco na borda: fechadas, as duas se
+// sobrepõem numa linha só. As cores vêm dos tokens --logo-* e a geometria de logo-dados.ts.
 function GraoAnimado() {
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
   const metade = (classe: string, cor: string, regiao: string) => (
     <g className={classe}>
-      <g mask={`url(#${id}-vinco)`}>
-        <g transform={grao.giro}>
-          <ellipse rx={grao.rx} ry={grao.ry} fill={cor} clipPath={`url(#${id}-${regiao})`} />
-        </g>
+      <g transform={grao.giro} clipPath={`url(#${id}-elipse)`}>
+        <ellipse rx={grao.rx} ry={grao.ry} fill={cor} clipPath={`url(#${id}-${regiao})`} />
+        <path d={grao.vinco} fill="none" stroke="var(--creme)" strokeWidth={grao.vao} />
       </g>
     </g>
   );
   return (
     <svg viewBox={grao.viewBox} aria-hidden focusable="false" className="logo-grao">
       <defs>
+        <clipPath id={`${id}-elipse`}>
+          <ellipse rx={grao.rx} ry={grao.ry} />
+        </clipPath>
         <clipPath id={`${id}-cima`}>
           <path d={grao.regiaoCima} />
         </clipPath>
         <clipPath id={`${id}-baixo`}>
           <path d={grao.regiaoBaixo} />
         </clipPath>
-        <mask id={`${id}-vinco`} maskUnits="userSpaceOnUse" x="-400" y="-400" width="800" height="800">
-          <rect x="-400" y="-400" width="800" height="800" fill="#fff" />
-          <path d={grao.vinco} transform={grao.giro} fill="none" stroke="#000" strokeWidth={grao.vao} />
-        </mask>
       </defs>
       {metade("logo-metade-cima", "var(--logo-cima)", "cima")}
       {metade("logo-metade-baixo", "var(--logo-baixo)", "baixo")}

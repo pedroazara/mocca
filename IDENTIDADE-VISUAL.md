@@ -28,12 +28,12 @@ Um grão de café inclinado 30°, dividido pelo vinco em duas metades, com um pi
 
 O kit acima é a logo oficial (`assets/logo/`), para materiais e envios. O cabeçalho, o rodapé, o login e o painel usam uma versão só do site (`public/logo/mocca-site-*.svg`), porque com 45 px de altura as curvas viram ruído, e o fundo do site já tem curvas de nível. Ela não tem curvas, tem o vinco mais largo e acompanha o destaque do tema:
 
-| Tema | Metade de cima | Metade de baixo | Volta do pin | "MoCCa" |
+| Tema | Metade de cima | Metade de baixo | Vinco e volta do pin | "MoCCa" |
 |---|---|---|---|---|
 | Claro | caramelo | espresso | creme | "Mo" e "a" espresso, "CC" caramelo |
 | Escuro / rodapé | `#D49360` | `#96592A` | creme | "Mo" e "a" creme, "CC" `#D49360` |
 
-O vinco é vazado nos dois temas. O contorno creme faz parte do pin, para ele aparecer sobre qualquer fundo e as metades ficarem inteiras. O S do vinco é mais suave que o da logo oficial, para cada metade parecer um grão partido quando abre. A imagem de compartilhamento e o favicon continuam com a logo oficial.
+O vinco e o contorno do pin são creme nos dois temas (no claro, se confundem com o fundo). Cada metade leva a própria linha do vinco e o contorno faz parte do pin, para as metades ficarem inteiras ao abrir. O S do vinco é mais suave que o da logo oficial, para cada metade parecer um grão partido quando abre. A imagem de compartilhamento e o favicon continuam com a logo oficial.
 
 Para o grão poder abrir, o símbolo da logo horizontal é desenhado na página (`GraoAnimado`, com a geometria em `components/publico/logo-dados.ts` e as cores em `--logo-cima` e `--logo-baixo`). Só o "MoCCa" é imagem (`mocca-site-texto.svg`). Se a logo do site mudar, atualizar os dois.
 
