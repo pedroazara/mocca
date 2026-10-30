@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Como funciona",
   description:
-    "Como o MoCCa mede o café na colhedora, registra onde cada volume foi colhido e transforma as medidas num mapa de produção por talhão.",
+    "Como o MoCCa mede o café na colhedora e monta o mapa de produção por talhão, para usar junto com os mapas de solo e adubação.",
   alternates: { canonical: "/como-funciona" },
 };
 
@@ -104,7 +104,8 @@ export default function ComoFunciona() {
           </h1>
           <p className="medida mt-6 text-[1.125rem] text-texto-2">
             Uma tecnologia instalada na colhedora mede o café enquanto ele é colhido. Cada medida guarda quanto café
-            passou, onde e quando. Somadas, as medidas formam o mapa de produção da lavoura.
+            passou, onde e quando. Somadas, as medidas formam o mapa de produção da lavoura, uma camada a mais ao
+            lado dos mapas de solo e de adubação.
           </p>
           <nav aria-label="Nesta página" className="mt-10 flex flex-wrap gap-2">
             {[

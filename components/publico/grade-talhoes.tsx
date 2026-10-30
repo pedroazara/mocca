@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { idCurvas } from "./curvas-de-nivel";
 import { curvas } from "./curvas-dados";
 
-const preenchimento: Record<Nivel, string> = {
+export const preenchimento: Record<Nivel, string> = {
   1: "fill-talhao-1",
   2: "fill-talhao-2",
   3: "fill-talhao-3",

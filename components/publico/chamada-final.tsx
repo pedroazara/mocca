@@ -6,7 +6,7 @@ import { CurvasDeNivel } from "./curvas-de-nivel";
 // Chamada final (seção 6.3, bloco 7): fundo espresso, texto creme, curvas de nível.
 export function ChamadaFinal({
   titulo = "Quer testar o MoCCa na sua lavoura?",
-  texto = "Estamos procurando produtores e parceiros para os testes de campo.",
+  texto = "Estamos procurando produtores e parceiros para os testes de campo. Se a sua fazenda já usa mapas de solo ou de adubação, queremos pôr o mapa da colheita ao lado deles.",
 }: {
   titulo?: string;
   texto?: string;

@@ -1,4 +1,4 @@
-import { ArrowRight, Check, MapPinOff, Scale, Sprout, Tractor } from "lucide-react";
+import { ArrowRight, Check, Sprout, Tractor } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChamadaFinal } from "@/components/publico/chamada-final";
@@ -6,6 +6,7 @@ import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { MapaProdutividade } from "@/components/publico/mapa-produtividade";
 import { GradeTalhoes, LegendaProducao, posicaoDoTalhao } from "@/components/publico/grade-talhoes";
 import { Pin } from "@/components/publico/logo";
+import { PilhaCamadas, RotulosCamadas } from "@/components/publico/pilha-camadas";
 import { VinhetaLocaliza, VinhetaMapeia, VinhetaMede } from "@/components/publico/passos-ilustrados";
 import { VinhetaReconstroi } from "@/components/publico/vinheta-reconstroi";
 import { VinhetaSacas } from "@/components/publico/vinheta-sacas";
@@ -16,26 +17,15 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: { absolute: "MoCCa · Monitoramento de colheita de café" },
   description:
-    "O MoCCa mede o café enquanto ele é colhido e guarda de onde saiu cada volume. O resultado é um mapa de produção, talhão por talhão.",
+    "O MoCCa mede o café na colhedora e mostra quanto saiu de cada talhão. É a camada da colheita, ao lado dos mapas de solo, adubação e satélite.",
   alternates: { canonical: "/" },
 };
 
-const problemas = [
-  {
-    Icone: MapPinOff,
-    titulo: "Sem endereço",
-    texto: "O volume chega ao terreiro sem registro de onde foi colhido.",
-  },
-  {
-    Icone: Scale,
-    titulo: "Só o total",
-    texto: "O caderno e a planilha guardam a soma da safra, não o mapa.",
-  },
-  {
-    Icone: Sprout,
-    titulo: "Decisão no escuro",
-    texto: "Investir no talhão errado custa a safra seguinte.",
-  },
+// o que o produtor faz com a colheita no mapa (seção "A colheita é a camada que falta")
+const usos = [
+  "Conferir se a adubação deu resultado em cada talhão.",
+  "Levar a produção de cada talhão para a recomendação de adubação.",
+  "Achar o talhão fraco antes de decidir poda ou renovação.",
 ];
 
 const passos = [
@@ -99,14 +89,14 @@ export default function Inicio() {
       <section className="relative isolate overflow-hidden">
         <div className="conteiner grid items-center gap-12 pt-10 pb-16 md:pt-16 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pt-20 lg:pb-24">
           <div>
-            <p className="t-rotulo text-link">Monitoramento de colheita de café</p>
+            <p className="t-rotulo text-link">Agricultura de precisão no café</p>
             <h1 className="t-display mt-5 max-w-[14ch] text-texto">
               Cada saca tem um <span className="text-caramelo">endereço</span>.
             </h1>
             <p className="medida mt-6 max-w-[56ch] text-[1.125rem] leading-[1.65] text-texto-2">
               No fim da safra, o cafeicultor sabe quantas sacas colheu na fazenda inteira. O que ele não sabe é de
-              onde elas vieram. O MoCCa mede o café enquanto ele é colhido e guarda onde cada volume saiu, talhão
-              por talhão.
+              onde elas vieram. O MoCCa mede o café enquanto ele é colhido e guarda de onde saiu cada volume e a
+              qualidade geral do café, talhão por talhão.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Botao asChild>
@@ -131,58 +121,62 @@ export default function Inicio() {
         </div>
       </section>
 
-      {/* 2. O problema */}
+      {/* 2. O problema: a colheita é a camada que falta na agricultura de precisão */}
       <section className="secao bg-superficie">
         <div className="conteiner">
           <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
             <div>
               <p className="t-rotulo text-texto-2">O problema</p>
-              <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">A média esconde o talhão fraco.</h2>
+              <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">A colheita é a camada que falta.</h2>
             </div>
             <p className="medida text-texto-2 lg:pt-8">
-              O total da safra mistura áreas boas e ruins. Sem saber de onde veio cada saca, adubação, renovação e
-              manejo são decididos às cegas.
+              Quem faz agricultura de precisão costuma ter mapa de solo, de adubação em taxa variável e imagem de
+              satélite ou drone. Quem irriga tem também o mapa da irrigação. A colheita, que mostra o resultado de
+              tudo isso, quase sempre fica fora do mapa: vira o total da safra. O MoCCa mede o café na colhedora e
+              põe a produção no mapa, talhão por talhão.
             </p>
           </div>
 
-          <div className="mt-12 grid gap-4 md:grid-cols-2 md:gap-6">
-            <figure className="rounded-g border border-linha bg-fundo p-5 md:p-6">
-              <figcaption className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-                <span className="t-rotulo text-texto-2">O que a planilha mostra</span>
-                <span className="t-pequeno text-texto-2">um número só</span>
-              </figcaption>
-              <GradeTalhoes
-                variante="mini"
-                uniforme
-                titulo="A mesma lavoura pintada com uma cor só: a média da safra"
-                className="mx-auto mt-5 max-w-[340px]"
+          <figure className="mt-12 rounded-g border border-linha bg-fundo p-5 md:p-8">
+            {/* celular: cada pilha com os nomes à direita; do tablet em diante: pilha, nomes, pilha */}
+            <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-x-3 gap-y-4 md:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1fr)] md:gap-x-6 lg:grid-cols-[minmax(0,1fr)_11rem_minmax(0,1fr)]">
+              <p className="t-rotulo col-span-2 text-texto-2 md:col-span-1 md:col-start-1 md:row-start-1">
+                Sem monitoramento da colheita
+              </p>
+              <PilhaCamadas
+                colheita="vazia"
+                titulo="Ilustração: três camadas da mesma lavoura, uma sobre a outra (solo e adubação, irrigação, imagem de satélite ou drone). No alto, a camada da colheita, que mostra o resultado, está vazia. Um fio pontilhado liga o mesmo ponto em todas as camadas e termina numa interrogação. Não se sabe quanto café saiu dali."
+                className="mx-auto max-w-[400px] md:col-start-1 md:row-start-2"
               />
-            </figure>
-            <figure className="rounded-g border border-linha bg-fundo p-5 md:p-6">
-              <figcaption className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-                <span className="t-rotulo text-texto-2">O que a lavoura tem</span>
-                <span className="t-pequeno text-texto-2">cada talhão rende diferente</span>
-              </figcaption>
-              <GradeTalhoes
-                variante="mini"
-                titulo="A mesma lavoura com cada talhão numa faixa de produção diferente"
-                className="mx-auto mt-5 max-w-[340px]"
-              />
-            </figure>
-          </div>
-          <p className="t-pequeno mt-3 text-texto-2">Ilustração. Não são dados de uma fazenda real.</p>
+              <RotulosCamadas className="md:col-start-2 md:row-start-2" />
 
-          <ul className="mt-10 grid gap-4 md:grid-cols-3 md:gap-6">
-            {problemas.map(({ Icone, titulo, texto }) => (
-              <li key={titulo} className="rounded-g border border-linha bg-fundo p-6 md:p-7">
-                <span className="inline-flex size-11 items-center justify-center rounded-m bg-superficie-2">
-                  <Icone aria-hidden strokeWidth={1.75} className="size-[22px] text-caramelo" />
-                </span>
-                <h3 className="t-h3 mt-5 text-texto">{titulo}</h3>
-                <p className="mt-2 text-texto-2">{texto}</p>
-              </li>
-            ))}
-          </ul>
+              <p className="t-rotulo col-span-2 mt-6 text-link md:col-span-1 md:col-start-3 md:row-start-1 md:mt-0">
+                Com o MoCCa
+              </p>
+              <PilhaCamadas
+                colheita="talhao"
+                titulo="Ilustração: as mesmas três camadas da lavoura. No alto, a colheita medida pelo MoCCa, com cada talhão numa faixa de produção. O talhão marcado está na faixa mais baixa."
+                className="mx-auto max-w-[400px] md:col-start-3 md:row-start-2"
+              />
+              <RotulosCamadas className="md:hidden" />
+            </div>
+            <figcaption className="mt-6 flex flex-col gap-3 border-t border-linha pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <span className="t-rotulo text-texto-2">Ilustração</span>
+              <LegendaProducao />
+            </figcaption>
+          </figure>
+
+          <div className="mt-10">
+            <p className="t-rotulo text-texto-2">Com a colheita no mapa, dá para</p>
+            <ul className="mt-4 grid gap-4 md:grid-cols-3 md:gap-6">
+              {usos.map((uso) => (
+                <li key={uso} className="flex gap-3 text-texto">
+                  <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-caramelo" />
+                  <span>{uso}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -268,10 +262,12 @@ export default function Inicio() {
 
           <div className="order-1 lg:order-2">
             <p className="t-rotulo text-texto-2">O que você passa a ver</p>
-            <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">O mapa que faltava na lavoura.</h2>
+            <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">A produção de cada talhão, no mapa.</h2>
             <p className="medida mt-4 text-texto-2">
-              Cada medida guarda quanto café passou e onde a colhedora estava. Somadas, elas mostram quanto cada
-              talhão rendeu na safra.
+              Os mapas de solo, adubação e irrigação mostram o que a lavoura tem e o que recebeu. A imagem de
+              satélite ou de drone mostra como ela se desenvolveu. O mapa do MoCCa mostra o resultado: quanto café
+              foi colhido em cada talhão na safra. Cruzando as camadas, fica mais fácil decidir onde ajustar a
+              adubação em taxa variável e o manejo.
             </p>
             <ul className="mt-8 space-y-4">
               {oQueVe.map((item) => (
@@ -295,12 +291,12 @@ export default function Inicio() {
               {
                 Icone: Sprout,
                 titulo: "Produtores",
-                texto: "Para saber quais talhões rendem mais e decidir onde investir.",
+                texto: "Para comparar a colheita de cada talhão com os mapas que já usam e decidir onde investir.",
               },
               {
                 Icone: Tractor,
                 titulo: "Fabricantes e locadoras de máquinas",
-                texto: "Para entregar a colhedora com mapa de produção, como já acontece em grãos.",
+                texto: "Para entregar a colhedora de café com o mapa de produção que a agricultura de precisão já usa em grãos.",
               },
             ].map(({ Icone, titulo, texto }) => (
               <article
@@ -330,6 +326,7 @@ export default function Inicio() {
             <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">Onde estamos.</h2>
             <p className="medida mt-4 text-texto-2">
               O MoCCa é um protótipo em desenvolvimento, feito por estudantes da Universidade Federal de Lavras.
+              Os primeiros mapas de produção virão dos testes de campo.
             </p>
           </div>
           <ol className="relative">

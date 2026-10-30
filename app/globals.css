@@ -62,6 +62,18 @@
      igual nos dois temas */
   --logo-parceiro: #FFFFFF;
 
+  /* topo das placas neutras da pilha de camadas (agricultura de precisão) */
+  --camada: var(--superficie);
+
+  /* cores físicas dos mapas que o produtor já tem, iguais nos dois temas:
+     vigor da lavoura (NDVI, do fraco ao forte) e a água da irrigação */
+  --ndvi-1: #B8462F;
+  --ndvi-2: #DE8F3E;
+  --ndvi-3: #E8CF62;
+  --ndvi-4: #93B34E;
+  --ndvi-5: #4E8A3A;
+  --agua: #3A78B5;
+
   /* frutos de café na vinheta "Mede": cores físicas, iguais nos dois temas */
   --fruto-cereja: #A2412F;
   --fruto-verde: #4F8A4A;
@@ -97,6 +109,8 @@
     --talhao-3: var(--torra);
     --talhao-4: var(--caramelo);
     --talhao-5: color-mix(in oklab, var(--caramelo) 45%, var(--creme));
+    --camada: var(--superficie-2);
+    --agua: #5E9BD6;
   }
 }
 :root[data-tema="escuro"] {
@@ -126,6 +140,8 @@
   --talhao-3: var(--torra);
   --talhao-4: var(--caramelo);
   --talhao-5: color-mix(in oklab, var(--caramelo) 45%, var(--creme));
+  --camada: var(--superficie-2);
+  --agua: #5E9BD6;
 }
 
 /* Tokens expostos ao Tailwind: bg-fundo, text-texto-2, border-linha, rounded-m, font-titulo... */
@@ -166,6 +182,13 @@
   --color-talhao-4: var(--talhao-4);
   --color-talhao-5: var(--talhao-5);
   --color-logo-parceiro: var(--logo-parceiro);
+  --color-camada: var(--camada);
+  --color-ndvi-1: var(--ndvi-1);
+  --color-ndvi-2: var(--ndvi-2);
+  --color-ndvi-3: var(--ndvi-3);
+  --color-ndvi-4: var(--ndvi-4);
+  --color-ndvi-5: var(--ndvi-5);
+  --color-agua: var(--agua);
   --color-fruto-cereja: var(--fruto-cereja);
   --color-fruto-verde: var(--fruto-verde);
   --color-fruto-amarelo: var(--fruto-amarelo);

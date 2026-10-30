@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     template: "%s · MoCCa",
   },
   description:
-    "Projeto de estudantes da UFLA que mede o café enquanto ele é colhido e guarda de onde saiu cada volume, talhão por talhão.",
+    "Projeto de estudantes da UFLA que traz a colheita para a agricultura de precisão no café: mede o café na colhedora e mostra quanto saiu de cada talhão.",
   applicationName: "MoCCa",
   openGraph: {
     type: "website",
