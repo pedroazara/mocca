@@ -113,10 +113,10 @@ export function VinhetaLocalizaAnimada({
         </Lavoura>
       </g>
 
-      {/* a colhedora: o pin, com a ponta no lugar onde ela está */}
+      {/* a colhedora: anel e ponto no lugar onde ela está */}
       <g opacity={alfa}>
         <circle cx={px} cy={py} r={7} fill="none" className="stroke-caramelo" strokeOpacity={0.5} strokeWidth={1} />
-        <image href="/logo/mocca-simbolo.svg" x={px - 7.5} y={py - 20} width={15} height={21} />
+        <circle cx={px} cy={py} r={3.4} className="fill-caramelo stroke-superficie" strokeWidth={1.4} />
       </g>
 
       {/* quadro do GPS com a posição da colhedora */}

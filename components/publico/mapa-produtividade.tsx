@@ -60,8 +60,9 @@ export function MapaProdutividade({ className }: { className?: string }) {
           />
         </g>
 
+        {/* o endereço da mancha mais forte: anel e ponto */}
+        <circle cx={pin[0]} cy={pin[1]} r={11} fill="none" className="stroke-texto" strokeOpacity={0.45} strokeWidth={1.5} />
         <circle cx={pin[0]} cy={pin[1]} r={4.5} className="fill-texto stroke-fundo" strokeWidth={2} />
-        <image href="/logo/mocca-simbolo.svg" x={pin[0] - 14} y={pin[1] - 44} width={28} height={39} />
       </svg>
     </div>
   );

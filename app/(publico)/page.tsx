@@ -5,7 +5,6 @@ import { ChamadaFinal } from "@/components/publico/chamada-final";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { MapaProdutividade } from "@/components/publico/mapa-produtividade";
 import { GradeTalhoes, LegendaProducao, posicaoDoTalhao } from "@/components/publico/grade-talhoes";
-import { Pin } from "@/components/publico/logo";
 import { PilhaCamadas, RotulosCamadas } from "@/components/publico/pilha-camadas";
 import { VinhetaLocaliza, VinhetaMapeia, VinhetaMede } from "@/components/publico/passos-ilustrados";
 import { VinhetaReconstroi } from "@/components/publico/vinheta-reconstroi";
@@ -216,8 +215,7 @@ export default function Inicio() {
                       "lg:after:ml-2 lg:after:-mr-8 lg:after:h-0 lg:after:flex-1 lg:after:border-t-2 lg:after:border-dotted lg:after:border-caramelo/60 lg:after:content-['']",
                   )}
                 >
-                  <Pin tamanho={26} />
-                  <span className="t-dado text-[0.875rem] text-texto-2">{numero}</span>
+                  <span className="t-dado text-[0.875rem] font-medium text-caramelo">{numero}</span>
                 </div>
                 <h3 className="t-h3 mt-3 text-texto">{titulo}</h3>
                 <p className="mt-2 max-w-[36ch] text-texto-2">{texto}</p>
@@ -272,7 +270,7 @@ export default function Inicio() {
             <ul className="mt-8 space-y-4">
               {oQueVe.map((item) => (
                 <li key={item} className="flex items-start gap-3.5">
-                  <Pin tamanho={22} className="mt-0.5" />
+                  <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-caramelo" />
                   <span className="text-texto">{item}</span>
                 </li>
               ))}

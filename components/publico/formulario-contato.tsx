@@ -17,7 +17,6 @@ import {
   type DadosContato,
   type EntradaContato,
 } from "@/lib/validacao/contato";
-import { Pin } from "./logo";
 
 const CHAVE_TURNSTILE = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 // em desenvolvimento, sem chave, o envio funciona sem a verificação (o servidor faz o mesmo)
@@ -96,8 +95,7 @@ export function FormularioContato() {
   if (estado.tipo === "enviado") {
     return (
       <div role="status" className="rounded-g border border-linha bg-superficie p-8 md:p-10">
-        <Pin tamanho={40} />
-        <h2 className="t-h3 mt-6 text-texto">Mensagem enviada.</h2>
+        <h2 className="t-h3 text-texto">Mensagem enviada.</h2>
         <p className="mt-2 text-texto-2">
           Vamos responder no e-mail <span className="font-semibold break-all text-texto">{estado.email}</span>.
         </p>

@@ -116,18 +116,6 @@ export function EstadoVazio({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-m border border-dashed border-linha px-6 py-10 text-center">
-      <span
-        aria-hidden
-        className="inline-block h-12 w-[35px] bg-linha"
-        style={{
-          maskImage: "url(/logo/mocca-simbolo.svg)",
-          WebkitMaskImage: "url(/logo/mocca-simbolo.svg)",
-          maskSize: "contain",
-          WebkitMaskSize: "contain",
-          maskRepeat: "no-repeat",
-          WebkitMaskRepeat: "no-repeat",
-        }}
-      />
       <p className="max-w-[36ch] text-texto-2">{texto}</p>
       {acao}
     </div>

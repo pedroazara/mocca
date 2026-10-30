@@ -4,7 +4,7 @@ Resumo do que o site usa hoje. Fonte de verdade no código: `app/globals.css` (t
 
 ## Conceito
 
-Linguagem de **mapa de lavoura**: curvas de nível, mapa de produtividade, coordenadas e o pin. Cores do café torrado (espresso, caramelo, creme). Deve parecer um instrumento de agricultura de precisão feito por quem conhece a lavoura. O site é **simples e informativo**, para apresentar o MoCCa ao agro.
+Linguagem de **mapa de lavoura**: curvas de nível, mapa de produtividade e coordenadas. Cores do café torrado (espresso, caramelo, creme). Deve parecer um instrumento de agricultura de precisão feito por quem conhece a lavoura. O site é **simples e informativo**, para apresentar o MoCCa ao agro.
 
 ## Logo
 
@@ -25,7 +25,7 @@ Linguagem de **mapa de lavoura**: curvas de nível, mapa de produtividade, coord
 | Nome | Hex | Uso |
 |---|---|---|
 | Espresso | `#4A2C1D` | Títulos, botão primário, rodapé |
-| Caramelo | `#B9733F` | Destaques grandes, pin, ícones, gráficos, foco |
+| Caramelo | `#B9733F` | Destaques grandes, marcadores, ícones, gráficos, foco |
 | Caramelo (texto) | `#96592A` | Links e texto pequeno em caramelo (5,0:1) |
 | Marrom-torra | `#8A5A3B` | Texto secundário de marca |
 | Creme | `#F6F1E7` | Fundo do tema claro |
@@ -166,10 +166,10 @@ Cartões: borda 1 px `--linha`, fundo `--superficie`, raio `--raio-m`. Sem borda
 ## Elementos gráficos
 
 1. **Curvas de nível**: linhas finas (1 px) em caramelo com transparência, geradas uma vez (`scripts/gerar-curvas.mjs`). Fundo do hero, rodapé e chamada final. Nunca atrás de texto pequeno.
-2. **Mapa de produtividade** (hero): as curvas de nível do fundo atravessam a lavoura, e as faixas entre elas ganham as 5 cores de produção aos poucos, sem contorno de lavoura, até a mancha mais forte, onde fica o pin. Legenda "Baixa → Alta" e o rótulo "Mapa ilustrativo" (`scripts/gerar-produtividade.mjs`).
+2. **Mapa de produtividade** (hero): as curvas de nível do fundo atravessam a lavoura, e as faixas entre elas ganham as 5 cores de produção aos poucos, sem contorno de lavoura, até a mancha mais forte, marcada com um anel e um ponto. Legenda "Baixa → Alta" e o rótulo "Mapa ilustrativo" (`scripts/gerar-produtividade.mjs`).
 3. **Grade de talhões**: retângulos irregulares nas 5 faixas, para a seção "O que você passa a ver" e a vinheta "Mapeia".
 4. **Pilha de camadas**: a mesma lavoura em placas deitadas. De baixo para cima: solo e adubação (pontos de amostragem e zonas de dose, em texto-2), irrigação (mangueiras de gotejo e adutora em `--agua`), satélite ou drone (pés de café em fileiras, coloridos pelo vigor, em `--ndvi-1` a `--ndvi-5`, do vermelho ao verde, como nos mapas de verdade) e, no alto, a colheita nas cores de produção. Sem o MoCCa, a placa da colheita fica só tracejada, com uma interrogação. As placas usam `--camada` (`--superficie` no claro, `--superficie-2` no escuro). As cores do vigor e da água são físicas e iguais nos dois temas (o azul fica um pouco mais claro no escuro), como as cores dos frutos.
-5. **Pin**: o símbolo da logo como marcador em listas, passo a passo e estados vazios.
+5. **Símbolo**: o grão-pin só aparece como logo (cabeçalho, rodapé, ícone do navegador e barra lateral recolhida do painel). Não é usado como marcador em mapas, listas, passos ou estados vazios: nos mapas, a posição é um anel com um ponto; nas listas, um ponto caramelo (pedido do Pedro).
 6. **Coordenadas**: `21°14′S 44°59′W` (Lavras, MG) em JetBrains Mono, como detalhe.
 
 Fotos: reais, cantos de 16 px, sem filtros fortes. Nada de banco de imagens genérico.

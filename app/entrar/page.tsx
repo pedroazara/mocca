@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { BotaoGoogle } from "@/components/painel/botao-google";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { DefinicoesCurvas } from "@/components/publico/curvas-definicoes";
-import { Pin } from "@/components/publico/logo";
+import { LogoHorizontal } from "@/components/publico/logo";
 import { Botao } from "@/components/ui/botao";
 import { pessoaLogada, sessao } from "@/lib/auth";
 import { comoServico, modoLocal, modoLocalPermitido } from "@/lib/banco";
@@ -38,8 +38,8 @@ export default async function Entrar({ searchParams }: { searchParams: Promise<{
       <DefinicoesCurvas />
       <CurvasDeNivel conjunto="hero" className="absolute inset-0 -z-10 h-full w-full text-caramelo/25" />
       <div className="w-full max-w-[400px] rounded-g border border-linha bg-superficie p-8 shadow-cartao">
-        <Pin tamanho={40} />
-        <h1 className="t-h2 mt-6 text-texto">Área da equipe</h1>
+        <LogoHorizontal altura={48} className="-ml-2" />
+        <h1 className="t-h2 mt-4 text-texto">Área da equipe</h1>
 
         {modoLocal ? (
           <>

@@ -116,7 +116,7 @@ export function DiagramaColhedora({ className }: { className?: string }) {
       {/* ponto de medição: no tubo de saída */}
       <circle cx={MEDICAO.x} cy={MEDICAO.y} r={20} fill="none" className="stroke-caramelo" strokeOpacity={0.55} strokeWidth={1.2} />
       <circle cx={MEDICAO.x} cy={MEDICAO.y} r={34} fill="none" className="stroke-caramelo" strokeOpacity={0.25} strokeWidth={1.2} />
-      <image href="/logo/mocca-simbolo.svg" x={MEDICAO.x - 12} y={MEDICAO.y - 32} width={24} height={33} />
+      <circle cx={MEDICAO.x} cy={MEDICAO.y} r={6} className="fill-caramelo stroke-superficie" strokeWidth={2} />
       <path d={`M${MEDICAO.x + 38} ${MEDICAO.y}H452`} className="stroke-texto-2" strokeWidth={1.2} />
 
       <g className="font-dado">

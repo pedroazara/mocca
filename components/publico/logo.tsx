@@ -67,7 +67,8 @@ export function LogoVertical({ largura = 220, className }: { largura?: number; c
   );
 }
 
-// Símbolo (grão-pin) usado como marcador em listas e no passo a passo (seção 4.7).
+// Símbolo (grão-pin): é o logo compacto (barra lateral recolhida do painel).
+// Fora do logo, o site não usa o símbolo como marcador (pedido do Pedro).
 export function Pin({ tamanho = 20, className }: { tamanho?: number; className?: string }) {
   return (
     <Image
@@ -77,26 +78,6 @@ export function Pin({ tamanho = 20, className }: { tamanho?: number; className?:
       width={Math.round((tamanho * 280) / 388)}
       height={tamanho}
       className={cn("shrink-0", className)}
-    />
-  );
-}
-
-// Símbolo recolorido por token (estados vazios, placeholders): usa a forma como máscara.
-export function SimboloMascara({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cn("inline-block aspect-[280/388] bg-current", className)}
-      style={{
-        maskImage: "url(/logo/mocca-simbolo.svg)",
-        WebkitMaskImage: "url(/logo/mocca-simbolo.svg)",
-        maskSize: "contain",
-        WebkitMaskSize: "contain",
-        maskRepeat: "no-repeat",
-        WebkitMaskRepeat: "no-repeat",
-        maskPosition: "center",
-        WebkitMaskPosition: "center",
-      }}
     />
   );
 }

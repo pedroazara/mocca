@@ -13,8 +13,8 @@ export const tamanhoOg = { width: 1200, height: 630 };
 const tons = [temaClaro.linha, "#D2A47B", marca.caramelo, marca.torra, marca.espresso];
 
 // O mesmo mapa de produtividade do hero, com as cores escritas no SVG: as curvas
-// cobrem o fundo e ganham cor na lavoura, que fica no retângulo MAPA. O pin vai
-// numa imagem separada por cima (o renderizador não desenha imagem dentro de SVG).
+// cobrem o fundo e ganham cor na lavoura, que fica no retângulo MAPA. A mancha
+// mais forte ganha um anel e um ponto, como no hero.
 const MAPA = { direita: 40, topo: 116, largura: 520 };
 const escalaMapa = MAPA.largura / produtividade.janela.largura;
 const QUADRO = {
@@ -34,6 +34,7 @@ function svgMapa() {
       <mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="${largura}" height="${altura}"><rect width="${largura}" height="${altura}" fill="url(#g)"/></mask>
     </defs>
     <g mask="url(#m)">${manchas}<path d="${linhas}" fill="none" stroke="${marca.caramelo}" stroke-opacity="0.4" stroke-width="1.6"/></g>
+    <circle cx="${pin[0]}" cy="${pin[1]}" r="11" fill="none" stroke="${temaClaro.texto}" stroke-opacity="0.45" stroke-width="1.5"/>
     <circle cx="${pin[0]}" cy="${pin[1]}" r="4.5" fill="${temaClaro.texto}" stroke="${marca.creme}" stroke-width="2"/>
   </svg>`;
 }
@@ -42,11 +43,10 @@ const dataUri = (svg: string) => `data:image/svg+xml;base64,${Buffer.from(svg).t
 
 export async function imagemOg(titulo: string) {
   const raiz = process.cwd();
-  const [sora, mono, logo, simbolo] = await Promise.all([
+  const [sora, mono, logo] = await Promise.all([
     readFile(join(raiz, "node_modules/@fontsource/sora/files/sora-latin-700-normal.woff")),
     readFile(join(raiz, "node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff")),
     readFile(join(raiz, "public/logo/mocca-logo-horizontal.svg"), "utf8"),
-    readFile(join(raiz, "public/logo/mocca-simbolo.svg"), "utf8"),
   ]);
 
   return new ImageResponse(
@@ -61,25 +61,13 @@ export async function imagemOg(titulo: string) {
           fontFamily: "Sora",
         }}
       >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={dataUri(svgMapa())}
           width={Math.round(QUADRO.largura)}
           height={Math.round(QUADRO.altura)}
           alt=""
           style={{ position: "absolute", left: QUADRO.esquerda, top: QUADRO.topo }}
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={dataUri(simbolo)}
-          width={26}
-          height={36}
-          alt=""
-          style={{
-            position: "absolute",
-            left: QUADRO.esquerda + produtividade.pin[0] * escalaMapa - 13,
-            top: QUADRO.topo + produtividade.pin[1] * escalaMapa - 40,
-          }}
         />
         <div style={{ display: "flex", flexDirection: "column", padding: "52px 64px", width: 700, height: "100%" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
