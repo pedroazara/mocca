@@ -53,7 +53,7 @@
   /* derivados (ver DUVIDAS.md): fundo do rodapé e os 5 tons da grade de talhões,
      do creme ao espresso, misturados a partir das cores da marca */
   --rodape-fundo: var(--espresso);
-  --logo-cima: var(--caramelo);
+  --logo-cima: var(--caramelo-texto);
   --logo-baixo: var(--espresso);
   --talhao-1: var(--linha);
   --talhao-2: color-mix(in oklab, var(--caramelo) 45%, var(--linha));

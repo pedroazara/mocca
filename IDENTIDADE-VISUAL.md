@@ -26,11 +26,11 @@ Um grão de café inclinado 30°, dividido pelo vinco em duas metades, com um pi
 
 ### Versão do site
 
-O kit acima é a logo oficial (`assets/logo/`), para materiais e envios. O cabeçalho, o rodapé, o login e o painel usam uma versão só do site (`public/logo/mocca-site-*.svg`), porque com 45 px de altura as curvas viram ruído, e o fundo do site já tem curvas de nível. Ela não tem curvas, tem o vinco mais largo e acompanha o destaque do tema:
+O kit acima é a logo oficial (`assets/logo/`), para materiais e envios. O cabeçalho, o rodapé, o login e o painel usam uma versão só do site (`public/logo/mocca-site-*.svg`), porque com 45 px de altura as curvas viram ruído, e o fundo do site já tem curvas de nível. Ela não tem curvas, tem o vinco mais largo e usa a paleta da marca; no escuro, as metades sobem um tom para aparecer no fundo:
 
 | Tema | Metade de cima | Metade de baixo | Vinco e volta do pin | "MoCCa" |
 |---|---|---|---|---|
-| Claro | caramelo | espresso | creme | "Mo" e "a" espresso, "CC" caramelo |
+| Claro | `#96592A` | espresso | creme | "Mo" e "a" espresso, "CC" `#96592A` |
 | Escuro / rodapé | `#D49360` | `#96592A` | creme | "Mo" e "a" creme, "CC" `#D49360` |
 
 O vinco e o contorno do pin são creme nos dois temas (no claro, se confundem com o fundo). Cada metade leva a própria linha do vinco e o contorno faz parte do pin, para as metades ficarem inteiras ao abrir. O S do vinco é mais suave que o da logo oficial, para cada metade parecer um grão partido quando abre. A imagem de compartilhamento e o favicon continuam com a logo oficial.
