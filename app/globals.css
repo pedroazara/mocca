@@ -423,6 +423,20 @@
   }
 }
 
+/* mapa interativo de talhões: o contorno do talhão escolhido se desenha */
+.contorno-entra {
+  stroke-dasharray: 1;
+  animation: contorno-entra 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes contorno-entra {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 @keyframes painel-entra {
   from {
     transform: translateX(24px);

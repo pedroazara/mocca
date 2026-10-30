@@ -16,6 +16,8 @@ Registro do que foi feito de forma diferente da `ESPECIFICACAO.md`, e por quê (
 
 4d. **Símbolo só no logo (pedido do Pedro).** O grão-pin deixou de ser marcador: saiu do mapa do hero e da imagem de compartilhamento (a posição virou um anel com um ponto), do esquema da colhedora, da vinheta "Localiza", dos números do passo a passo, das listas, da mensagem de contato enviado, da tela de entrar (que mostra o logo horizontal), da página 404, do acesso negado e dos estados vazios do painel. Fica só como logo: cabeçalho, rodapé, ícone do navegador e barra lateral recolhida do painel.
 
+4e. **Mapa de talhões interativo (pedido do Pedro).** Em "O que você passa a ver", passar o mouse (ou tocar, ou usar as setas do teclado) num talhão destaca o talhão e leva até ele um cartão com sacas colhidas (e sacas por hectare e área), maturação (verde, cereja e passa) e tamanho do grão (peneira média). Os números correm, as barras e o marcador da peneira deslizam e o contorno do talhão se desenha; com movimento reduzido, tudo troca sem animação. **Os números são ilustrativos** e o cartão diz isso: saem da faixa de produção de cada talhão (`lib/talhao-info.ts`), numa fazenda fictícia de 140 ha. É uma exceção à regra "nada de números inventados", pedida pelo Pedro para mostrar o tipo de informação que o MoCCa vai entregar. Quando houver dados dos testes de campo, trocar por eles ou tirar os números.
+
 ## Decisões técnicas
 
 4. **Funções de RLS como `security definer`.** A seção 10.3 define `sou_membro()`, `posso_editar()` e `sou_admin()` como funções SQL comuns. Como elas consultam `pessoa`, e a política de `pessoa` chama essas funções, o Postgres entraria em recursão infinita. Ficaram `security definer` com `search_path` fixo.

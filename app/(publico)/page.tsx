@@ -4,13 +4,15 @@ import Link from "next/link";
 import { ChamadaFinal } from "@/components/publico/chamada-final";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { MapaProdutividade } from "@/components/publico/mapa-produtividade";
-import { GradeTalhoes, LegendaProducao, posicaoDoTalhao } from "@/components/publico/grade-talhoes";
+import { GradeTalhoes, LegendaProducao, mapas } from "@/components/publico/grade-talhoes";
+import { MapaTalhoesInterativo } from "@/components/publico/mapa-talhoes-interativo";
 import { PilhaCamadas, RotulosCamadas } from "@/components/publico/pilha-camadas";
 import { VinhetaLocaliza, VinhetaMapeia, VinhetaMede } from "@/components/publico/passos-ilustrados";
 import { VinhetaReconstroi } from "@/components/publico/vinheta-reconstroi";
 import { VinhetaSacas } from "@/components/publico/vinheta-sacas";
 import { Botao } from "@/components/ui/botao";
 import { Chip, type EstadoChip } from "@/components/ui/chip";
+import { infosDosTalhoes } from "@/lib/talhao-info";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -77,9 +79,10 @@ const etapas: { texto: string; estado: EstadoChip; rotulo: string }[] = [
 
 // talhão do cartão flutuante na seção "O que você passa a ver"
 const TALHAO_DESTAQUE = 6;
+// números ilustrativos de cada talhão para o mapa interativo
+const INFOS = infosDosTalhoes(mapas.grande);
 
 export default function Inicio() {
-  const destaque = posicaoDoTalhao("grande", TALHAO_DESTAQUE);
 
   return (
     <>
@@ -229,29 +232,13 @@ export default function Inicio() {
       <section className="secao relative isolate overflow-hidden border-y border-linha">
         <div className="conteiner grid items-center gap-12 lg:grid-cols-[1.35fr_1fr] lg:gap-16">
           <figure className="order-2 lg:order-1">
-            <div className="relative">
+            <MapaTalhoesInterativo mapa={mapas.grande} infos={INFOS} inicial={TALHAO_DESTAQUE}>
               <GradeTalhoes
                 variante="grande"
                 numeros
-                destaque={TALHAO_DESTAQUE}
                 titulo="Mapa ilustrativo com a produção de cada talhão em cinco faixas"
               />
-              <div
-                className="absolute"
-                style={{ left: `${destaque.esquerda}%`, top: `${destaque.topo}%` }}
-              >
-                <span className="absolute -top-[6px] -left-[6px] size-3 rounded-full border-2 border-superficie bg-texto" />
-                <span className="absolute top-0 left-0 h-10 w-0 -translate-y-full border-l border-texto/60" />
-                <div className="absolute bottom-10 left-0 w-max -translate-x-1/2 rounded-m border border-linha bg-superficie px-3.5 py-2.5 shadow-flutuante sm:-left-4 sm:translate-x-0">
-                  <p className="t-dado text-[0.8125rem] font-medium text-texto">
-                    Talhão {destaque.numero}
-                    <span className="hidden text-texto-2 sm:inline"> · </span>
-                    <br className="sm:hidden" />
-                    <span className="font-normal text-texto-2">volume colhido: [ilustrativo]</span>
-                  </p>
-                </div>
-              </div>
-            </div>
+            </MapaTalhoesInterativo>
             <figcaption className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <span className="t-pequeno text-texto-2">Mapa ilustrativo. Dados reais virão dos testes de campo.</span>
               <LegendaProducao />
