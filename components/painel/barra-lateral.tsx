@@ -25,6 +25,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { sair } from "@/app/entrar/acoes";
+import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { LogoHorizontal, Pin } from "@/components/publico/logo";
 import { aplicarTema, CHAVE_TEMA, type Tema } from "@/lib/tema";
 import { cn } from "@/lib/utils";
@@ -209,9 +210,18 @@ export function BarraLateral({ contadores }: { contadores: { minhas: number; con
 
   const conteudo = (r: boolean, aoNavegar?: () => void) => (
     <>
-      <nav aria-label="Painel" className="flex-1 overflow-y-auto px-3 py-2">
-        <Lista itens={itens} recolhida={r} aoNavegar={aoNavegar} />
-      </nav>
+      {/* as curvas ficam no espaço livre abaixo do menu, sem passar pelos itens */}
+      <div className="relative isolate min-h-0 flex-1 overflow-hidden">
+        {!r && (
+          <CurvasDeNivel
+            conjunto="cartao"
+            className="absolute inset-x-0 bottom-0 -z-10 h-56 w-full text-caramelo/25 [mask-image:linear-gradient(to_top,black,transparent)]"
+          />
+        )}
+        <nav aria-label="Painel" className="h-full overflow-y-auto px-3 py-2">
+          <Lista itens={itens} recolhida={r} aoNavegar={aoNavegar} />
+        </nav>
+      </div>
       <div className="flex flex-col gap-1 border-t border-linha px-3 py-3">
         {ehAdmin && <Lista itens={[config]} recolhida={r} aoNavegar={aoNavegar} />}
         <MenuUsuario recolhida={r} />

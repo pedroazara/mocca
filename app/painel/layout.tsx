@@ -3,6 +3,8 @@ import { AoVivo } from "@/components/painel/ao-vivo";
 import { BarraLateral } from "@/components/painel/barra-lateral";
 import { ProvedorPainel } from "@/components/painel/contexto";
 import { PaletaComandos } from "@/components/painel/paleta";
+import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
+import { DefinicoesCurvas } from "@/components/publico/curvas-definicoes";
 import { exigirPessoa } from "@/lib/auth";
 import { comoUsuario } from "@/lib/banco";
 import { base, contadores } from "@/lib/painel/dados";
@@ -32,7 +34,13 @@ export default async function LayoutPainel({
       etiquetas={b.etiquetas}
       semanaAtual={atual}
     >
-      <div className="flex min-h-dvh text-[0.9375rem] leading-[1.5]">
+      <div className="relative isolate flex min-h-dvh text-[0.9375rem] leading-[1.5]">
+        <DefinicoesCurvas />
+        {/* fixo: os cartões passam por cima, e as curvas só aparecem no fundo livre */}
+        <CurvasDeNivel
+          conjunto="hero"
+          className="fixed inset-0 -z-10 h-dvh w-full text-caramelo/[0.14] [mask-image:radial-gradient(90%_90%_at_100%_100%,black_30%,transparent)]"
+        />
         <BarraLateral contadores={c} />
         <div className="min-w-0 flex-1">{children}</div>
       </div>
