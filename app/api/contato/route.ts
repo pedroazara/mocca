@@ -76,8 +76,10 @@ export async function POST(req: Request) {
 
   let id: string;
   try {
+    // $1::text::jsonb de propósito: com $1::jsonb, o postgres.js serializa o texto de novo
+    // e a função recebe uma string JSON em vez do objeto (o PGlite não faz isso).
     const [linha] = await comoServico((q) =>
-      q<{ id: string }>("select registrar_contato($1::jsonb, $2) as id", [JSON.stringify(paraRegistro(validacao.data)), ipHash]),
+      q<{ id: string }>("select registrar_contato($1::text::jsonb, $2) as id", [JSON.stringify(paraRegistro(validacao.data)), ipHash]),
     );
     id = linha.id;
   } catch (e) {
