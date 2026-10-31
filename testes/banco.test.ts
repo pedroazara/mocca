@@ -6,6 +6,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
+import { SQL_ATRIBUICAO } from "@/lib/email/mensagens";
 
 const raiz = join(__dirname, "..");
 const db = new PGlite();
@@ -166,6 +167,36 @@ describe("RLS", () => {
     });
     expect(acoes.map((a) => a.acao)).toEqual(["criou", "atribuiu", "atribuiu", "item_feito", "status"]);
     expect(acoes.every((a) => a.meu)).toBe(true);
+  });
+
+  it("o upsert de atribuição só marca como nova quem ainda não estava na tarefa", async () => {
+    await como("service_role", async () => {
+      const t = (await um<{ id: string }>("insert into tarefa (titulo) values ('Upsert') returning id"))!;
+      const gab = (await um<{ id: string }>("select id from pessoa where apelido = 'Gabriel'"))!;
+      const atribuir = (papel: string) =>
+        um<{ id: string; nova: boolean }>(
+          `insert into atribuicao (tarefa_id, pessoa_id, papel) values ($1, $2, $3::papel_atrib)
+           on conflict (tarefa_id, pessoa_id) do update set papel = excluded.papel
+           returning id, (xmax = 0) as nova`,
+          [t.id, gab.id, papel],
+        );
+      const primeira = (await atribuir("responsavel"))!;
+      expect(primeira.nova).toBe(true);
+      expect((await atribuir("apoio"))!.nova).toBe(false);
+
+      await db.query("insert into item (atribuicao_id, texto, posicao) values ($1, 'Segundo', 2), ($1, 'Primeiro', 1)", [primeira.id]);
+      expect(await um(SQL_ATRIBUICAO, [t.id, gab.id])).toMatchObject({
+        para: "gabriel.leonardo@exemplo.com",
+        nome: "Gabriel",
+        papel: "apoio",
+        titulo: "Upsert",
+        itens: ["Primeiro", "Segundo"],
+      });
+
+      await db.query("update pessoa set ativo = false where id = $1", [gab.id]);
+      expect(await um(SQL_ATRIBUICAO, [t.id, gab.id])).toBeUndefined();
+      await db.query("update pessoa set ativo = true where id = $1", [gab.id]);
+    });
   });
 
   it("orientador lê e comenta, mas não edita, e ninguém apaga histórico", async () => {

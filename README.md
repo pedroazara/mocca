@@ -2,7 +2,7 @@
 
 Site público do MoCCa (Monitoramento de Colheita de Café, equipe da UFLA) e painel de tarefas da equipe. A especificação completa está em [`ESPECIFICACAO.md`](ESPECIFICACAO.md); o que foi decidido de forma diferente e o que falta fazer estão em [`DUVIDAS.md`](DUVIDAS.md).
 
-**Estado atual:** fase 1 (site público), fase 2 (painel), fase 3 (API e MCP do Claude) e a importação do Trello prontas. Da fase 4 faltam os e-mails (Resend).
+**Estado atual:** fase 1 (site público), fase 2 (painel), fase 3 (API e MCP do Claude) e a importação do Trello prontas. Da fase 4 falta o lembrete por e-mail na véspera do prazo.
 
 Stack: Next.js 15 (App Router) + TypeScript, Tailwind CSS 4, Radix, lucide-react, react-hook-form + zod, dnd-kit, Postgres do Supabase (com RLS), Supabase Auth (e-mail e senha), Cloudflare Turnstile, MCP SDK, Vitest.
 
@@ -46,7 +46,7 @@ Outros comandos:
 | `SUPABASE_SERVICE_ROLE_KEY` | idem | **Secreta, só no servidor.** Cria a conta no primeiro acesso |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare › Turnstile | Em desenvolvimento: `1x00000000000000000000AA` |
 | `TURNSTILE_SECRET_KEY` | idem | Em desenvolvimento: `1x0000000000000000000000000000000AA` |
-| `RESEND_API_KEY` | Resend | Fase 4 (ainda não usada) |
+| `GMAIL_APP_PASSWORD` | Conta Google do MoCCa (ver "E-mails automáticos") | **Secreta, só no servidor.** Sem ela, nenhum e-mail sai |
 | `NEXT_PUBLIC_SITE_URL` | | URL pública, sem barra no fim. Usada no sitemap, nas imagens de compartilhamento e nos links que a API devolve |
 
 O servidor fala com o Postgres direto (`DATABASE_URL`), e não pela API REST do Supabase. Cada consulta roda numa transação com o papel `authenticated` e o id da pessoa logada (ou com o `service_role`, no formulário e na API do Claude), então o RLS vale do mesmo jeito. A `SUPABASE_SERVICE_ROLE_KEY` só é usada para criar a conta no primeiro acesso.
@@ -166,10 +166,25 @@ com o `tarefa.json`:
 
 Em Configurações › Importar do Trello, envie o JSON exportado do quadro (menu do quadro › Imprimir, exportar e compartilhar › Exportar como JSON). A tela mostra a prévia antes de gravar. Listas "Semana N" viram tarefas da semana; "Em andamento" e "Finalizados" viram tarefas nesse status; checklists com o nome de uma pessoa viram a atribuição dela, com os itens; links do Drive viram documentos; a lista "Links" vai para os documentos da semana 1. Reimportar não duplica.
 
+## E-mails automáticos
+
+Os e-mails saem de `moccaufla@gmail.com`, pelo SMTP do Gmail. O Resend da especificação não serve aqui porque só envia de um domínio próprio verificado.
+
+- **Tarefa atribuída:** quem recebe uma tarefa ganha um e-mail com título, papel, prazo, itens e link, venha a atribuição do painel, da API, do conector do Claude ou do formulário do site. Quem atribui a si mesmo não recebe. Trocar o papel, duplicar uma tarefa e importar do Trello não enviam nada.
+- **Contato pelo site:** quem preenche o formulário recebe uma confirmação de texto fixo, sem repetir a mensagem, porque qualquer um pode digitar o endereço de outra pessoa. O limite de 5 envios por hora e o Turnstile valem aqui também.
+
+Para ligar:
+
+1. Entre em `moccaufla@gmail.com` e ative a verificação em duas etapas (<https://myaccount.google.com/security>).
+2. Crie uma senha de app em <https://myaccount.google.com/apppasswords>.
+3. Coloque as 16 letras em `GMAIL_APP_PASSWORD`, no `.env.local` e nas variáveis da Vercel.
+
+Em produção, os links dos e-mails usam `NEXT_PUBLIC_SITE_URL`, e a equipe precisa estar com os e-mails reais: nada é enviado para endereços `@exemplo.com`, os do seed. O limite do Gmail é de cerca de 500 envios por dia.
+
 ## Deploy (Vercel)
 
 1. Suba o repositório para o GitHub e importe o projeto na Vercel (framework: Next.js, sem configurações extras).
-2. Em Settings › Environment Variables, cadastre as variáveis da tabela acima (`DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `TURNSTILE_SECRET_KEY` sem o prefixo `NEXT_PUBLIC_`).
+2. Em Settings › Environment Variables, cadastre as variáveis da tabela acima (`DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TURNSTILE_SECRET_KEY` e `GMAIL_APP_PASSWORD` sem o prefixo `NEXT_PUBLIC_`).
 3. No Cloudflare Turnstile, cadastre o domínio da Vercel (e o domínio próprio, quando houver).
 4. Cada push na `main` publica o site; cada pull request ganha uma prévia.
 

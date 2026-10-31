@@ -1,12 +1,14 @@
 import { createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import { BancoIndisponivel, comoServico } from "@/lib/banco";
+import { avisarContatoRecebido } from "@/lib/email";
 import { esquemaContato, paraRegistro } from "@/lib/validacao/contato";
 
 // POST /api/contato (seção 6.6): valida, confere o Turnstile, limita a 5 envios
 // por IP por hora e grava pelo service role (Postgres do Supabase, ou o banco local).
 // A função registrar_contato (SQL) faz tudo numa transação: limite, contato,
-// tarefa "Responder contato" e atribuição.
+// tarefa "Responder contato" e atribuição. Depois da resposta, saem os e-mails de
+// confirmação para quem escreveu e de aviso para o responsável.
 
 export const runtime = "nodejs";
 
@@ -95,5 +97,6 @@ export async function POST(req: Request) {
     return erro(500, "falha", "Não conseguimos gravar sua mensagem. Tente de novo em alguns minutos.");
   }
 
+  avisarContatoRecebido(id, validacao.data);
   return NextResponse.json({ ok: true, id }, { status: 201 });
 }

@@ -64,5 +64,6 @@ Registro do que foi feito de forma diferente da `ESPECIFICACAO.md`, e por quê (
 - [ ] Desligar o cadastro público no Supabase (ver README), trocar os e-mails do `seed.sql` pelos reais e pedir o primeiro acesso de cada pessoa logo depois do deploy.
 - [ ] Criar o token do Claude em Configurações depois do deploy e adicionar o conector (README, "API e conector do Claude").
 - [ ] Importar o quadro do Trello (Configurações › Importar do Trello) e apagar as tarefas `[EXEMPLO]`, se o seed de desenvolvimento tiver ido para o banco real por engano (ele não deve ir).
-- [ ] Fase 4: e-mails pelo Resend (lembrete na véspera do prazo e aviso de contato novo).
+- [ ] Criar a senha de app de `moccaufla@gmail.com` e cadastrar `GMAIL_APP_PASSWORD` no `.env.local` e na Vercel (README, "E-mails automáticos"). Depois, conferir um envio real: sem essa senha, os e-mails só ficam registrados no log.
+- [ ] Fase 4: lembrete por e-mail na véspera do prazo. O aviso de tarefa atribuída e a confirmação de contato já saem, pelo Gmail em vez do Resend, porque o Resend não envia de um endereço @gmail.com.
 - [ ] Atalhos dentro da tarefa aberta da seção 8.3 (`E` editar título, `A` atribuir, `D` prazo). Os outros atalhos e a paleta de comandos estão prontos.

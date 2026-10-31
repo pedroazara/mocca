@@ -83,7 +83,7 @@ O projeto tem duas partes no mesmo código e no mesmo domínio:
 | Formulários | **react-hook-form** + **zod** | Validação no cliente e no servidor com o mesmo schema |
 | Datas | **date-fns** com locale `pt-BR`, fuso `America/Sao_Paulo` | Gravar em UTC, exibir em horário de Brasília |
 | Anti-spam | **Cloudflare Turnstile** no formulário de contato | Gratuito |
-| E-mail (fase 4) | **Resend** | Lembretes de prazo e aviso de contato novo |
+| E-mail (fase 4) | **Gmail** (SMTP com senha de app) | Aviso de tarefa atribuída, confirmação de contato e lembretes de prazo |
 | MCP | **@modelcontextprotocol/sdk** em rota HTTP do próprio Next.js | Seção 11 |
 | Hospedagem | **Vercel** (plano gratuito), deploy a cada push na `main` | Prévia por pull request |
 | Testes | **Vitest** (lógica) + **Playwright** (fluxos principais) | Seção 13 |
@@ -149,7 +149,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=        só no servidor
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
-RESEND_API_KEY=                   fase 4
+GMAIL_APP_PASSWORD=               fase 4
 NEXT_PUBLIC_SITE_URL=https://[PREENCHER].vercel.app
 ```
 
@@ -450,7 +450,7 @@ Seções em ordem:
 | Consentimento | caixa | sim | "Concordo que a equipe MoCCa guarde estes dados para responder ao meu contato." + link Privacidade |
 
 - Turnstile antes do botão "Enviar mensagem".
-- `POST /api/contato`: valida com zod, confere o Turnstile, limita a 5 envios por IP por hora, grava em `contato` com o service role e cria automaticamente uma tarefa "Responder contato: {nome}" na semana atual, atribuída ao responsável configurado em Configurações (padrão: Gabriel). Fase 4: envia e-mail para a equipe.
+- `POST /api/contato`: valida com zod, confere o Turnstile, limita a 5 envios por IP por hora, grava em `contato` com o service role e cria automaticamente uma tarefa "Responder contato: {nome}" na semana atual, atribuída ao responsável configurado em Configurações (padrão: Gabriel). Fase 4: envia uma confirmação para quem escreveu, com texto fixo, e um aviso para o responsável.
 - Sucesso: substitui o formulário por uma mensagem "Mensagem enviada. Vamos responder no e-mail {email}." com o pin.
 - Erro: mensagem clara do que corrigir, sem apagar o que a pessoa digitou.
 
@@ -1028,7 +1028,7 @@ Aceite:
 - [ ] Pauta da próxima reunião lista atrasadas, entrega da semana e contatos novos.
 
 ### Fase 4 · Conforto (estimativa 6–10 h, opcional)
-Entregas: e-mails de lembrete na véspera do prazo e de contato novo (Resend), paleta de comandos, atalhos, exportar contatos em CSV, imagens Open Graph.
+Entregas: e-mails de tarefa atribuída, de confirmação de contato e de lembrete na véspera do prazo (Gmail), paleta de comandos, atalhos, exportar contatos em CSV, imagens Open Graph.
 
 ---
 
