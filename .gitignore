@@ -45,3 +45,6 @@ next-env.d.ts
 
 # banco local do modo de desenvolvimento (PGlite)
 /.dados-locais/
+
+# dados locais da CLI do Supabase (supabase link)
+/supabase/.temp/

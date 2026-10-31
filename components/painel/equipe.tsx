@@ -120,7 +120,7 @@ function FormPessoa({ pessoa, aoFechar }: { pessoa: Pessoa | null; aoFechar: () 
       const r = pessoa ? await atualizarPessoa(pessoa.id, d) : await criarPessoa(d);
       if (!r.ok) setErro(r.erro);
       else {
-        avisar(pessoa ? "Pessoa atualizada." : "Pessoa adicionada. Ela entra com o e-mail Google cadastrado.");
+        avisar(pessoa ? "Pessoa atualizada." : "Pessoa adicionada. No primeiro acesso, ela cria a senha com este e-mail.");
         aoFechar();
       }
     });
@@ -162,7 +162,7 @@ function FormPessoa({ pessoa, aoFechar }: { pessoa: Pessoa | null; aoFechar: () 
               </label>
             </div>
             <label className="grid gap-1">
-              <span className="text-[0.875rem] font-semibold">E-mail Google</span>
+              <span className="text-[0.875rem] font-semibold">E-mail</span>
               <input type="email" className={campo} value={d.email} onChange={(e) => setD({ ...d, email: e.target.value })} required />
             </label>
             <label className="grid gap-1">

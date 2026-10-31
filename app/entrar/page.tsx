@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BotaoGoogle } from "@/components/painel/botao-google";
+import { FormularioEntrar } from "@/components/painel/formulario-entrar";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { DefinicoesCurvas } from "@/components/publico/curvas-definicoes";
 import { LogoHorizontal } from "@/components/publico/logo";
@@ -44,7 +44,7 @@ export default async function Entrar({ searchParams }: { searchParams: Promise<{
         {modoLocal ? (
           <>
             <p className="mt-2 text-[0.9375rem] text-texto-2">
-              Modo local: sem login Google. Escolha com quem entrar para testar o painel.
+              Modo local: sem senha. Escolha com quem entrar para testar o painel.
             </p>
             {modoLocalPermitido ? (
               <ul className="mt-6 space-y-2">
@@ -77,10 +77,10 @@ export default async function Entrar({ searchParams }: { searchParams: Promise<{
           </>
         ) : (
           <>
-            <p className="mt-2 text-[0.9375rem] text-texto-2">Entre com a conta Google cadastrada na equipe.</p>
-            <div className="mt-6">
-              <BotaoGoogle volta={volta} />
-            </div>
+            <p className="mt-2 text-[0.9375rem] text-texto-2">
+              Entre com o e-mail cadastrado na equipe. No primeiro acesso, você cria sua senha.
+            </p>
+            <FormularioEntrar volta={volta} />
           </>
         )}
 

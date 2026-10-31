@@ -4,7 +4,7 @@ Site público do MoCCa (Monitoramento de Colheita de Café, equipe da UFLA) e pa
 
 **Estado atual:** fase 1 (site público), fase 2 (painel), fase 3 (API e MCP do Claude) e a importação do Trello prontas. Da fase 4 faltam os e-mails (Resend).
 
-Stack: Next.js 15 (App Router) + TypeScript, Tailwind CSS 4, Radix, lucide-react, react-hook-form + zod, dnd-kit, Postgres do Supabase (com RLS), Supabase Auth (Google), Cloudflare Turnstile, MCP SDK, Vitest.
+Stack: Next.js 15 (App Router) + TypeScript, Tailwind CSS 4, Radix, lucide-react, react-hook-form + zod, dnd-kit, Postgres do Supabase (com RLS), Supabase Auth (e-mail e senha), Cloudflare Turnstile, MCP SDK, Vitest.
 
 ## Rodar localmente
 
@@ -41,14 +41,15 @@ Outros comandos:
 | Variável | Onde pegar | Observação |
 |---|---|---|
 | `DATABASE_URL` | Supabase › Connect › Transaction pooler (porta 6543) | **Só no servidor.** Sem ela, modo local (só em desenvolvimento) |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase › Project Settings › API | Login Google e atualizações ao vivo |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase › Project Settings › API | Login e atualizações ao vivo |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | idem | Pública. O RLS bloqueia tudo para o usuário anônimo |
+| `SUPABASE_SERVICE_ROLE_KEY` | idem | **Secreta, só no servidor.** Cria a conta no primeiro acesso |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare › Turnstile | Em desenvolvimento: `1x00000000000000000000AA` |
 | `TURNSTILE_SECRET_KEY` | idem | Em desenvolvimento: `1x0000000000000000000000000000000AA` |
 | `RESEND_API_KEY` | Resend | Fase 4 (ainda não usada) |
 | `NEXT_PUBLIC_SITE_URL` | | URL pública, sem barra no fim. Usada no sitemap, nas imagens de compartilhamento e nos links que a API devolve |
 
-O servidor fala com o Postgres direto (`DATABASE_URL`), e não pela API REST do Supabase. Cada consulta roda numa transação com o papel `authenticated` e o id da pessoa logada (ou com o `service_role`, no formulário e na API do Claude), então o RLS vale do mesmo jeito. Por isso não é preciso a `SUPABASE_SERVICE_ROLE_KEY`.
+O servidor fala com o Postgres direto (`DATABASE_URL`), e não pela API REST do Supabase. Cada consulta roda numa transação com o papel `authenticated` e o id da pessoa logada (ou com o `service_role`, no formulário e na API do Claude), então o RLS vale do mesmo jeito. A `SUPABASE_SERVICE_ROLE_KEY` só é usada para criar a conta no primeiro acesso.
 
 ## Banco de dados (Supabase)
 
@@ -64,9 +65,11 @@ npx supabase db push
 
 Depois rode o `supabase/seed.sql` uma vez no SQL Editor do Supabase (ele pode rodar de novo sem duplicar nada).
 
-Antes do seed, troque os e-mails de exemplo (`nome.sobrenome@exemplo.com`) pelos e-mails Google reais. O login só deixa entrar quem está na tabela `pessoa` com `ativo = true`; o primeiro login liga a conta Google à pessoa pelo e-mail.
+Antes do seed, troque os e-mails de exemplo (`nome.sobrenome@exemplo.com`) pelos e-mails reais. O login só deixa entrar quem está na tabela `pessoa` com `ativo = true`.
 
-Login com Google: em Authentication › Providers, ative o Google com o client ID e o secret do Google Cloud; em Authentication › URL Configuration, cadastre `https://SEU_DOMINIO/auth/callback` (e `http://localhost:3000/auth/callback` se for testar o login real localmente).
+Login por e-mail e senha: em `/entrar`, a pessoa digita o e-mail cadastrado. No primeiro acesso, ela cria a senha ali mesmo, sem confirmação por e-mail; depois, entra com ela. **Até criar a senha, a conta pode ser tomada por quem souber o e-mail**, então cada pessoa deve fazer o primeiro acesso logo depois do cadastro, e o admin antes de todos. Em Authentication › Sign In / Providers, desligue "Allow new users to sign up": a conta é criada pelo servidor, e o cadastro direto no Supabase não deve ficar aberto.
+
+Esqueceu a senha: apague o usuário em Authentication › Users. A pessoa continua na equipe, com as tarefas, e cria uma senha nova no próximo acesso.
 
 Para conferir o RLS: com a chave `anon`, nenhuma tabela pode devolver dados. O teste `testes/banco.test.ts` simula isso localmente; vale repetir no projeto real.
 
@@ -166,17 +169,16 @@ Em Configurações › Importar do Trello, envie o JSON exportado do quadro (men
 ## Deploy (Vercel)
 
 1. Suba o repositório para o GitHub e importe o projeto na Vercel (framework: Next.js, sem configurações extras).
-2. Em Settings › Environment Variables, cadastre as variáveis da tabela acima (`DATABASE_URL` e `TURNSTILE_SECRET_KEY` sem o prefixo `NEXT_PUBLIC_`).
+2. Em Settings › Environment Variables, cadastre as variáveis da tabela acima (`DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `TURNSTILE_SECRET_KEY` sem o prefixo `NEXT_PUBLIC_`).
 3. No Cloudflare Turnstile, cadastre o domínio da Vercel (e o domínio próprio, quando houver).
-4. No Supabase, cadastre a URL de callback do login (ver acima).
-5. Cada push na `main` publica o site; cada pull request ganha uma prévia.
+4. Cada push na `main` publica o site; cada pull request ganha uma prévia.
 
 ## Estrutura
 
 ```
 app/(publico)/        páginas públicas (Início, Como funciona, Equipe, Contato, Privacidade)
 app/painel/           painel da equipe (páginas, ações do servidor e o painel lateral da tarefa)
-app/entrar/           login (Google em produção; "entrar como" no modo local)
+app/entrar/           login (e-mail e senha em produção; "entrar como" no modo local)
 app/api/contato/      POST do formulário (zod + Turnstile + registrar_contato)
 app/api/v1/           API REST do Claude
 app/api/mcp/          servidor MCP do Claude

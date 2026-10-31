@@ -5,7 +5,7 @@ import { cache } from "react";
 import { comoUsuario, modoLocal } from "./banco";
 import { supabaseServidor } from "./supabase/server";
 
-// Sessão do painel (seção 7). Em produção: login Google do Supabase Auth.
+// Sessão do painel (seção 7). Em produção: e-mail e senha do Supabase Auth.
 // No modo local: um cookie com o id do "usuário" escolhido na tela de entrar.
 
 export const COOKIE_LOCAL = "mocca-local-sessao";
