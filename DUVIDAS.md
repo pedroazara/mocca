@@ -45,6 +45,8 @@ Registro do que foi feito de forma diferente da `ESPECIFICACAO.md`, e por quê (
 21. **Prazos em UTC.** Prazos são gravados como timestamp e mostrados no horário de Brasília. Um prazo escolhido só com a data vale até 23:59 de Brasília daquele dia.
 22. **Como funciona no estilo do Início.** A pedido do Pedro, a página foi repaginada. Mudou em relação à seção 6.4: o título agora é "Do pé de café ao mapa."; os quatro passos (medição, envio, processamento, mapa) viraram os mesmos cinco do Início (mede, reconstrói, calcula, localiza, mapeia), com o envio explicado em "Mapeia"; "O que é medido" entrou nos passos; há uma seção nova, "Uma camada a mais nos seus mapas". As perguntas "Substitui os mapas que eu já uso?" e "O MoCCa mede a qualidade do café?" são novas, escritas a partir do que o site já dizia, e o Pedro ainda precisa revisá-las.
 
+23. **Região das funções.** O banco está em `us-west-2` (Oregon), então o `vercel.json` fixa as funções em `pdx1`, a região da Vercel mais próxima dele. Cada página faz dezenas de idas e voltas ao Postgres, e com as funções em `iad1` cada uma atravessava os EUA. Se o projeto do Supabase mudar de região, troque a do `vercel.json` junto.
+
 ## Pendências
 
 - [x] **Redesenhar o esquema da colhedora** como um desenho técnico (pedido do Pedro). Feito em `components/publico/diagrama-colhedora.tsx`, usado em `/como-funciona` e no painel "Fabricantes e locadoras". Vista de frente: ela não mostra o engate do reservatório, por isso o rótulo "Reservatório, em outro trator" explica essa parte.

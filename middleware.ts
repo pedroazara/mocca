@@ -28,8 +28,10 @@ export async function middleware(req: NextRequest) {
         },
       },
     );
-    const { data } = await supabase.auth.getUser();
-    logado = Boolean(data.user);
+    // getSession lê o cookie e só vai à rede para renovar a sessão. Aqui ela só
+    // decide o redirecionamento: quem valida o usuário é o exigirPessoa do painel.
+    const { data } = await supabase.auth.getSession();
+    logado = Boolean(data.session);
   }
 
   if (!logado && req.nextUrl.pathname.startsWith("/painel")) {
