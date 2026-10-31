@@ -20,6 +20,8 @@ Registro do que foi feito de forma diferente da `ESPECIFICACAO.md`, e por quê (
 
 4f. **Login por e-mail e senha, sem Google (pedido do Pedro).** A seção 7.1 pedia login com Google. Agora a pessoa digita o e-mail cadastrado e, no primeiro acesso, cria a senha na hora. Não há confirmação por e-mail: até a pessoa criar a senha, quem souber o e-mail dela pode fazer isso no lugar dela. O Pedro aceitou esse risco e vai pedir que a equipe faça o primeiro acesso logo. A conta é criada pelo servidor com a `SUPABASE_SERVICE_ROLE_KEY`, e o cadastro público do Supabase fica desligado.
 
+4h. **Tarefa em janela central (pedido do Pedro).** A seção 9.4 pedia um painel lateral de 560 px pela direita, e o Pedro não gostou de ver a tarefa abrir de lado. Agora ela abre numa janela central de até 1040 px, com a mesma URL própria, e ocupa a tela inteira no celular. O conteúdo tem duas colunas quando há pelo menos 768 px de largura: o trabalho à esquerda (descrição, pessoas e itens, documentos, comentários e histórico) e o cartão "Detalhes" à direita (semana, prazo, etiquetas, entrega e origem). A largura é medida no próprio conteúdo, então a janela e a página inteira seguem a mesma regra. O detalhe do contato continua abrindo de lado.
+
 ## Decisões técnicas
 
 4. **Funções de RLS como `security definer`.** A seção 10.3 define `sou_membro()`, `posso_editar()` e `sou_admin()` como funções SQL comuns. Como elas consultam `pessoa`, e a política de `pessoa` chama essas funções, o Postgres entraria em recursão infinita. Ficaram `security definer` com `search_path` fixo.
