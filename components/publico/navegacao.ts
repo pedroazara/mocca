@@ -5,3 +5,5 @@ export const linksPublicos = [
 ] as const;
 
 export const COORDENADA_LAVRAS = "21°14′S 44°59′W";
+
+export const EMAIL_MOCCA = "moccaufla@gmail.com";

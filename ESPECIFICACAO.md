@@ -427,7 +427,7 @@ Seções em ordem:
 
 - H1: "Quem está construindo"
 - Texto: "Somos estudantes de engenharia da Universidade Federal de Lavras, com orientação do Departamento de Física."
-- Grade de cartões (3 colunas no desktop, 2 no tablet, 1 no celular): foto (ou placeholder com iniciais grandes sobre a cor da pessoa), nome em Sora 600, curso em Rótulo, uma frase sobre o que faz no projeto, link opcional para LinkedIn `[PREENCHER]`.
+- Grade de cartões (3 colunas no desktop, 2 no tablet, 1 no celular): foto (ou placeholder com iniciais grandes sobre a cor da pessoa), nome em Sora 600, curso em Rótulo, uma frase sobre o que faz no projeto, link opcional para LinkedIn. Foto e LinkedIn são editados no painel (seção 9.8); o cartão acha a pessoa do painel pelo nome.
 - Cartão do orientador separado, ao final, com o rótulo `ORIENTADOR`.
 - Não citar papéis de negociação/vendas nem detalhar "diplomata".
 
@@ -618,7 +618,8 @@ Clicar numa tarefa abre um **painel lateral** de 560 px pela direita (tela cheia
 
 - Cartão por pessoa: avatar, nome, frente, papel no painel, tarefas abertas, atrasadas e feitas na semana.
 - Clicar leva a uma visão "Tarefas de {nome}" igual a Minhas tarefas.
-- Admin: botão "Adicionar pessoa" (nome, e-mail Google, frente, papel, cor), editar e desativar (nunca apagar; a pessoa some das listas de atribuição, mas o histórico fica).
+- Admin: botão "Adicionar pessoa" (nome, e-mail Google, frente, papel, cor, LinkedIn, foto), editar e desativar (nunca apagar; a pessoa some das listas de atribuição, mas o histórico fica).
+- Foto e LinkedIn alimentam a página Equipe do site, que se renova ao salvar. A foto é recortada em 4:3 no navegador, com ajuste de enquadramento, e guardada como JPEG no Postgres (tabela `perfil_publico`, servida por `/api/fotos/{id}`).
 
 Cores das pessoas (avatares), todas com texto creme com contraste ≥ 4,5:1:
 

@@ -195,6 +195,39 @@ describe("RLS", () => {
     await db.query("update pessoa set ativo = true where apelido = 'Gabriel'");
   });
 
+  it("perfil público: todos leem, só o admin altera, e fica de fora o anônimo", async () => {
+    const pessoaId = (await um<{ id: string }>("select id from pessoa where apelido = 'Gabriel'"))!.id;
+    const gravar = (linkedin: string) =>
+      db.query(
+        `insert into perfil_publico (pessoa_id, linkedin, foto, foto_em) values ($1, $2, decode('/9j/', 'base64'), now())
+         on conflict (pessoa_id) do update set linkedin = excluded.linkedin`,
+        [pessoaId, linkedin],
+      );
+
+    const pedro = (await um<{ auth_id: string }>("select auth_id from pessoa where apelido = 'Pedro'"))!.auth_id;
+    await como({ usuario: pedro }, () => gravar("https://www.linkedin.com/in/gabriel/"));
+
+    const gabriel = (await um<{ auth_id: string }>("select auth_id from pessoa where apelido = 'Gabriel'"))!.auth_id;
+    await como({ usuario: gabriel }, async () => {
+      const linha = await um<{ linkedin: string }>("select linkedin from perfil_publico where pessoa_id = $1", [pessoaId]);
+      expect(linha!.linkedin).toBe("https://www.linkedin.com/in/gabriel/");
+      await expect(gravar("https://www.linkedin.com/in/outro/")).rejects.toThrow();
+      expect((await db.query("update perfil_publico set foto = null")).affectedRows).toBe(0);
+      expect((await db.query("delete from perfil_publico")).affectedRows).toBe(0);
+    });
+
+    await como("service_role", async () => {
+      const [f] = (await db.query<{ foto: string }>("select encode(foto, 'base64') foto from perfil_publico")).rows;
+      expect(f.foto).toBe("/9j/");
+    });
+  });
+
+  it("perfil público só aceita links do LinkedIn", async () => {
+    const pessoaId = (await um<{ id: string }>("select id from pessoa where apelido = 'Marcos'"))!.id;
+    for (const url of ["javascript:alert(1)", "https://linkedin.com.exemplo.com/in/x", "http://linkedin.com/in/x"])
+      await expect(db.query("insert into perfil_publico (pessoa_id, linkedin) values ($1, $2)", [pessoaId, url])).rejects.toThrow();
+  });
+
   it("documento só aceita links do Google Drive e Docs", async () => {
     const t = (await um<{ id: string }>("select id from tarefa limit 1"))!;
     await expect(

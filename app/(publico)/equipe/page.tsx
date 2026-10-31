@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { ChamadaFinal } from "@/components/publico/chamada-final";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
-import { estudantes, orientador, type Integrante } from "@/lib/equipe";
+import { comoServico } from "@/lib/banco";
+import { comPerfil, estudantes, orientador, type Integrante } from "@/lib/equipe";
+import { perfis } from "@/lib/painel/dados";
 
 export const metadata: Metadata = {
   title: "Equipe",
@@ -10,15 +13,33 @@ export const metadata: Metadata = {
   alternates: { canonical: "/equipe" },
 };
 
-// Placeholder da foto (seção 4.8): iniciais grandes sobre a cor da pessoa.
-// TODO(pedro): trocar pelas fotos reais quando houver.
+// Salvar no painel renova a página na hora; a hora é só uma folga.
+export const revalidate = 3600;
+
+// Sem banco (build local, migração pendente), a página sai com as iniciais.
+async function lerPerfis() {
+  try {
+    return await comoServico((q) => perfis(q));
+  } catch (e) {
+    console.error("[equipe]", e);
+    return [];
+  }
+}
+
+// Sem foto (seção 4.8): iniciais grandes sobre a cor da pessoa.
 function Retrato({ pessoa }: { pessoa: Integrante }) {
+  if (pessoa.foto)
+    return (
+      <div className="relative aspect-[4/3] overflow-hidden rounded-m" style={{ backgroundColor: pessoa.cor }}>
+        <Image src={pessoa.foto} alt={`Foto de ${pessoa.nome}`} fill unoptimized className="object-cover" />
+      </div>
+    );
   return (
     <div
       className="relative isolate flex aspect-[4/3] items-end overflow-hidden rounded-m p-5 text-creme"
       style={{ backgroundColor: pessoa.cor }}
       role="img"
-      aria-label={`Foto de ${pessoa.nome} (em breve)`}
+      aria-label={`Iniciais de ${pessoa.nome}`}
     >
       <CurvasDeNivel conjunto="cartao" className="absolute inset-0 -z-10 h-full w-full text-creme/[0.14]" />
       <span aria-hidden className="font-titulo text-[4.5rem] leading-none font-semibold tracking-[-0.02em]">
@@ -46,7 +67,9 @@ function Cartao({ pessoa, rotulo }: { pessoa: Integrante; rotulo: string }) {
   );
 }
 
-export default function Equipe() {
+export default async function Equipe() {
+  const lista = await lerPerfis();
+  const professor = comPerfil(orientador, lista);
   return (
     <>
       <section className="relative isolate overflow-hidden border-b border-linha">
@@ -69,7 +92,7 @@ export default function Equipe() {
           <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
             {estudantes.map((p) => (
               <li key={p.nome} className="flex">
-                <Cartao pessoa={p} rotulo={p.curso} />
+                <Cartao pessoa={comPerfil(p, lista)} rotulo={p.curso} />
               </li>
             ))}
           </ul>
@@ -77,7 +100,7 @@ export default function Equipe() {
           <div className="mt-16 border-t border-linha pt-12">
             <p className="t-rotulo text-texto-2">Orientação</p>
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
-              <Cartao pessoa={orientador} rotulo="Orientador" />
+              <Cartao pessoa={professor} rotulo="Orientador" />
               <div className="flex flex-col justify-center rounded-g border border-dashed border-linha p-7 lg:col-span-2">
                 <p className="t-rotulo text-texto-2">{orientador.curso}</p>
                 <p className="medida mt-3 text-texto-2">

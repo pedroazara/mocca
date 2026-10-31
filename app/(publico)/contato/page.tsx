@@ -1,9 +1,9 @@
-import { Clock, Sprout } from "lucide-react";
+import { Clock, Mail, Sprout } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { FormularioContato } from "@/components/publico/formulario-contato";
-import { COORDENADA_LAVRAS } from "@/components/publico/navegacao";
+import { COORDENADA_LAVRAS, EMAIL_MOCCA } from "@/components/publico/navegacao";
 
 export const metadata: Metadata = {
   title: "Contato",
@@ -35,6 +35,12 @@ export default function Contato() {
           </div>
 
           <aside className="flex flex-col gap-6 lg:pt-2">
+            <div className="flex gap-4">
+              <Mail aria-hidden strokeWidth={1.75} className="mt-1 size-[22px] shrink-0 text-caramelo" />
+              <a href={`mailto:${EMAIL_MOCCA}`} className="link min-w-0 break-words">
+                {EMAIL_MOCCA}
+              </a>
+            </div>
             <div className="flex gap-4">
               <Clock aria-hidden strokeWidth={1.75} className="mt-1 size-[22px] shrink-0 text-caramelo" />
               <p className="text-texto-2">Respondemos em até 3 dias úteis.</p>

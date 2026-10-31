@@ -180,6 +180,7 @@ app/(publico)/        páginas públicas (Início, Como funciona, Equipe, Contat
 app/painel/           painel da equipe (páginas, ações do servidor e a janela da tarefa)
 app/entrar/           login (e-mail e senha em produção; "entrar como" no modo local)
 app/api/contato/      POST do formulário (zod + Turnstile + registrar_contato)
+app/api/fotos/        fotos públicas da equipe, guardadas no Postgres
 app/api/v1/           API REST do Claude
 app/api/mcp/          servidor MCP do Claude
 components/publico/   componentes do site

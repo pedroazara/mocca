@@ -67,6 +67,14 @@ export type Pessoa = {
   auth_id: string | null;
 };
 
+// O que a página Equipe do site mostra da pessoa, além do que está em lib/equipe.ts.
+export type Perfil = {
+  pessoa_id: string;
+  nome: string;
+  linkedin: string | null;
+  foto_url: string | null;
+};
+
 export type Semana = {
   id: string;
   numero: number;

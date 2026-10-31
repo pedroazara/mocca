@@ -48,7 +48,8 @@ export async function comoUsuario<T>(authId: string, fn: (q: Consulta) => Promis
 }
 
 // Consulta como o servidor (service role): ignora o RLS. Só para rotas que já
-// validaram quem está chamando (formulário com Turnstile, API do Claude com token).
+// validaram quem está chamando (formulário com Turnstile, API do Claude com token)
+// e para ler o que já é público (foto e LinkedIn da página Equipe).
 export async function comoServico<T>(fn: (q: Consulta) => Promise<T>, origem?: string): Promise<T> {
   const executar = await obterExecutor();
   return executar({ role: "service_role", ...(origem ? { origem } : {}) }, "service_role", fn);

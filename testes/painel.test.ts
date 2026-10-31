@@ -2,7 +2,10 @@
 // resolução de pessoa da API do Claude e plano de importação do Trello.
 
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { resolverPessoa, type PessoaApi } from "@/lib/api/pessoas";
+import { comPerfil, estudantes, orientador } from "@/lib/equipe";
 import {
   deCampoData,
   estaAtrasada,
@@ -14,6 +17,7 @@ import {
   textoPrazo,
 } from "@/lib/painel/datas";
 import { montarPauta, reuniaoAnteriorA } from "@/lib/painel/pauta";
+import { ehJpegBase64, normalizarLinkedin } from "@/lib/painel/perfil";
 import type { Contato, Semana, TarefaResumo } from "@/lib/painel/tipos";
 import { acharPessoa, planejarImportacao, type TrelloJson } from "@/lib/painel/trello";
 
@@ -283,5 +287,40 @@ describe("importação do Trello", () => {
     expect(acharPessoa("Lucas", pessoas)?.id).toBe("l");
     expect(acharPessoa("Leomar", pessoas)?.id).toBe("o");
     expect(acharPessoa("", pessoas)).toBeUndefined();
+  });
+});
+
+describe("perfil da página Equipe", () => {
+  it("normaliza o link do LinkedIn e recusa o resto", () => {
+    expect(normalizarLinkedin(" linkedin.com/in/fulano ")).toBe("https://linkedin.com/in/fulano");
+    expect(normalizarLinkedin("http://br.linkedin.com/in/fulano/?trk=x#y")).toBe("https://br.linkedin.com/in/fulano/");
+    expect(normalizarLinkedin("https://WWW.LinkedIn.com/in/Fulano")).toBe("https://www.linkedin.com/in/Fulano");
+    for (const v of [
+      "javascript:alert(1)",
+      "https://exemplo.com/in/fulano",
+      "https://linkedin.com.exemplo.com/in/fulano",
+      "https://linkedin.com@exemplo.com/in/fulano",
+      "https://linkedin.com:8080/in/fulano",
+      "https://linkedin.com",
+    ])
+      expect(normalizarLinkedin(v)).toBeNull();
+  });
+
+  it("só aceita JPEG como foto", () => {
+    expect(ehJpegBase64("/9j/4AAQSkZJRg==")).toBe(true);
+    expect(ehJpegBase64(btoa("<svg onload=alert(1)>"))).toBe(false);
+    expect(ehJpegBase64("/9j/<script>")).toBe(false);
+  });
+
+  it("cruza o cartão do site com a pessoa do painel pelo nome", () => {
+    const perfil = { pessoa_id: "1", nome: "GABRIEL Leonardo", linkedin: "https://linkedin.com/in/g", foto_url: "/api/fotos/1?v=2" };
+    const [gabriel, pedro] = estudantes;
+    expect(comPerfil(gabriel, [perfil])).toMatchObject({ linkedin: perfil.linkedin, foto: perfil.foto_url, frase: gabriel.frase });
+    expect(comPerfil(pedro, [perfil])).toBe(pedro);
+  });
+
+  it("todo cartão do site tem uma pessoa de mesmo nome no seed", () => {
+    const seed = readFileSync(join(process.cwd(), "supabase", "seed.sql"), "utf8");
+    for (const p of [...estudantes, orientador]) expect(seed).toContain(`('${p.nome}'`);
   });
 });

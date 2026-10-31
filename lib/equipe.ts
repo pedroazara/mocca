@@ -1,3 +1,5 @@
+import type { Perfil } from "./painel/tipos";
+import { normalizar } from "./painel/trello";
 import { coresPessoas } from "./tokens";
 
 export type Integrante = {
@@ -6,10 +8,17 @@ export type Integrante = {
   curso: string;
   frase: string;
   cor: string;
-  linkedin?: string;
+  linkedin?: string | null;
+  foto?: string | null;
 };
 
-// TODO(pedro): fotos e links do LinkedIn de cada pessoa (seção 6.5).
+// Foto e LinkedIn são editados no painel (Equipe); o resto do cartão fica aqui.
+// O cartão acha a pessoa do painel pelo nome.
+export function comPerfil(integrante: Integrante, perfis: Perfil[]): Integrante {
+  const p = perfis.find((x) => normalizar(x.nome) === normalizar(integrante.nome));
+  return p ? { ...integrante, linkedin: p.linkedin, foto: p.foto_url } : integrante;
+}
+
 export const estudantes: Integrante[] = [
   {
     nome: "Gabriel Leonardo",

@@ -6,6 +6,7 @@ import { pessoaLogada, type PessoaLogada } from "@/lib/auth";
 import { comoUsuario, mensagemDeErro, type Consulta } from "@/lib/banco";
 import { buscar, configuracao, semanas as listarSemanas } from "@/lib/painel/dados";
 import { fimDaSemanaIso, proximaReuniao } from "@/lib/painel/datas";
+import { ehJpegBase64, normalizarLinkedin } from "@/lib/painel/perfil";
 import { planejarImportacao, type TrelloJson } from "@/lib/painel/trello";
 import type {
   PapelAtribuicao,
@@ -452,7 +453,11 @@ export type DadosPessoa = {
   frente?: string | null;
   papel: PapelPainel;
   cor: string;
+  linkedin?: string | null;
+  foto?: string | null; // JPEG em base64; null apaga; ausente mantém a atual
 };
+
+const MAX_FOTO_BASE64 = 1_400_000; // cerca de 1 MB, o limite da coluna
 
 function validarPessoa(d: DadosPessoa) {
   const nome = texto(d.nome, 120);
@@ -460,22 +465,52 @@ function validarPessoa(d: DadosPessoa) {
   if (!nome) throw new Recusa("Informe o nome.");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Recusa("Confira o e-mail.");
   if (!/^#[0-9a-fA-F]{6}$/.test(d.cor)) throw new Recusa("Escolha uma cor.");
-  return { nome, email, apelido: d.apelido ? texto(d.apelido, 40) : null, frente: d.frente ? texto(d.frente, 200) : null };
+  const linkedin = d.linkedin ? normalizarLinkedin(texto(d.linkedin, 300)) : null;
+  if (d.linkedin && !linkedin) throw new Recusa("Use o link do perfil no LinkedIn (linkedin.com/in/…).");
+  if (d.foto && d.foto.length > MAX_FOTO_BASE64) throw new Recusa("A foto ficou grande demais.");
+  if (typeof d.foto === "string" && !ehJpegBase64(d.foto)) throw new Recusa("Não foi possível ler a foto. Tente outra imagem.");
+  return {
+    nome,
+    email,
+    apelido: d.apelido ? texto(d.apelido, 40) : null,
+    frente: d.frente ? texto(d.frente, 200) : null,
+    linkedin,
+    foto: d.foto,
+  };
+}
+
+async function gravarPerfil(q: Consulta, id: string, v: ReturnType<typeof validarPessoa>) {
+  await q(
+    `insert into perfil_publico (pessoa_id, linkedin) values ($1, $2)
+     on conflict (pessoa_id) do update set linkedin = excluded.linkedin`,
+    [id, v.linkedin],
+  );
+  if (v.foto !== undefined)
+    await q("update perfil_publico set foto = decode($2, 'base64'), foto_em = now() where pessoa_id = $1", [id, v.foto]);
+}
+
+// A página Equipe do site fica em cache: foto e LinkedIn novos precisam renová-la.
+async function agirNaEquipe<T>(fn: (q: Consulta) => Promise<T>) {
+  const r = await agir(fn);
+  if (r.ok) revalidatePath("/equipe");
+  return r;
 }
 
 export async function criarPessoa(d: DadosPessoa) {
-  return agir(async (q) => {
+  return agirNaEquipe(async (q) => {
     const v = validarPessoa(d);
     const [p] = await q<{ id: string }>(
       "insert into pessoa (nome, apelido, email, frente, papel, cor) values ($1, $2, $3, $4, $5::papel_painel, $6) returning id",
       [v.nome, v.apelido, v.email, v.frente, d.papel, d.cor],
     );
-    return exigir([p], "Só o admin cadastra pessoas.").id;
+    const { id } = exigir([p], "Só o admin cadastra pessoas.");
+    await gravarPerfil(q, id, v);
+    return id;
   });
 }
 
 export async function atualizarPessoa(id: string, d: DadosPessoa & { ativo?: boolean }) {
-  return agir(async (q) => {
+  return agirNaEquipe(async (q) => {
     const v = validarPessoa(d);
     exigir(
       await q(
@@ -486,6 +521,7 @@ export async function atualizarPessoa(id: string, d: DadosPessoa & { ativo?: boo
       ),
       "Só o admin edita pessoas.",
     );
+    await gravarPerfil(q, id, v);
   });
 }
 

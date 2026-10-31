@@ -4,6 +4,7 @@ import type {
   Configuracao,
   Contato,
   Etiqueta,
+  Perfil,
   Pessoa,
   Reuniao,
   Semana,
@@ -20,6 +21,16 @@ export async function pessoas(q: Consulta) {
   return q<Pessoa>(
     `select id, nome, apelido, email, frente, papel::text as papel, cor, ativo, auth_id
        from pessoa order by ativo desc, papel = 'orientador', nome`,
+  );
+}
+
+// Só campos públicos: a página Equipe do site lê isto pelo service role.
+export async function perfis(q: Consulta) {
+  return q<Perfil>(
+    `select p.id as pessoa_id, p.nome, f.linkedin,
+            case when f.foto is not null
+                 then '/api/fotos/' || p.id || '?v=' || extract(epoch from f.foto_em)::bigint end as foto_url
+       from perfil_publico f join pessoa p on p.id = f.pessoa_id`,
   );
 }
 

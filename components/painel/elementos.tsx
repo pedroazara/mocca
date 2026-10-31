@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Clock } from "lucide-react";
+import Image from "next/image";
 import { estaAtrasada, textoPrazo, dataCurta, diasAtePrazo } from "@/lib/painel/datas";
 import type { Etiqueta, Pessoa, Status } from "@/lib/painel/tipos";
 import { cn } from "@/lib/utils";
@@ -19,24 +20,26 @@ export function Avatar({
   tamanho = 28,
   className,
   titulo = true,
+  foto,
 }: {
   pessoa: Pick<Pessoa, "nome" | "cor"> | undefined;
   tamanho?: keyof typeof tamanhos;
   className?: string;
   titulo?: boolean;
+  foto?: string | null;
 }) {
   if (!pessoa) return null;
   return (
     <span
       title={titulo ? pessoa.nome : undefined}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full font-titulo font-semibold text-creme",
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-titulo font-semibold text-creme",
         tamanhos[tamanho],
         className,
       )}
       style={{ backgroundColor: pessoa.cor }}
     >
-      {iniciais(pessoa.nome)}
+      {foto ? <Image src={foto} alt="" fill unoptimized className="object-cover" /> : iniciais(pessoa.nome)}
     </span>
   );
 }
