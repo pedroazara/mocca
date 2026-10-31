@@ -36,7 +36,8 @@ const secoes = [
     corpo: (
       <p>
         Para responder ao seu contato e, se você for produtor e tiver interesse, conversar sobre os testes de campo.
-        Não usamos os dados para propaganda e não os vendemos nem repassamos a terceiros.
+        Quando sua mensagem chega, enviamos uma confirmação automática para o seu e-mail, pela conta do projeto no
+        Gmail. Não usamos os dados para propaganda e não os vendemos nem repassamos a terceiros.
       </p>
     ),
   },

@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { pessoaLogada, type PessoaLogada } from "@/lib/auth";
 import { comoUsuario, mensagemDeErro, type Consulta } from "@/lib/banco";
+import { avisarAtribuicao } from "@/lib/email";
 import { buscar, configuracao, semanas as listarSemanas } from "@/lib/painel/dados";
 import { fimDaSemanaIso, proximaReuniao } from "@/lib/painel/datas";
 import { ehJpegBase64, normalizarLinkedin } from "@/lib/painel/perfil";
@@ -94,11 +95,15 @@ export async function criarTarefa(d: NovaTarefa) {
     for (const e of d.etiquetas ?? [])
       await q("insert into tarefa_etiqueta (tarefa_id, etiqueta_id) values ($1, $2)", [t.id, e]);
     let pos = 0;
-    for (const p of d.responsaveis ?? [])
+    for (const p of d.responsaveis ?? []) {
       await q("insert into atribuicao (tarefa_id, pessoa_id, papel, posicao) values ($1, $2, 'responsavel', $3)", [t.id, p, pos++]);
+      avisarAtribuicao(t.id, p, eu);
+    }
     for (const p of d.apoio ?? [])
-      if (!(d.responsaveis ?? []).includes(p))
+      if (!(d.responsaveis ?? []).includes(p)) {
         await q("insert into atribuicao (tarefa_id, pessoa_id, papel, posicao) values ($1, $2, 'apoio', $3)", [t.id, p, pos++]);
+        avisarAtribuicao(t.id, p, eu);
+      }
     return t.id;
   });
 }
@@ -198,14 +203,16 @@ export async function duplicarTarefa(id: string) {
 // ---------------------------------------------------------------- pessoas na tarefa
 
 export async function atribuir(tarefaId: string, pessoaId: string, papel: PapelAtribuicao = "responsavel") {
-  return agir(async (q) => {
-    const [a] = await q<{ id: string }>(
+  return agir(async (q, eu) => {
+    // xmax = 0: a linha foi inserida agora, não atualizada pelo on conflict
+    const [a] = await q<{ id: string; nova: boolean }>(
       `insert into atribuicao (tarefa_id, pessoa_id, papel, posicao)
        values ($1, $2, $3::papel_atrib, (select coalesce(max(posicao), 0) + 1 from atribuicao where tarefa_id = $1))
        on conflict (tarefa_id, pessoa_id) do update set papel = excluded.papel
-       returning id`,
+       returning id, (xmax = 0) as nova`,
       [tarefaId, pessoaId, papel],
     );
+    if (a.nova) avisarAtribuicao(tarefaId, pessoaId, eu);
     return a.id;
   });
 }

@@ -2,8 +2,10 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { comoServico, type Consulta } from "@/lib/banco";
+import { avisarAtribuicao } from "@/lib/email";
 import * as dados from "@/lib/painel/dados";
 import { fimDaSemanaIso, proximaReuniao, semanaAtual } from "@/lib/painel/datas";
+import { linkTarefa } from "@/lib/painel/links";
 import { montarPauta, reuniaoAnteriorA } from "@/lib/painel/pauta";
 import type { Status } from "@/lib/painel/tipos";
 import { normalizar } from "@/lib/painel/trello";
@@ -23,9 +25,6 @@ export class ErroApi extends Error {
     super(mensagem);
   }
 }
-
-const SITE = () => (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
-export const linkTarefa = (id: string) => `${SITE()}/painel/tarefas/${id}`;
 
 // ---------------------------------------------------------------- token e limite
 
@@ -224,13 +223,15 @@ async function atribuirNaTransacao(
     [tarefaId],
   );
   const papelFinal = papel ?? (existe.n ? "apoio" : "responsavel");
-  const [a] = await q<{ id: string }>(
+  // xmax = 0: a linha foi inserida agora, não atualizada pelo on conflict
+  const [a] = await q<{ id: string; nova: boolean }>(
     `insert into atribuicao (tarefa_id, pessoa_id, papel, posicao)
      values ($1, $2, $3::papel_atrib, (select coalesce(max(posicao), 0) + 1 from atribuicao where tarefa_id = $1))
      on conflict (tarefa_id, pessoa_id) do update set papel = coalesce($4::papel_atrib, atribuicao.papel)
-     returning id`,
+     returning id, (xmax = 0) as nova`,
     [tarefaId, pessoa.id, papelFinal, papel ?? null],
   );
+  if (a.nova) avisarAtribuicao(tarefaId, pessoa.id);
   for (const texto of itens)
     await q(
       `insert into item (atribuicao_id, texto, posicao)
