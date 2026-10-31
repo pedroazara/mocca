@@ -47,6 +47,8 @@ Registro do que foi feito de forma diferente da `ESPECIFICACAO.md`, e por quê (
 
 23. **Região das funções.** O banco fica em `sa-east-1` (São Paulo), então o `vercel.json` fixa as funções em `gru1`, a região da Vercel na mesma cidade. Cada página faz dezenas de idas e voltas ao Postgres, e por isso as funções precisam ficar perto do banco. Se o projeto do Supabase mudar de região, troque a do `vercel.json` junto.
 
+24. **Desenvolvimento com webpack.** O `npm run dev` deixou de usar `--turbopack`. O Google Fonts passou a devolver a Sora em endereços como `fonts.gstatic.com/l/font?kit=...&skey=...&v=v17`, e o Turbopack do Next 15.5.28 não lê esse `&` (erro "next/font/google queries have exactly one entry"): toda página respondia 500. O build de produção já usa webpack (item 10). Quando o Next corrigir isso, dá para voltar ao Turbopack.
+
 ## Pendências
 
 - [x] **Redesenhar o esquema da colhedora** como um desenho técnico (pedido do Pedro). Feito em `components/publico/diagrama-colhedora.tsx`, usado em `/como-funciona` e no painel "Fabricantes e locadoras". Vista de frente: ela não mostra o engate do reservatório, por isso o rótulo "Reservatório, em outro trator" explica essa parte.
