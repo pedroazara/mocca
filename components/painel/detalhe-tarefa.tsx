@@ -45,9 +45,10 @@ import { usePainel } from "./contexto";
 import { Avatar, ChipEtiqueta, Prazo } from "./elementos";
 import { Markdown } from "./markdown";
 
-// Detalhe da tarefa (seção 9.4): cabeçalho, propriedades, descrição, pessoas
-// com seus itens (o "um checklist por pessoa" do Trello), documentos,
-// comentários e histórico. Usado no painel lateral e na página da tarefa.
+// Detalhe da tarefa (seção 9.4): cabeçalho e duas colunas, o trabalho à esquerda
+// (descrição, pessoas com seus itens, o "um checklist por pessoa" do Trello,
+// documentos, comentários e histórico) e os detalhes à direita. Usado na janela
+// e na página da tarefa; as colunas dependem da largura disponível, não da tela.
 
 type Rodar = <T>(acao: () => Promise<{ ok: true; dado?: T } | { ok: false; erro: string }>, sucesso?: string) => Promise<T | undefined>;
 
@@ -75,34 +76,38 @@ export function DetalheTarefa({ tarefa: t }: { tarefa: TarefaCompleta }) {
   const { podeEditar } = usePainel();
   const semResponsavel = t.status !== "feito" && !t.atribuicoes.some((a) => a.papel === "responsavel");
   return (
-    <div className="flex flex-col gap-7">
+    <div className="@container flex flex-col gap-6">
       <Cabecalho t={t} />
       {t.arquivada && (
         <p className="rounded-m bg-superficie-2 px-3 py-2 text-[0.875rem] text-texto-2">Esta tarefa está arquivada.</p>
       )}
-      <Propriedades t={t} />
-      <Descricao t={t} />
-      <section aria-labelledby="pessoas" className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="pessoas" className={rotulo}>
-            Responsáveis e tarefas por pessoa
-          </h2>
-          {podeEditar && <AtribuirPessoa t={t} />}
+      <div className="grid grid-cols-1 gap-x-8 gap-y-7 @3xl:grid-cols-[minmax(0,1fr)_280px]">
+        <Propriedades t={t} />
+        <div className="flex min-w-0 flex-col gap-7 @3xl:col-start-1 @3xl:row-start-1">
+          <Descricao t={t} />
+          <section aria-labelledby="pessoas" className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="pessoas" className={rotulo}>
+                Responsáveis e tarefas por pessoa
+              </h2>
+              {podeEditar && <AtribuirPessoa t={t} />}
+            </div>
+            {semResponsavel && (
+              <p className="flex items-center gap-2 rounded-m bg-alerta-fundo px-3 py-2 text-[0.875rem] text-alerta">
+                <AlertTriangle aria-hidden strokeWidth={1.75} className="size-4 shrink-0" />
+                Sem responsável. Toda tarefa aberta precisa de pelo menos um.
+              </p>
+            )}
+            {t.atribuicoes.length === 0 ? (
+              <p className="text-[0.875rem] text-texto-2">Ninguém atribuído ainda.</p>
+            ) : (
+              t.atribuicoes.map((a) => <BlocoPessoa key={a.id} a={a} />)
+            )}
+          </section>
+          <Documentos t={t} />
+          <ComentariosEHistorico t={t} />
         </div>
-        {semResponsavel && (
-          <p className="flex items-center gap-2 rounded-m bg-alerta-fundo px-3 py-2 text-[0.875rem] text-alerta">
-            <AlertTriangle aria-hidden strokeWidth={1.75} className="size-4 shrink-0" />
-            Sem responsável. Toda tarefa aberta precisa de pelo menos um.
-          </p>
-        )}
-        {t.atribuicoes.length === 0 ? (
-          <p className="text-[0.875rem] text-texto-2">Ninguém atribuído ainda.</p>
-        ) : (
-          t.atribuicoes.map((a) => <BlocoPessoa key={a.id} a={a} />)
-        )}
-      </section>
-      <Documentos t={t} />
-      <ComentariosEHistorico t={t} />
+      </div>
     </div>
   );
 }
@@ -253,18 +258,24 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
   const [, rodar] = useRodar();
   const [etqs, setEtqs] = useOptimistic(t.etiquetas);
   const [, iniciar] = useTransition();
-  const linha = "grid grid-cols-[120px_1fr] items-center gap-3 min-h-9";
+  const linha = "grid grid-cols-[76px_minmax(0,1fr)] items-center gap-3 min-h-9";
   const criador = pessoa(t.criado_por);
 
   return (
-    <section aria-label="Propriedades" className="flex flex-col gap-1.5">
+    <section
+      aria-labelledby="propriedades"
+      className="flex flex-col gap-1.5 rounded-m border border-linha bg-superficie p-4 @3xl:col-start-2 @3xl:row-start-1 @3xl:self-start"
+    >
+      <h2 id="propriedades" className={cn(rotulo, "mb-1.5")}>
+        Detalhes
+      </h2>
       <div className={linha}>
         <span className="text-[0.875rem] text-texto-2">Semana</span>
         <select
           value={t.semana ?? ""}
           disabled={!podeEditar}
           onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { semana: e.target.value ? Number(e.target.value) : null }))}
-          className={cn(estiloControle, "h-9 w-auto")}
+          className={cn(estiloControle, "h-9 w-full")}
         >
           <option value="">Sem semana</option>
           {semanas.map((s) => (
@@ -281,7 +292,7 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
           value={paraCampoData(t.prazo)}
           disabled={!podeEditar}
           onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { prazo: deCampoData(e.target.value) }))}
-          className={cn(estiloControle, "h-9 w-auto")}
+          className={cn(estiloControle, "h-9 w-full")}
           aria-label="Prazo"
         />
       </div>
@@ -325,22 +336,22 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
           )}
         </div>
       </div>
-      <div className={linha}>
-        <span className="text-[0.875rem] text-texto-2">Entrega</span>
-        <label className="flex items-center gap-2 text-[0.9375rem] text-texto">
+      <div className={cn(linha, "items-start")}>
+        <span className="pt-0.5 text-[0.875rem] text-texto-2">Entrega</span>
+        <label className="flex items-start gap-2 text-[0.875rem] leading-snug text-texto">
           <input
             type="checkbox"
             checked={t.ligada_entrega}
             disabled={!podeEditar}
             onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { ligada_entrega: e.target.checked }))}
-            className="size-4 accent-[var(--botao-primario)]"
+            className="mt-0.5 size-4 shrink-0 accent-[var(--botao-primario)]"
           />
           Ligada à entrega do programa
         </label>
       </div>
-      <div className={linha}>
+      <div className={cn(linha, "items-start")}>
         <span className="text-[0.875rem] text-texto-2">Origem</span>
-        <span className="text-[0.875rem] text-texto-2">
+        <span className="text-[0.875rem] leading-snug text-texto-2">
           {ORIGENS[t.origem]}
           {criador && ` · criada por ${criador.apelido ?? criador.nome}`}
           {` · ${dataHora(t.criado_em)}`}

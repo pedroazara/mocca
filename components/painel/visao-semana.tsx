@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { criarReuniao } from "@/app/painel/acoes";
+import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { Botao } from "@/components/ui/botao";
 import { Chip } from "@/components/ui/chip";
 import { dataCurta, dataLonga, diaCurto, diasAtePrazo, estaAtrasada, textoPrazo } from "@/lib/painel/datas";
@@ -123,7 +124,11 @@ export function VisaoSemana({
       </div>
 
       {/* 1. entrega do programa */}
-      <section aria-labelledby="entrega" className="rounded-g bg-superficie-2 p-5 md:p-6">
+      <section aria-labelledby="entrega" className="relative isolate overflow-hidden rounded-g bg-superficie-2 p-5 md:p-6">
+        <CurvasDeNivel
+          conjunto="rodape"
+          className="absolute inset-y-0 right-0 -z-10 hidden h-full w-2/3 text-caramelo/20 [mask-image:linear-gradient(to_left,black,transparent)] md:block"
+        />
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="t-rotulo text-link">Entrega do Avança Café</p>
@@ -149,7 +154,7 @@ export function VisaoSemana({
             )}
           </div>
           {linkEntrega && (
-            <Botao asChild variante="secundario" tamanho="painel">
+            <Botao asChild variante="secundario" tamanho="painel" className="bg-superficie">
               <a href={linkEntrega} target="_blank" rel="noreferrer">
                 <ExternalLink aria-hidden />
                 Abrir no Drive

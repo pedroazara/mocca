@@ -15,7 +15,9 @@ export default async function PaginaTarefa({ params }: { params: Promise<{ id: s
   return (
     <>
       <TopoPagina titulo={t ? `Semana ${t.semana ?? "–"}` : "Tarefa"} migalhas={[{ href: "/painel/quadro", rotulo: "Quadro" }]} />
-      <ConteudoPagina className="max-w-[820px]">{t ? <DetalheTarefa tarefa={t} /> : <TarefaNaoEncontrada />}</ConteudoPagina>
+      <ConteudoPagina>
+        <div className="mx-auto max-w-[1040px]">{t ? <DetalheTarefa tarefa={t} /> : <TarefaNaoEncontrada />}</div>
+      </ConteudoPagina>
     </>
   );
 }

@@ -20,6 +20,10 @@ Registro do que foi feito de forma diferente da `ESPECIFICACAO.md`, e por quê (
 
 4f. **Login por e-mail e senha, sem Google (pedido do Pedro).** A seção 7.1 pedia login com Google. Agora a pessoa digita o e-mail cadastrado e, no primeiro acesso, cria a senha na hora. Não há confirmação por e-mail: até a pessoa criar a senha, quem souber o e-mail dela pode fazer isso no lugar dela. O Pedro aceitou esse risco e vai pedir que a equipe faça o primeiro acesso logo. A conta é criada pelo servidor com a `SUPABASE_SERVICE_ROLE_KEY`, e o cadastro público do Supabase fica desligado.
 
+4g. **Curvas de nível no painel (pedido do Pedro).** O painel ganhou as curvas em três lugares, bem discretas: no canto do fundo da tela (fixas, com máscara, e os cartões passam por cima), no espaço livre da barra lateral, abaixo do menu, e à direita do bloco da entrega, só a partir de `md`, porque no celular o texto ocupa a largura toda. Ficam de fora os cartões e a janela da tarefa. O fundo é uma exceção assumida à regra "nunca atrás de texto pequeno": um rótulo solto na tela, como "Por pessoa", pode cruzar uma linha, mas com 14% de opacidade e a máscara isso não atrapalha a leitura.
+
+4h. **Tarefa em janela central (pedido do Pedro).** A seção 9.4 pedia um painel lateral de 560 px pela direita, e o Pedro não gostou de ver a tarefa abrir de lado. Agora ela abre numa janela central de até 1040 px, com a mesma URL própria, e ocupa a tela inteira no celular. O conteúdo tem duas colunas quando há pelo menos 768 px de largura: o trabalho à esquerda (descrição, pessoas e itens, documentos, comentários e histórico) e o cartão "Detalhes" à direita (semana, prazo, etiquetas, entrega e origem). A largura é medida no próprio conteúdo, então a janela e a página inteira seguem a mesma regra. O detalhe do contato continua abrindo de lado.
+
 ## Decisões técnicas
 
 4. **Funções de RLS como `security definer`.** A seção 10.3 define `sou_membro()`, `posso_editar()` e `sou_admin()` como funções SQL comuns. Como elas consultam `pessoa`, e a política de `pessoa` chama essas funções, o Postgres entraria em recursão infinita. Ficaram `security definer` com `search_path` fixo.
@@ -46,6 +50,8 @@ Registro do que foi feito de forma diferente da `ESPECIFICACAO.md`, e por quê (
 22. **Como funciona no estilo do Início.** A pedido do Pedro, a página foi repaginada. Mudou em relação à seção 6.4: o título agora é "Do pé de café ao mapa."; os quatro passos (medição, envio, processamento, mapa) viraram os mesmos cinco do Início (mede, reconstrói, calcula, localiza, mapeia), com o envio explicado em "Mapeia"; "O que é medido" entrou nos passos; há uma seção nova, "Uma camada a mais nos seus mapas". As perguntas "Substitui os mapas que eu já uso?" e "O MoCCa mede a qualidade do café?" são novas, escritas a partir do que o site já dizia, e o Pedro ainda precisa revisá-las.
 
 23. **Região das funções.** O banco fica em `sa-east-1` (São Paulo), então o `vercel.json` fixa as funções em `gru1`, a região da Vercel na mesma cidade. Cada página faz dezenas de idas e voltas ao Postgres, e por isso as funções precisam ficar perto do banco. Se o projeto do Supabase mudar de região, troque a do `vercel.json` junto.
+
+24. **Desenvolvimento com webpack.** O `npm run dev` deixou de usar `--turbopack`. O Google Fonts passou a devolver a Sora em endereços como `fonts.gstatic.com/l/font?kit=...&skey=...&v=v17`, e o Turbopack do Next 15.5.28 não lê esse `&` (erro "next/font/google queries have exactly one entry"): toda página respondia 500. O build de produção já usa webpack (item 10). Quando o Next corrigir isso, dá para voltar ao Turbopack.
 
 ## Pendências
 
