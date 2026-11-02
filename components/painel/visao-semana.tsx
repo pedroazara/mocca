@@ -13,12 +13,13 @@ import type { Contato, Semana, TarefaResumo } from "@/lib/painel/tipos";
 import { rotuloStatus } from "@/lib/painel/tipos";
 import { cn } from "@/lib/utils";
 import { usePainel } from "./contexto";
-import { Avatar, EstadoVazio } from "./elementos";
+import { EstadoVazio } from "./elementos";
 import { CartaoTarefa } from "./tarefa-pecas";
 
 // Tela "Semana" (seção 9.1): em 10 segundos, o que a equipe precisa entregar
-// nesta semana e quem está atrasado. A entrega e o trabalho de cada pessoa ficam
-// na coluna principal; a atenção e a próxima reunião, na lateral, à vista sem rolar.
+// nesta semana e o que está atrasado. A entrega e as tarefas da semana ficam na
+// coluna principal; a atenção e a próxima reunião, na lateral, à vista sem rolar.
+// O trabalho é da equipe toda: a tela não divide as tarefas por pessoa (DUVIDAS 4j).
 
 const estadoStatus = { a_fazer: "neutro", fazendo: "info", em_revisao: "alerta", feito: "ok" } as const;
 
@@ -41,7 +42,7 @@ export function VisaoSemana({
   proxima: { id: string | null; data: string | null; atrasadas: number; concluidas: number; contatos: number };
   base?: string;
 }) {
-  const { semanas, ativas, pessoa, podeEditar, avisar } = usePainel();
+  const { semanas, pessoa, podeEditar, avisar } = usePainel();
   const router = useRouter();
   const [criando, iniciar] = useTransition();
   const [verTudo, setVerTudo] = useState(false);
@@ -81,14 +82,10 @@ export function VisaoSemana({
   const total = semanas.length;
   const href = (n: number) => (base === "/painel" ? `/painel?semana=${n}` : `/painel/semanas/${n}`);
 
-  const colunas = ativas
-    .filter((p) => p.papel !== "orientador" || daSemana.some((t) => t.atribuicoes.some((a) => a.pessoa_id === p.id)))
-    .map((p) => {
-      const minhas = daSemana
-        .filter((t) => t.atribuicoes.some((a) => a.pessoa_id === p.id))
-        .sort((a, b) => Number(estaAtrasada(b)) - Number(estaAtrasada(a)) || Number(a.status === "feito") - Number(b.status === "feito"));
-      return { p, minhas, feitas: minhas.filter((t) => t.status === "feito").length };
-    });
+  // atrasadas primeiro, feitas por último
+  const tarefasSemana = [...daSemana].sort(
+    (a, b) => Number(estaAtrasada(b)) - Number(estaAtrasada(a)) || Number(a.status === "feito") - Number(b.status === "feito"),
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -302,33 +299,20 @@ export function VisaoSemana({
           </section>
         </div>
 
-        {/* 4. por pessoa */}
-        <section aria-labelledby="por-pessoa" className="xl:col-start-1 xl:row-start-2">
-          <h2 id="por-pessoa" className="t-rotulo mb-3 text-texto-2">
-            Por pessoa
+        {/* 4. tarefas da semana */}
+        <section aria-labelledby="tarefas-semana" className="xl:col-start-1 xl:row-start-2">
+          <h2 id="tarefas-semana" className="t-rotulo mb-3 text-texto-2">
+            Tarefas da semana
           </h2>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,260px),1fr))] gap-x-4 gap-y-6">
-            {colunas.map(({ p, minhas, feitas: f }) => (
-              <div key={p.id} className="min-w-0">
-                <div className="mb-3 flex items-center gap-2.5">
-                  <Avatar pessoa={p} tamanho={28} />
-                  <span className="flex-1 truncate font-semibold text-texto">{p.apelido ?? p.nome}</span>
-                  {minhas.length > 0 && (
-                    <span className="t-dado text-[0.8125rem] text-texto-2">
-                      {f} de {minhas.length} feitas
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2.5">
-                  {minhas.length ? (
-                    minhas.map((t) => <CartaoTarefa key={t.id} tarefa={t} itensDe={p.id} />)
-                  ) : (
-                    <p className="text-[0.875rem] text-texto-2">Nada nesta semana.</p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+          {tarefasSemana.length ? (
+            <div className="columns-[260px] gap-3">
+              {tarefasSemana.map((t) => (
+                <CartaoTarefa key={t.id} tarefa={t} comItens className="mb-3 break-inside-avoid" />
+              ))}
+            </div>
+          ) : (
+            <p className="text-[0.875rem] text-texto-2">Nenhuma tarefa nesta semana.</p>
+          )}
         </section>
       </div>
     </div>

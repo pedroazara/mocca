@@ -44,7 +44,7 @@ import { Avatar, ChipEtiqueta, corPrazo } from "./elementos";
 import { Markdown } from "./markdown";
 
 // Detalhe da tarefa (seção 9.4): título e status em cima e duas colunas, o trabalho
-// à esquerda (descrição, quem faz o quê, o "um checklist por pessoa" do Trello,
+// à esquerda (descrição, pessoas com seus itens, o "um checklist por pessoa" do Trello,
 // documentos, comentários e histórico) e os detalhes à direita. Cada dado aparece
 // num lugar só. As ações ficam em AcoesTarefa, na barra da janela ou no topo da
 // página. Usado na janela e na página da tarefa; as colunas dependem da largura
@@ -494,7 +494,7 @@ function Pessoas({ t }: { t: TarefaCompleta }) {
   const { podeEditar } = usePainel();
   const semResponsavel = t.status !== "feito" && !t.atribuicoes.some((a) => a.papel === "responsavel");
   return (
-    <Secao id="pessoas" titulo="Quem faz o quê" acao={podeEditar && <AtribuirPessoa t={t} />}>
+    <Secao id="pessoas" titulo="Pessoas" acao={podeEditar && <AtribuirPessoa t={t} />}>
       {semResponsavel && (
         <p className="flex items-center gap-2 rounded-m bg-alerta-fundo px-3 py-2 text-[0.875rem] text-alerta">
           <AlertTriangle aria-hidden strokeWidth={1.75} className="size-4 shrink-0" />
@@ -568,18 +568,11 @@ function BlocoPessoa({ a }: { a: Atribuicao }) {
     rodar(() => acoes.reordenarItens(nova.map((i) => i.id)));
   };
 
-  const feitos = a.itens.filter((i) => i.feito).length;
-
   return (
     <div className="rounded-m border border-linha bg-superficie p-3">
       <div className="flex items-center gap-2.5">
         <Avatar pessoa={p} tamanho={28} />
         <span className="min-w-0 flex-1 truncate font-semibold text-texto">{p?.apelido ?? p?.nome ?? "Pessoa removida"}</span>
-        {a.itens.length > 0 && (
-          <span className="t-dado text-[0.8125rem] text-texto-2">
-            {feitos}/{a.itens.length}
-          </span>
-        )}
         <select
           aria-label={`Papel de ${p?.nome}`}
           value={a.papel}

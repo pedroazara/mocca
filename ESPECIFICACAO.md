@@ -521,13 +521,13 @@ Busca tarefas por título, pessoas, semanas e reuniões. Ações: "Nova tarefa",
 
 ### 9.1 Semana (`/painel`, tela inicial)
 
-Objetivo: em 10 segundos, saber o que a equipe precisa entregar nesta semana e quem está atrasado.
+Objetivo: em 10 segundos, saber o que a equipe precisa entregar nesta semana e o que está atrasado. O trabalho é colaborativo: a tela mostra as tarefas da equipe, sem dividi-las por pessoa nem contar o que cada um fez.
 
 Topo:
 - Seletor de semana: "← Semana 2 de 12 · 27/10 a 02/11 →" (Sora 600 + datas em JetBrains Mono). Abre na semana atual.
 - Barra de progresso da semana: tarefas feitas / total, em caramelo, com o número ao lado em tabular.
 
-A partir de 1280 px, duas colunas: a principal com a Entrega e Por pessoa, e uma lateral de 320 px com Atenção e Próxima reunião, à vista sem rolar. Abaixo disso, uma coluna só, nesta ordem: Entrega, Atenção, Próxima reunião, Por pessoa.
+A partir de 1280 px, duas colunas: a principal com a Entrega e as Tarefas da semana, e uma lateral de 320 px com Atenção e Próxima reunião, à vista sem rolar. Abaixo disso, uma coluna só, nesta ordem: Entrega, Atenção, Próxima reunião, Tarefas da semana.
 
 Bloco 1, **Entrega do programa** (cartão destacado com fundo `--superficie-2`):
 - Rótulo `ENTREGA DO AVANÇA CAFÉ`, título da entrega, prazo com contagem ("faltam 3 dias", em `--alerta` quando faltar ≤ 2 dias e `--erro` se atrasada), link do documento no Drive, tarefas ligadas à entrega com status.
@@ -539,10 +539,10 @@ Bloco 2, **Atenção**:
 Bloco 3, **Próxima reunião**:
 - Data, pauta gerada (seção 9.6) e botão "Abrir pauta".
 
-Bloco 4, **Por pessoa**:
-- Uma coluna por pessoa da equipe, numa grade que quebra linha, sem rolagem lateral (no mínimo 260 px por coluna). Cabeçalho da coluna: avatar 28 px, nome, contador "3 de 5 feitas".
-- Dentro: cartões enxutos (título, itens e prazo) das tarefas da semana em que a pessoa é responsável ou apoio. Os itens de checklist da própria pessoa aparecem embaixo do título do cartão, com caixas marcáveis ali mesmo.
-- Tarefas atrasadas no topo com chip `atrasada` (erro).
+Bloco 4, **Tarefas da semana**:
+- Um cartão enxuto por tarefa (título, itens, prazo e avatares de quem participa), em colunas de no mínimo 260 px, sem rolagem lateral. Todos os itens de checklist aparecem embaixo do título, com caixas marcáveis ali mesmo.
+- Tarefas atrasadas primeiro, com chip `atrasada` (erro), e feitas por último.
+- Sem cabeçalho por pessoa e sem contagem individual.
 
 ### 9.2 Minhas tarefas (`/painel/minhas-tarefas`)
 
@@ -589,7 +589,7 @@ Clicar numa tarefa abre uma **janela central** de até 1040 px (tela cheia no ce
    - Ligada à entrega do programa (caixa)
    - Criada por / origem (`manual`, `reunião`, `Claude`, `contato do site`), só leitura, numa linha discreta no fim
 4. **Descrição**: editor Markdown simples (negrito, itálico, listas, links) com pré-visualização. Aceita colar um roteiro. Descrição longa abre recolhida, com "Ver tudo".
-5. **Quem faz o quê** (o coração da tela, equivalente ao "um checklist por pessoa" do Trello):
+5. **Pessoas** (o coração da tela, equivalente ao "um checklist por pessoa" do Trello):
    - Um bloco por pessoa atribuída: avatar, nome, seletor de papel (`responsável` / `apoio`), e a lista de itens dela, cada um com caixa, texto editável e arrastar para reordenar.
    - "+ Adicionar item" em cada bloco.
    - Botão "Atribuir pessoa" abre uma lista com as pessoas da equipe; ao escolher, cria o bloco vazio.
