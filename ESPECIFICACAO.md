@@ -57,7 +57,7 @@ E-mails: `[PREENCHER]`. Use `nome.sobrenome@exemplo.com` nos seeds até o Pedro 
 O projeto tem duas partes no mesmo código e no mesmo domínio:
 
 1. **Site público** (`/`): apresenta o MoCCa para produtores, fabricantes de máquinas, mentores, a universidade e o programa. Tem um formulário de contato.
-2. **Painel da equipe** (`/painel`): área restrita por login. Gestão de tarefas, semanas do programa, reuniões, documentos do Google Drive e contatos recebidos pelo site. Também expõe uma API e um servidor MCP para o Claude criar e atribuir tarefas.
+2. **Painel da equipe** (`/painel`): área restrita por login. Gestão de tarefas, semanas do programa, reuniões, documentos do Google Drive e contatos recebidos pelo site. Também expõe uma API e um servidor MCP para o Claude propor tarefas e mudanças, que um admin aprova antes de entrarem no painel.
 
 ### 2.1 Fora do escopo desta versão
 
@@ -247,6 +247,7 @@ Cores da marca (da logo, não alterar):
   --raio-g: 16px;  /* blocos do site público */
   --sombra-cartao: 0 1px 2px rgb(74 44 29 / 0.06), 0 2px 8px rgb(74 44 29 / 0.05);
   --sombra-flutuante: 0 8px 24px rgb(74 44 29 / 0.14);
+  --sobreposicao: rgb(43 26 17 / 0.4);   /* atrás de janelas e gavetas: sempre escurece */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -271,6 +272,7 @@ Cores da marca (da logo, não alterar):
   --info: #8DB8DD;   --info-fundo: #1C2A36;
   --et-entregas: #E58B78; --et-validacao: #8DB8DD; --et-tecnico: #8CC795;
   --et-negocio: #E3B862;  --et-marketing: #D39BD3;
+  --sobreposicao: rgb(0 0 0 / 0.6);
   color-scheme: dark;
 }
 ```
@@ -493,10 +495,13 @@ Texto simples conforme a LGPD: quais dados o formulário coleta, para quê, por 
     - `CalendarRange` Semana (início)
     - `UserCheck` Minhas tarefas (com contador de abertas)
     - `Columns3` Quadro
-    - `Flag` Semanas do programa
+    - `Flag` Cronograma
     - `MessagesSquare` Reuniões
     - `Inbox` Contatos (com contador de novos)
     - `Users` Equipe
+    - `ClipboardCheck` Aprovações (só admin, com contador de pendentes)
+  - Um respiro, sem títulos, separa três grupos: Semana, Minhas tarefas e Quadro; Cronograma e Reuniões; Contatos, Equipe e Aprovações.
+  - Com a tarefa aberta na janela, o item ativo continua sendo o da tela de trás.
   - Base: `Settings` Configurações (só admin), avatar e nome da pessoa logada com menu (Tema, Sair).
   - Botão para recolher a barra (estado salvo em `localStorage`).
   - No celular (< 1024 px): a barra vira gaveta, e uma barra inferior fixa mostra Semana, Minhas tarefas, Quadro e Mais.
@@ -522,19 +527,22 @@ Topo:
 - Seletor de semana: "← Semana 2 de 12 · 27/10 a 02/11 →" (Sora 600 + datas em JetBrains Mono). Abre na semana atual.
 - Barra de progresso da semana: tarefas feitas / total, em caramelo, com o número ao lado em tabular.
 
+A partir de 1280 px, duas colunas: a principal com a Entrega e Por pessoa, e uma lateral de 320 px com Atenção e Próxima reunião, à vista sem rolar. Abaixo disso, uma coluna só, nesta ordem: Entrega, Atenção, Próxima reunião, Por pessoa.
+
 Bloco 1, **Entrega do programa** (cartão destacado com fundo `--superficie-2`):
 - Rótulo `ENTREGA DO AVANÇA CAFÉ`, título da entrega, prazo com contagem ("faltam 3 dias", em `--alerta` quando faltar ≤ 2 dias e `--erro` se atrasada), link do documento no Drive, tarefas ligadas à entrega com status.
 
-Bloco 2, **Por pessoa** (o centro da tela):
-- Uma coluna por pessoa da equipe (rolagem horizontal no celular, cada coluna com 280 px). Cabeçalho da coluna: avatar 28 px, nome, contador "3 de 5 feitas".
-- Dentro: cartões compactos das tarefas da semana em que a pessoa é responsável ou apoio. Os itens de checklist da própria pessoa aparecem embaixo do título do cartão, com caixas marcáveis ali mesmo.
-- Tarefas atrasadas no topo com chip `atrasada` (erro).
-
-Bloco 3, **Atenção**:
+Bloco 2, **Atenção**:
 - Lista curta: tarefas atrasadas de qualquer semana, tarefas sem responsável, contatos novos sem resposta há mais de 3 dias.
+- Cada tarefa aparece uma vez, com tudo o que há de errado com ela ("atrasada há 5 dias · sem responsável"). Mostra 5 linhas, com "Ver todos".
 
-Bloco 4, **Próxima reunião**:
+Bloco 3, **Próxima reunião**:
 - Data, pauta gerada (seção 9.6) e botão "Abrir pauta".
+
+Bloco 4, **Por pessoa**:
+- Uma coluna por pessoa da equipe, numa grade que quebra linha, sem rolagem lateral (no mínimo 260 px por coluna). Cabeçalho da coluna: avatar 28 px, nome, contador "3 de 5 feitas".
+- Dentro: cartões enxutos (título, itens e prazo) das tarefas da semana em que a pessoa é responsável ou apoio. Os itens de checklist da própria pessoa aparecem embaixo do título do cartão, com caixas marcáveis ali mesmo.
+- Tarefas atrasadas no topo com chip `atrasada` (erro).
 
 ### 9.2 Minhas tarefas (`/painel/minhas-tarefas`)
 
@@ -547,7 +555,8 @@ Bloco 4, **Próxima reunião**:
 ### 9.3 Quadro (`/painel/quadro`)
 
 - Kanban com 4 colunas fixas: **A fazer** · **Fazendo** · **Em revisão** · **Feito**.
-- Filtros no topo (persistem na URL): semana (padrão: atual; opção "Todas"), pessoa, etiqueta, "só atrasadas".
+- Filtros no topo (persistem na URL): semana (padrão: atual; opção "Todas"), pessoa, etiqueta, "só atrasadas". À direita deles, o link "Arquivadas" (seção 9.11).
+- As 4 colunas cabem sem rolagem lateral em tela de notebook, com a barra lateral aberta.
 - Cartão do kanban (largura 100% da coluna, padding 12 px):
   - Linha 1: chips de etiqueta.
   - Linha 2: título (Public Sans 500, até 3 linhas).
@@ -567,28 +576,29 @@ Etiquetas fixas (iguais às do Trello atual):
 | Negócio | `--et-negocio` |
 | Marketing | `--et-marketing` |
 
-### 9.4 Tarefa (painel lateral e página `/painel/tarefas/[id]`)
+### 9.4 Tarefa (janela central e página `/painel/tarefas/[id]`)
 
-Clicar numa tarefa abre um **painel lateral** de 560 px pela direita (tela cheia no celular), com URL própria para poder compartilhar. Conteúdo:
+Clicar numa tarefa abre uma **janela central** de até 1040 px (tela cheia no celular), com URL própria para poder compartilhar. Abrir e fechar não mexe na rolagem da tela de trás. Cada dado aparece num lugar só, e nenhuma ação fica escondida em menu. Conteúdo:
 
-1. **Cabeçalho**: título editável inline (Sora 600, 1.375rem), seletor de status, menu `…` (Duplicar, Mover para semana…, Copiar link, Arquivar).
-2. **Propriedades** (grade de rótulo à esquerda e valor à direita):
+1. **Ações** (na barra fixa do topo da janela; na página inteira, acima do título): botões com nome Copiar link, Duplicar e Arquivar, sempre à vista. No celular, Copiar link e Duplicar ficam só com o ícone. Arquivar fecha a janela e mostra o toast "Tarefa arquivada · Desfazer". Numa tarefa arquivada, o botão vira Restaurar.
+2. **Cabeçalho**: título editável inline (Sora 600, 1.375rem) e o status em quatro botões, na ordem das colunas do Quadro.
+3. **Detalhes** (grade de rótulo à esquerda e valor à direita, numa coluna que acompanha a rolagem):
+   - Prazo (seletor de data; padrão = fim da semana), com a contagem embaixo ("atrasada há 2 dias")
    - Semana (seletor com as 12 semanas)
-   - Prazo (seletor de data; padrão = fim da semana)
    - Etiquetas (multisseleção)
    - Ligada à entrega do programa (caixa)
-   - Criada por / origem (`manual`, `reunião`, `Claude`, `contato do site`), só leitura
-3. **Descrição**: editor Markdown simples (negrito, itálico, listas, links) com pré-visualização. Aceita colar um roteiro.
-4. **Responsáveis e tarefas por pessoa** (o coração da tela, equivalente ao "um checklist por pessoa" do Trello):
+   - Criada por / origem (`manual`, `reunião`, `Claude`, `contato do site`), só leitura, numa linha discreta no fim
+4. **Descrição**: editor Markdown simples (negrito, itálico, listas, links) com pré-visualização. Aceita colar um roteiro. Descrição longa abre recolhida, com "Ver tudo".
+5. **Quem faz o quê** (o coração da tela, equivalente ao "um checklist por pessoa" do Trello):
    - Um bloco por pessoa atribuída: avatar, nome, seletor de papel (`responsável` / `apoio`), e a lista de itens dela, cada um com caixa, texto editável e arrastar para reordenar.
    - "+ Adicionar item" em cada bloco.
    - Botão "Atribuir pessoa" abre uma lista com as pessoas da equipe; ao escolher, cria o bloco vazio.
    - Remover pessoa pede confirmação inline (não usar `confirm()`).
    - Regra: toda tarefa aberta deve ter pelo menos um `responsável`; sem isso, aparece um aviso amarelo "Sem responsável".
-5. **Documentos**: lista de links do Google Drive com ícone por tipo (Doc, Planilha, Apresentação, Pasta, PDF), título e tipo (`roteiro`, `registro`, `síntese`, `entregável`, `outro`). "+ Adicionar documento": cola a URL, o título é preenchido a partir da URL se possível (senão a pessoa digita). Validar que é um link `drive.google.com` ou `docs.google.com`.
-6. **Comentários e histórico**: abas "Comentários" e "Histórico". Comentários em Markdown, com menção `@nome`. Histórico automático: criação, mudança de status, atribuição, prazo, conclusão de item (quem e quando).
+6. **Documentos**: lista de links do Google Drive com ícone por tipo (Doc, Planilha, Apresentação, Pasta, PDF), título e tipo (`roteiro`, `registro`, `síntese`, `entregável`, `outro`). "+ Adicionar documento": cola a URL, o título é preenchido a partir da URL se possível (senão a pessoa digita). Validar que é um link `drive.google.com` ou `docs.google.com`.
+7. **Comentários e histórico**: abas "Comentários" e "Histórico". Comentários em Markdown, com menção `@nome`. Histórico automático: criação, mudança de status, atribuição, prazo, conclusão de item (quem e quando).
 
-### 9.5 Semanas do programa (`/painel/semanas`)
+### 9.5 Cronograma (`/painel/semanas`)
 
 - Linha do tempo horizontal das 12 semanas (rolável), cada semana com número, datas, título da entrega e um anel de progresso (feitas/total). Semana atual destacada com borda caramelo.
 - Abaixo, a tabela das semanas: número, datas, entrega do programa, link do entregável, status (`não iniciada`, `em andamento`, `entregue`), tarefas abertas.
@@ -641,6 +651,18 @@ Cores das pessoas (avatares), todas com texto creme com contraste ≥ 4,5:1:
 - Importação do Trello (seção 12).
 - Tema: Claro / Escuro / Sistema (também disponível para todos no menu do avatar).
 
+### 9.10 Aprovações (`/painel/aprovacoes`, só admin)
+
+- Lista do que o Claude pediu com token e ainda não entrou no painel (seção 11.4), da mais antiga para a mais nova, com o nome do token e a data.
+- Cada proposta mostra tudo o que será gravado, com as datas completas, inclusive o ano. Em alterações, mostra o valor de hoje e o proposto, e avisa que `etiquetas` substitui a lista inteira. Mostra também o papel de quem já está na tarefa, os itens apagados ao tirar alguém e quando adicionar um item atribui a pessoa.
+- Só há os botões Aprovar e Recusar, sem edição antes de aprovar.
+- Abaixo, as 30 decisões mais recentes, com quem decidiu e, nas que falharam, o motivo.
+
+### 9.11 Arquivadas (`/painel/arquivadas`)
+
+- Lista das tarefas arquivadas, da mais recente para a mais antiga, com semana, status e data, e o botão "Restaurar".
+- Não entra na barra lateral: chega-se por um link no Quadro e pela paleta de comandos.
+
 ---
 
 ## 10. Banco de dados (Supabase / Postgres)
@@ -656,6 +678,7 @@ create type tipo_documento as enum ('roteiro', 'registro', 'sintese', 'entregave
 create type status_semana  as enum ('nao_iniciada', 'em_andamento', 'entregue');
 create type perfil_contato as enum ('produtor', 'fabricante', 'locadora', 'pesquisador', 'imprensa', 'outro');
 create type status_contato as enum ('novo', 'em_conversa', 'respondido', 'arquivado');
+create type status_proposta as enum ('pendente', 'aprovada', 'recusada', 'falhou');
 ```
 
 ### 10.2 Tabelas
@@ -820,6 +843,21 @@ create table token_api (
   ultimo_uso   timestamptz,
   revogado     boolean not null default false
 );
+
+create table proposta (                  -- seção 11.4
+  id           uuid primary key default gen_random_uuid(),
+  operacao     text not null,             -- criar_tarefa, atualizar_tarefa, atribuir, remover_atribuicao,
+                                          -- adicionar_item, atualizar_item, adicionar_documento, comentar
+  dados        jsonb not null,
+  tarefa_id    uuid references tarefa(id) on delete set null,   -- null em tarefa nova, até aprovar
+  status       status_proposta not null default 'pendente',
+  token_id     uuid references token_api(id) on delete set null,
+  criado_em    timestamptz not null default now(),
+  decidido_em  timestamptz,
+  decidido_por uuid references pessoa(id),
+  erro         text,                      -- por que falhou ao aplicar
+  resultado    jsonb
+);
 ```
 
 (Ordene a criação para respeitar as chaves estrangeiras: `reuniao` e `contato` antes de `tarefa`.)
@@ -859,6 +897,7 @@ $$;
 | contato | `sou_membro()` | insert só pelo service role (rota `/api/contato`); update `posso_editar()` | admin |
 | pessoa, etiqueta, configuracao | `sou_membro()` | `sou_admin()` | ninguém (desativar) |
 | token_api | `sou_admin()` | `sou_admin()` | ninguém (revogar) |
+| proposta | `sou_admin()` | insert só pelo service role; update `sou_admin()` | ninguém |
 
 O usuário anônimo (`anon`) não lê nem escreve em nenhuma tabela.
 
@@ -874,18 +913,18 @@ O usuário anônimo (`anon`) não lê nem escreve em nenhuma tabela.
 
 ## 11. Integração com o Claude
 
-Objetivo: depois da reunião semanal, o Claude lê as anotações e cria as tarefas já atribuídas e com itens por pessoa, sem digitação manual.
+Objetivo: depois da reunião semanal, o Claude lê as anotações e propõe as tarefas já atribuídas e com itens por pessoa, sem digitação manual. Um admin aprova antes de qualquer coisa entrar no painel (seção 11.4).
 
 ### 11.1 Autenticação
 
 - Token gerado em Configurações (formato `mocca_` + 40 caracteres aleatórios). Guardar só o hash SHA-256.
 - Enviado como `Authorization: Bearer <token>`.
-- As rotas usam o service role do Supabase no servidor, depois de validar o token, e gravam `historico.via_api = true`.
+- As rotas usam o service role do Supabase no servidor, depois de validar o token. O que é aplicado depois da aprovação grava `historico.via_api = true`.
 - Limite: 120 requisições por minuto por token.
 
 ### 11.2 API REST (`/api/v1`)
 
-Todas respondem JSON, com erros no formato `{ "erro": { "codigo": "...", "mensagem": "..." } }`.
+Todas respondem JSON, com erros no formato `{ "erro": { "codigo": "...", "mensagem": "..." } }`. As rotas `POST`, `PATCH` e `DELETE` não gravam: criam uma proposta e respondem `202` (seção 11.4).
 
 | Método e rota | O que faz |
 |---|---|
@@ -893,14 +932,15 @@ Todas respondem JSON, com erros no formato `{ "erro": { "codigo": "...", "mensag
 | `GET /api/v1/semanas` | Lista as 12 semanas; `?atual=true` só a atual |
 | `GET /api/v1/tarefas` | Filtros: `semana`, `pessoa`, `status`, `etiqueta`, `atrasadas=true` |
 | `GET /api/v1/tarefas/{id}` | Tarefa completa com atribuições, itens, documentos |
-| `POST /api/v1/tarefas` | Cria tarefa (corpo abaixo) |
-| `PATCH /api/v1/tarefas/{id}` | Atualiza título, descrição, status, prazo, semana, etiquetas |
+| `POST /api/v1/tarefas` | Propõe tarefa (corpo abaixo) |
+| `PATCH /api/v1/tarefas/{id}` | Propõe alterar título, descrição, status, prazo, semana, etiquetas |
 | `POST /api/v1/tarefas/{id}/atribuicoes` | `{ pessoa, papel, itens: [texto] }` |
-| `DELETE /api/v1/tarefas/{id}/atribuicoes/{pessoa}` | Remove pessoa |
+| `DELETE /api/v1/tarefas/{id}/atribuicoes/{pessoa}` | Propõe remover pessoa |
 | `POST /api/v1/tarefas/{id}/itens` | `{ pessoa, texto }` |
 | `PATCH /api/v1/itens/{id}` | `{ feito, texto }` |
 | `POST /api/v1/tarefas/{id}/documentos` | `{ titulo, url, tipo }` |
 | `POST /api/v1/tarefas/{id}/comentarios` | `{ texto }`, autor exibido como "Claude" |
+| `GET /api/v1/propostas` | Lista as propostas; filtro `status` |
 | `GET /api/v1/reunioes/proxima` | Pauta gerada da próxima reunião |
 
 Pessoas podem ser indicadas por `id`, e-mail ou apelido (sem diferenciar maiúsculas e acentos). Se o apelido for ambíguo ou não existir, responder `422` com a lista de pessoas válidas.
@@ -931,7 +971,7 @@ POST /api/v1/tarefas
 
 ### 11.3 Servidor MCP (`/api/mcp`)
 
-Transporte HTTP streamable do MCP, mesmo token Bearer. Ferramentas (nomes em português, descrições claras para o modelo):
+Transporte HTTP streamable do MCP, sem sessão, mesmo token Bearer. Só `POST`: depois de validar o token, `GET` e `DELETE` respondem `405`. Ferramentas (nomes em português, descrições claras para o modelo):
 
 | Ferramenta | Entrada | Faz |
 |---|---|---|
@@ -939,15 +979,27 @@ Transporte HTTP streamable do MCP, mesmo token Bearer. Ferramentas (nomes em por
 | `listar_semanas` | `{ apenas_atual? }` | Semanas e entregas |
 | `listar_tarefas` | `{ semana?, pessoa?, status?, atrasadas? }` | Tarefas resumidas |
 | `ver_tarefa` | `{ id }` | Tarefa completa |
-| `criar_tarefa` | mesmo corpo do `POST /tarefas` | Cria com atribuições e itens numa transação |
-| `atualizar_tarefa` | `{ id, ...campos }` | Edita |
-| `atribuir` | `{ tarefa_id, pessoa, papel?, itens? }` | Atribui e cria itens |
-| `marcar_item` | `{ item_id, feito }` | Marca item |
-| `adicionar_documento` | `{ tarefa_id, titulo, url, tipo? }` | Liga documento do Drive |
-| `comentar` | `{ tarefa_id, texto }` | Comenta como "Claude" |
+| `criar_tarefa` | mesmo corpo do `POST /tarefas` | Propõe tarefa com atribuições, itens e documentos |
+| `atualizar_tarefa` | `{ id, ...campos }` | Propõe alteração |
+| `atribuir` | `{ tarefa_id, pessoa, papel?, itens? }` | Propõe atribuição e itens |
+| `marcar_item` | `{ item_id, feito }` | Propõe marcar item |
+| `adicionar_documento` | `{ tarefa_id, titulo, url, tipo? }` | Propõe ligar documento do Drive |
+| `comentar` | `{ tarefa_id, texto }` | Propõe comentário como "Claude" |
+| `listar_propostas` | `{ status? }` | Situação dos pedidos |
 | `pauta_proxima_reuniao` | — | Pauta gerada |
 
-Toda ferramenta que escreve devolve o link da tarefa no painel (`{SITE_URL}/painel/tarefas/{id}`). O README deve explicar como adicionar o servidor como conector personalizado no Claude (URL `{SITE_URL}/api/mcp` + token).
+Toda ferramenta que escreve só cria uma proposta e devolve o link dela no painel (`{SITE_URL}/painel/aprovacoes#proposta-{id}`). O README deve explicar como adicionar o servidor como conector personalizado no Claude (URL `{SITE_URL}/api/mcp`, autenticação "Sem login" e o token no cabeçalho `authorization`).
+
+### 11.4 Aprovação do admin
+
+Tudo o que o Claude grava com token passa por um admin. Leituras não passam.
+
+1. **Pedido:** a escrita é conferida na hora (esquema, pessoas, etiquetas, semana, tarefa). Se houver erro, nada é criado e o Claude recebe o erro. Se estiver certa, entra em `proposta` como `pendente`, com as pessoas pelo id, e a resposta é `{ status: "pendente", proposta_id, tarefa_id, link, mensagem }`.
+2. **Decisão:** um admin aprova ou recusa em `/painel/aprovacoes` (seção 9.10). Não há edição antes de aprovar.
+3. **Aplicação:** aprovar roda numa transação só: trava a proposta pendente, confere tudo de novo, grava e marca `aprovada`. Um segundo clique não aplica de novo. Grava com o service role, para o histórico sair como "Claude", e `decidido_por` registra quem aprovou. Como o service role ignora o RLS, a checagem de admin fica na server action.
+4. **Falha:** se não der para aplicar, nada é gravado e a proposta vira `falhou`, com o motivo em `erro`. Erro inesperado, como queda do banco, não consome a proposta: ela continua `pendente`, para o admin tentar de novo.
+
+O e-mail de tarefa atribuída só sai na aplicação. Tarefa nova não tem id antes de aprovada, então atribuições, itens e documentos vão dentro de `criar_tarefa`.
 
 ---
 
@@ -1023,7 +1075,7 @@ Aceite:
 ### Fase 3 · Reuniões, contatos e Claude (estimativa 8–12 h)
 Entregas: Reuniões com pauta gerada, Contatos com tarefa automática, tokens de API, API REST, servidor MCP, importação do Trello, comentários e histórico, Realtime.
 Aceite:
-- [ ] O Claude, conectado ao MCP, cria uma tarefa com duas pessoas e itens a partir de um texto de reunião, e ela aparece no painel com origem "Claude".
+- [ ] O Claude, conectado ao MCP, propõe uma tarefa com duas pessoas e itens a partir de um texto de reunião, e depois da aprovação do admin ela aparece no painel com origem "Claude".
 - [ ] Importar o JSON do Trello cria as tarefas sem duplicar ao reimportar.
 - [ ] Pauta da próxima reunião lista atrasadas, entrega da semana e contatos novos.
 

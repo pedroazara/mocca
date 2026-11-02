@@ -79,7 +79,7 @@ export function ListaReunioes({ reunioes }: { reunioes: Reuniao[] }) {
 function LinhaPauta({ t, extra }: { t: TarefaResumo; extra?: React.ReactNode }) {
   return (
     <li className="flex items-center gap-3 py-1.5">
-      <Link href={`/painel/tarefas/${t.id}`} className="min-w-0 flex-1 truncate text-texto hover:underline">
+      <Link href={`/painel/tarefas/${t.id}`} scroll={false} className="min-w-0 flex-1 truncate text-texto hover:underline">
         {t.titulo}
       </Link>
       {extra}

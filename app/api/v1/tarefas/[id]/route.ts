@@ -11,5 +11,5 @@ export async function GET(req: Request, { params }: Ctx) {
 
 export async function PATCH(req: Request, { params }: Ctx) {
   const { id } = await params;
-  return comApi(req, async () => atualizarTarefa(id, validar(esquemaAtualizacao, await corpoJson(req))));
+  return comApi(req, async (token) => atualizarTarefa(id, validar(esquemaAtualizacao, await corpoJson(req)), token), 202);
 }

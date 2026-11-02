@@ -1,5 +1,7 @@
 // Tipos do painel, no formato em que as consultas devolvem (datas como texto ISO).
 
+import type { Pedido } from "@/lib/api/servico";
+
 export type Status = "a_fazer" | "fazendo" | "em_revisao" | "feito";
 export type PapelAtribuicao = "responsavel" | "apoio";
 export type PapelPainel = "admin" | "membro" | "orientador";
@@ -190,6 +192,35 @@ export type TokenApi = {
   criado_em: string;
   ultimo_uso: string | null;
   revogado: boolean;
+};
+
+export type StatusProposta = "pendente" | "aprovada" | "recusada" | "falhou";
+
+// Como a tarefa está hoje, para o admin comparar com o que o Claude propõe.
+export type TarefaAtual = {
+  titulo: string;
+  descricao: string | null;
+  status: Status;
+  prazo: string | null;
+  semana: number | null;
+  etiquetas: string[];
+  ligada_entrega: boolean;
+};
+
+export type Proposta = Pedido & {
+  id: string;
+  tarefa_id: string | null;
+  status: StatusProposta;
+  criado_em: string;
+  decidido_em: string | null;
+  decidido_por: string | null;
+  erro: string | null;
+  token_nome: string | null;
+  tarefa_titulo: string | null;
+  item_texto: string | null;
+  papel_atual: PapelAtribuicao | null;
+  itens_da_pessoa: { texto: string; feito: boolean }[] | null;
+  atual: TarefaAtual | null;
 };
 
 export type Resultado<T = undefined> = { ok: true; dado?: T } | { ok: false; erro: string };

@@ -3,7 +3,6 @@
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import * as Menu from "@radix-ui/react-dropdown-menu";
 import * as Popover from "@radix-ui/react-popover";
 import {
   AlertTriangle,
@@ -15,7 +14,6 @@ import {
   Folder,
   GripVertical,
   Link2,
-  MoreHorizontal,
   Plus,
   Presentation,
   Trash2,
@@ -27,7 +25,7 @@ import { useEffect, useId, useOptimistic, useRef, useState, useTransition } from
 import * as acoes from "@/app/painel/acoes";
 import { Botao } from "@/components/ui/botao";
 import { estiloControle } from "@/components/ui/campo";
-import { dataHora, deCampoData, paraCampoData } from "@/lib/painel/datas";
+import { dataHora, deCampoData, paraCampoData, textoPrazo } from "@/lib/painel/datas";
 import {
   ORIGENS,
   rotuloStatus,
@@ -42,13 +40,15 @@ import {
 } from "@/lib/painel/tipos";
 import { cn } from "@/lib/utils";
 import { usePainel } from "./contexto";
-import { Avatar, ChipEtiqueta, Prazo } from "./elementos";
+import { Avatar, ChipEtiqueta, corPrazo } from "./elementos";
 import { Markdown } from "./markdown";
 
-// Detalhe da tarefa (seção 9.4): cabeçalho e duas colunas, o trabalho à esquerda
-// (descrição, pessoas com seus itens, o "um checklist por pessoa" do Trello,
-// documentos, comentários e histórico) e os detalhes à direita. Usado na janela
-// e na página da tarefa; as colunas dependem da largura disponível, não da tela.
+// Detalhe da tarefa (seção 9.4): título e status em cima e duas colunas, o trabalho
+// à esquerda (descrição, quem faz o quê, o "um checklist por pessoa" do Trello,
+// documentos, comentários e histórico) e os detalhes à direita. Cada dado aparece
+// num lugar só. As ações ficam em AcoesTarefa, na barra da janela ou no topo da
+// página. Usado na janela e na página da tarefa; as colunas dependem da largura
+// disponível, não da tela.
 
 type Rodar = <T>(acao: () => Promise<{ ok: true; dado?: T } | { ok: false; erro: string }>, sucesso?: string) => Promise<T | undefined>;
 
@@ -72,38 +72,23 @@ const rotulo = "t-rotulo text-texto-2";
 // comentários feitos pela API aparecem como "Claude"
 const CLAUDE = { id: "claude", nome: "Claude", apelido: "Claude", cor: "#B9733F" };
 
+// acima disso, a descrição (um roteiro colado, por exemplo) abre recolhida
+const LIMITE_DESCRICAO = 600;
+
 export function DetalheTarefa({ tarefa: t }: { tarefa: TarefaCompleta }) {
-  const { podeEditar } = usePainel();
-  const semResponsavel = t.status !== "feito" && !t.atribuicoes.some((a) => a.papel === "responsavel");
   return (
     <div className="@container flex flex-col gap-6">
       <Cabecalho t={t} />
       {t.arquivada && (
-        <p className="rounded-m bg-superficie-2 px-3 py-2 text-[0.875rem] text-texto-2">Esta tarefa está arquivada.</p>
+        <p className="rounded-m bg-superficie-2 px-3 py-2 text-[0.875rem] text-texto-2">
+          Esta tarefa está arquivada e não aparece no Quadro nem nas listas.
+        </p>
       )}
       <div className="grid grid-cols-1 gap-x-8 gap-y-7 @3xl:grid-cols-[minmax(0,1fr)_280px]">
         <Propriedades t={t} />
         <div className="flex min-w-0 flex-col gap-7 @3xl:col-start-1 @3xl:row-start-1">
           <Descricao t={t} />
-          <section aria-labelledby="pessoas" className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <h2 id="pessoas" className={rotulo}>
-                Responsáveis e tarefas por pessoa
-              </h2>
-              {podeEditar && <AtribuirPessoa t={t} />}
-            </div>
-            {semResponsavel && (
-              <p className="flex items-center gap-2 rounded-m bg-alerta-fundo px-3 py-2 text-[0.875rem] text-alerta">
-                <AlertTriangle aria-hidden strokeWidth={1.75} className="size-4 shrink-0" />
-                Sem responsável. Toda tarefa aberta precisa de pelo menos um.
-              </p>
-            )}
-            {t.atribuicoes.length === 0 ? (
-              <p className="text-[0.875rem] text-texto-2">Ninguém atribuído ainda.</p>
-            ) : (
-              t.atribuicoes.map((a) => <BlocoPessoa key={a.id} a={a} />)
-            )}
-          </section>
+          <Pessoas t={t} />
           <Documentos t={t} />
           <ComentariosEHistorico t={t} />
         </div>
@@ -112,11 +97,145 @@ export function DetalheTarefa({ tarefa: t }: { tarefa: TarefaCompleta }) {
   );
 }
 
+// Toda seção do trabalho tem a mesma forma: rótulo à esquerda, ação à direita.
+function Secao({
+  id,
+  titulo,
+  acao,
+  children,
+}: {
+  id: string;
+  titulo: string;
+  acao?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <section aria-labelledby={id} className="flex flex-col gap-2.5">
+      <div className="flex min-h-8 items-center justify-between gap-3">
+        <h2 id={id} className={rotulo}>
+          {titulo}
+        </h2>
+        {acao}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function AcaoSecao(props: React.ComponentProps<typeof Botao>) {
+  return <Botao variante="fantasma" tamanho="painel" className="-mr-2 h-8 px-2 text-[0.875rem] [&_svg]:size-4" {...props} />;
+}
+
+// ------------------------------------------------------------------ ações
+
+const estiloAcao =
+  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-p px-2 text-[0.875rem] transition-colors duration-150 ease-out disabled:pointer-events-none disabled:opacity-60";
+
+// Sempre à vista, com nome, na barra da janela e no topo da página da tarefa.
+// Arquivar tira a tarefa das listas: a janela fecha e o aviso oferece Desfazer.
+export function AcoesTarefa({ tarefa: t, naPagina = false }: { tarefa: TarefaCompleta; naPagina?: boolean }) {
+  const { podeEditar, avisar } = usePainel();
+  const router = useRouter();
+  const [pendente, rodar] = useRodar();
+
+  const arquivar = async () => {
+    if (!(await rodar(() => acoes.atualizarTarefa(t.id, { arquivada: true })))) return;
+    avisar("Tarefa arquivada.", {
+      desfazer: () => {
+        acoes.atualizarTarefa(t.id, { arquivada: false }).then((r) => !r.ok && avisar(r.erro, { erro: true }));
+      },
+    });
+    if (naPagina) router.push("/painel/quadro");
+    else router.back();
+  };
+
+  const IconeArquivar = t.arquivada ? ArchiveRestore : Archive;
+  const discreta = cn(estiloAcao, "text-texto-2 hover:bg-superficie-2 hover:text-texto");
+
+  return (
+    <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label="Ações da tarefa">
+      <button
+        type="button"
+        aria-label="Copiar link"
+        title="Copiar link"
+        className={discreta}
+        onClick={() => {
+          navigator.clipboard?.writeText(`${window.location.origin}/painel/tarefas/${t.id}`);
+          avisar("Link copiado.");
+        }}
+      >
+        <Link2 aria-hidden strokeWidth={1.75} className="size-4" />
+        <span className="hidden sm:inline">Copiar link</span>
+      </button>
+      {podeEditar && (
+        <button
+          type="button"
+          aria-label="Duplicar"
+          title="Duplicar"
+          disabled={pendente}
+          className={discreta}
+          onClick={async () => {
+            const id = await rodar(() => acoes.duplicarTarefa(t.id), "Tarefa duplicada.");
+            if (id) router.push(`/painel/tarefas/${id}`, { scroll: false });
+          }}
+        >
+          <Copy aria-hidden strokeWidth={1.75} className="size-4" />
+          <span className="hidden sm:inline">Duplicar</span>
+        </button>
+      )}
+      {podeEditar && (
+        <button
+          type="button"
+          disabled={pendente}
+          className={cn(estiloAcao, "ml-1 border border-linha font-semibold text-texto hover:bg-superficie-2")}
+          onClick={() => (t.arquivada ? rodar(() => acoes.atualizarTarefa(t.id, { arquivada: false }), "Tarefa restaurada.") : arquivar())}
+        >
+          <IconeArquivar aria-hidden strokeWidth={1.75} className="size-4" />
+          {t.arquivada ? "Restaurar" : "Arquivar"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ------------------------------------------------------------------ cabeçalho
 
+// Os quatro status à vista, na ordem das colunas do Quadro: um clique move a tarefa.
+function SeletorStatus({ t }: { t: TarefaCompleta }) {
+  const { podeEditar } = usePainel();
+  const [status, setStatus] = useOptimistic(t.status);
+  const [, iniciar] = useTransition();
+  const [, rodar] = useRodar();
+
+  return (
+    <div role="group" aria-label="Status" className="flex w-full gap-1 rounded-m bg-superficie-2 p-1 sm:w-fit">
+      {STATUS.map((s) => (
+        <button
+          key={s.valor}
+          type="button"
+          aria-pressed={status === s.valor}
+          disabled={!podeEditar}
+          onClick={() => {
+            if (status === s.valor) return;
+            iniciar(async () => {
+              setStatus(s.valor);
+              await rodar(() => acoes.atualizarTarefa(t.id, { status: s.valor }), `Movida para ${s.rotulo}.`);
+            });
+          }}
+          className={cn(
+            "flex-1 rounded-p px-2 py-1.5 text-[0.8125rem] whitespace-nowrap sm:flex-none sm:px-3 sm:text-[0.875rem]",
+            status === s.valor ? "bg-superficie font-semibold text-texto shadow-cartao" : "text-texto-2 enabled:hover:text-texto",
+          )}
+        >
+          {s.rotulo}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Cabecalho({ t }: { t: TarefaCompleta }) {
-  const { podeEditar, semanas, avisar } = usePainel();
-  const router = useRouter();
+  const { podeEditar } = usePainel();
   const [editando, setEditando] = useState(false);
   const [titulo, setTitulo] = useState(t.titulo);
   const [, rodar] = useRodar();
@@ -160,94 +279,8 @@ function Cabecalho({ t }: { t: TarefaCompleta }) {
           {titulo}
         </h1>
       )}
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          aria-label="Status"
-          value={t.status}
-          disabled={!podeEditar}
-          onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { status: e.target.value as Status }), `Movida para ${rotuloStatus(e.target.value as Status)}.`)}
-          className={cn(estiloControle, "h-9 w-auto pr-8 font-medium")}
-        >
-          {STATUS.map((s) => (
-            <option key={s.valor} value={s.valor}>
-              {s.rotulo}
-            </option>
-          ))}
-        </select>
-        <Prazo prazo={t.prazo} status={t.status} />
-        <Menu.Root>
-          <Menu.Trigger aria-label="Mais ações" className="ml-auto rounded-p p-2 text-texto-2 hover:bg-superficie-2 hover:text-texto">
-            <MoreHorizontal aria-hidden strokeWidth={1.75} className="size-[18px]" />
-          </Menu.Trigger>
-          <Menu.Portal>
-            <Menu.Content align="end" sideOffset={4} className="z-50 min-w-52 rounded-m border border-linha bg-superficie p-1.5 shadow-flutuante">
-              {podeEditar && (
-                <ItemMenu
-                  onSelect={async () => {
-                    const id = await rodar(() => acoes.duplicarTarefa(t.id), "Tarefa duplicada.");
-                    if (id) router.push(`/painel/tarefas/${id}`);
-                  }}
-                >
-                  <Copy aria-hidden strokeWidth={1.75} className="size-4" /> Duplicar
-                </ItemMenu>
-              )}
-              {podeEditar && (
-                <Menu.Sub>
-                  <Menu.SubTrigger className="flex h-9 cursor-pointer items-center gap-2.5 rounded-p px-2 text-[0.9375rem] text-texto outline-none data-[highlighted]:bg-superficie-2">
-                    <span aria-hidden className="size-4" /> Mover para semana…
-                  </Menu.SubTrigger>
-                  <Menu.Portal>
-                    <Menu.SubContent className="z-50 max-h-72 overflow-y-auto rounded-m border border-linha bg-superficie p-1.5 shadow-flutuante">
-                      {semanas.map((s) => (
-                        <ItemMenu key={s.numero} onSelect={() => rodar(() => acoes.atualizarTarefa(t.id, { semana: s.numero }), `Movida para a semana ${s.numero}.`)}>
-                          Semana {s.numero}
-                        </ItemMenu>
-                      ))}
-                    </Menu.SubContent>
-                  </Menu.Portal>
-                </Menu.Sub>
-              )}
-              <ItemMenu
-                onSelect={() => {
-                  navigator.clipboard?.writeText(`${window.location.origin}/painel/tarefas/${t.id}`);
-                  avisar("Link copiado.");
-                }}
-              >
-                <Link2 aria-hidden strokeWidth={1.75} className="size-4" /> Copiar link
-              </ItemMenu>
-              {podeEditar && (
-                <ItemMenu
-                  onSelect={() =>
-                    rodar(
-                      () => acoes.atualizarTarefa(t.id, { arquivada: !t.arquivada }),
-                      t.arquivada ? "Tarefa restaurada." : "Tarefa arquivada.",
-                    )
-                  }
-                >
-                  {t.arquivada ? (
-                    <ArchiveRestore aria-hidden strokeWidth={1.75} className="size-4" />
-                  ) : (
-                    <Archive aria-hidden strokeWidth={1.75} className="size-4" />
-                  )}
-                  {t.arquivada ? "Restaurar" : "Arquivar"}
-                </ItemMenu>
-              )}
-            </Menu.Content>
-          </Menu.Portal>
-        </Menu.Root>
-      </div>
+      <SeletorStatus t={t} />
     </header>
-  );
-}
-
-function ItemMenu({ children, onSelect }: { children: React.ReactNode; onSelect: () => void }) {
-  return (
-    <Menu.Item
-      onSelect={onSelect}
-      className="flex h-9 cursor-pointer items-center gap-2.5 rounded-p px-2 text-[0.9375rem] text-texto outline-none data-[highlighted]:bg-superficie-2"
-    >
-      {children}
-    </Menu.Item>
   );
 }
 
@@ -263,15 +296,29 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
 
   return (
     <section
-      aria-labelledby="propriedades"
-      className="flex flex-col gap-1.5 rounded-m border border-linha bg-superficie p-4 @3xl:col-start-2 @3xl:row-start-1 @3xl:self-start"
+      aria-label="Detalhes"
+      className="flex flex-col gap-1.5 rounded-m border border-linha bg-superficie p-4 @3xl:sticky @3xl:top-[var(--topo-tarefa,0px)] @3xl:col-start-2 @3xl:row-start-1 @3xl:self-start"
     >
-      <h2 id="propriedades" className={cn(rotulo, "mb-1.5")}>
-        Detalhes
-      </h2>
+      <div className={cn(linha, "items-start")}>
+        <span className="pt-2 text-[0.875rem] text-texto-2">Prazo</span>
+        <div className="min-w-0">
+          <input
+            type="date"
+            value={paraCampoData(t.prazo)}
+            disabled={!podeEditar}
+            onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { prazo: deCampoData(e.target.value) }))}
+            className={cn(estiloControle, "h-9 w-full")}
+            aria-label="Prazo"
+          />
+          {t.prazo && t.status !== "feito" && (
+            <p className={cn("t-dado mt-1 text-[0.8125rem]", corPrazo(t.prazo, t.status))}>{textoPrazo(t.prazo)}</p>
+          )}
+        </div>
+      </div>
       <div className={linha}>
         <span className="text-[0.875rem] text-texto-2">Semana</span>
         <select
+          aria-label="Semana"
           value={t.semana ?? ""}
           disabled={!podeEditar}
           onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { semana: e.target.value ? Number(e.target.value) : null }))}
@@ -284,17 +331,6 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
             </option>
           ))}
         </select>
-      </div>
-      <div className={linha}>
-        <span className="text-[0.875rem] text-texto-2">Prazo</span>
-        <input
-          type="date"
-          value={paraCampoData(t.prazo)}
-          disabled={!podeEditar}
-          onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { prazo: deCampoData(e.target.value) }))}
-          className={cn(estiloControle, "h-9 w-full")}
-          aria-label="Prazo"
-        />
       </div>
       <div className={cn(linha, "items-start")}>
         <span className="pt-2 text-[0.875rem] text-texto-2">Etiquetas</span>
@@ -336,27 +372,21 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
           )}
         </div>
       </div>
-      <div className={cn(linha, "items-start")}>
-        <span className="pt-0.5 text-[0.875rem] text-texto-2">Entrega</span>
-        <label className="flex items-start gap-2 text-[0.875rem] leading-snug text-texto">
-          <input
-            type="checkbox"
-            checked={t.ligada_entrega}
-            disabled={!podeEditar}
-            onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { ligada_entrega: e.target.checked }))}
-            className="mt-0.5 size-4 shrink-0 accent-[var(--botao-primario)]"
-          />
-          Ligada à entrega do programa
-        </label>
-      </div>
-      <div className={cn(linha, "items-start")}>
-        <span className="text-[0.875rem] text-texto-2">Origem</span>
-        <span className="text-[0.875rem] leading-snug text-texto-2">
-          {ORIGENS[t.origem]}
-          {criador && ` · criada por ${criador.apelido ?? criador.nome}`}
-          {` · ${dataHora(t.criado_em)}`}
-        </span>
-      </div>
+      <label className="flex items-start gap-2 py-1.5 text-[0.875rem] leading-snug text-texto">
+        <input
+          type="checkbox"
+          checked={t.ligada_entrega}
+          disabled={!podeEditar}
+          onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { ligada_entrega: e.target.checked }))}
+          className="mt-0.5 size-4 shrink-0 accent-[var(--botao-primario)]"
+        />
+        Ligada à entrega do programa
+      </label>
+      <p className="mt-1.5 border-t border-linha pt-3 text-[0.8125rem] leading-snug text-texto-2">
+        {ORIGENS[t.origem]}
+        {criador && ` · criada por ${criador.apelido ?? criador.nome}`}
+        {` · ${dataHora(t.criado_em)}`}
+      </p>
     </section>
   );
 }
@@ -368,21 +398,27 @@ function Descricao({ t }: { t: TarefaCompleta }) {
   const [editando, setEditando] = useState(false);
   const [aba, setAba] = useState<"escrever" | "ver">("escrever");
   const [texto, setTexto] = useState(t.descricao ?? "");
+  const [inteira, setInteira] = useState(false);
   const [pendente, rodar] = useRodar();
   useEffect(() => setTexto(t.descricao ?? ""), [t.descricao]);
+  const longa = (t.descricao?.length ?? 0) > LIMITE_DESCRICAO;
+
+  if (!podeEditar && !t.descricao) return null;
 
   return (
-    <section aria-labelledby="descricao" className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <h2 id="descricao" className={rotulo}>
-          Descrição
-        </h2>
-        {podeEditar && !editando && (
-          <button type="button" onClick={() => setEditando(true)} className="link text-[0.875rem]">
+    <Secao
+      id="descricao"
+      titulo="Descrição"
+      acao={
+        podeEditar &&
+        !editando && (
+          <AcaoSecao onClick={() => setEditando(true)}>
+            {!t.descricao && <Plus aria-hidden />}
             {t.descricao ? "Editar" : "Escrever"}
-          </button>
-        )}
-      </div>
+          </AcaoSecao>
+        )
+      }
+    >
       {editando ? (
         <div className="rounded-m border border-linha bg-superficie">
           <div className="flex gap-1 border-b border-linha p-1" role="tablist">
@@ -434,16 +470,44 @@ function Descricao({ t }: { t: TarefaCompleta }) {
             </Botao>
           </div>
         </div>
-      ) : t.descricao ? (
-        <Markdown texto={t.descricao} />
       ) : (
-        <p className="text-[0.875rem] text-texto-2">Sem descrição.</p>
+        t.descricao && (
+          <>
+            <div className={cn(longa && !inteira && "max-h-44 overflow-hidden [mask-image:linear-gradient(to_bottom,black_60%,transparent)]")}>
+              <Markdown texto={t.descricao} />
+            </div>
+            {longa && (
+              <button type="button" onClick={() => setInteira(!inteira)} className="link w-fit text-[0.875rem]">
+                {inteira ? "Ver menos" : "Ver tudo"}
+              </button>
+            )}
+          </>
+        )
       )}
-    </section>
+    </Secao>
   );
 }
 
 // ------------------------------------------------------------------ pessoas e itens
+
+function Pessoas({ t }: { t: TarefaCompleta }) {
+  const { podeEditar } = usePainel();
+  const semResponsavel = t.status !== "feito" && !t.atribuicoes.some((a) => a.papel === "responsavel");
+  return (
+    <Secao id="pessoas" titulo="Quem faz o quê" acao={podeEditar && <AtribuirPessoa t={t} />}>
+      {semResponsavel && (
+        <p className="flex items-center gap-2 rounded-m bg-alerta-fundo px-3 py-2 text-[0.875rem] text-alerta">
+          <AlertTriangle aria-hidden strokeWidth={1.75} className="size-4 shrink-0" />
+          Sem responsável. Toda tarefa aberta precisa de pelo menos um.
+        </p>
+      )}
+      {t.atribuicoes.length === 0 && !semResponsavel && <p className="text-[0.875rem] text-texto-2">Ninguém atribuído.</p>}
+      {t.atribuicoes.map((a) => (
+        <BlocoPessoa key={a.id} a={a} />
+      ))}
+    </Secao>
+  );
+}
 
 function AtribuirPessoa({ t }: { t: TarefaCompleta }) {
   const { ativas } = usePainel();
@@ -454,9 +518,9 @@ function AtribuirPessoa({ t }: { t: TarefaCompleta }) {
   return (
     <Popover.Root open={aberto} onOpenChange={setAberto}>
       <Popover.Trigger asChild>
-        <Botao variante="secundario" tamanho="painel" disabled={!livres.length}>
+        <AcaoSecao disabled={!livres.length}>
           <UserPlus aria-hidden /> Atribuir pessoa
-        </Botao>
+        </AcaoSecao>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content align="end" sideOffset={6} className="z-50 w-64 rounded-m border border-linha bg-superficie p-1.5 shadow-flutuante">
@@ -510,7 +574,7 @@ function BlocoPessoa({ a }: { a: Atribuicao }) {
     <div className="rounded-m border border-linha bg-superficie p-3">
       <div className="flex items-center gap-2.5">
         <Avatar pessoa={p} tamanho={28} />
-        <span className="min-w-0 flex-1 truncate font-semibold text-texto">{p?.nome ?? "Pessoa removida"}</span>
+        <span className="min-w-0 flex-1 truncate font-semibold text-texto">{p?.apelido ?? p?.nome ?? "Pessoa removida"}</span>
         {a.itens.length > 0 && (
           <span className="t-dado text-[0.8125rem] text-texto-2">
             {feitos}/{a.itens.length}
@@ -521,7 +585,7 @@ function BlocoPessoa({ a }: { a: Atribuicao }) {
           value={a.papel}
           disabled={!podeEditar}
           onChange={(e) => rodar(() => acoes.mudarPapel(a.id, e.target.value as "responsavel" | "apoio"))}
-          className={cn(estiloControle, "h-8 w-auto py-0 pr-7 text-[0.8125rem]")}
+          className={cn(estiloControle, "h-8 w-auto border-transparent bg-transparent px-1.5 py-0 text-[0.8125rem] text-texto-2 hover:border-linha")}
         >
           <option value="responsavel">responsável</option>
           <option value="apoio">apoio</option>
@@ -630,7 +694,7 @@ function ItemEditavel({ item }: { item: Item }) {
           aria-label={`Arrastar "${item.texto}"`}
           {...attributes}
           {...listeners}
-          className="mt-0.5 cursor-grab touch-none rounded-p text-texto-2 opacity-40 group-hover:opacity-100 focus-visible:opacity-100"
+          className="mt-0.5 cursor-grab touch-none rounded-p text-texto-2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-40"
         >
           <GripVertical aria-hidden strokeWidth={1.75} className="size-4" />
         </button>
@@ -681,7 +745,7 @@ function ItemEditavel({ item }: { item: Item }) {
           type="button"
           aria-label={`Apagar "${item.texto}"`}
           onClick={() => rodar(() => acoes.removerItem(item.id))}
-          className="rounded-p p-0.5 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100"
+          className="rounded-p p-0.5 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
         >
           <Trash2 aria-hidden strokeWidth={1.75} className="size-3.5" />
         </button>
@@ -718,17 +782,18 @@ function Documentos({ t }: { t: TarefaCompleta }) {
   const valida = /^https:\/\/(drive|docs)\.google\.com\//.test(url);
 
   return (
-    <section aria-labelledby="documentos" className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <h2 id="documentos" className={rotulo}>
-          Documentos
-        </h2>
-        {podeEditar && !aberto && (
-          <button type="button" onClick={() => setAberto(true)} className="link inline-flex items-center gap-1 text-[0.875rem]">
-            <Plus aria-hidden strokeWidth={2} className="size-3.5" /> Adicionar documento
-          </button>
-        )}
-      </div>
+    <Secao
+      id="documentos"
+      titulo="Documentos"
+      acao={
+        podeEditar &&
+        !aberto && (
+          <AcaoSecao onClick={() => setAberto(true)}>
+            <Plus aria-hidden /> Adicionar documento
+          </AcaoSecao>
+        )
+      }
+    >
       {t.lista_documentos.length > 0 ? (
         <ul className="flex flex-col divide-y divide-linha rounded-m border border-linha bg-superficie">
           {t.lista_documentos.map((d) => {
@@ -745,7 +810,7 @@ function Documentos({ t }: { t: TarefaCompleta }) {
                     type="button"
                     aria-label={`Remover ${d.titulo}`}
                     onClick={() => rodar(() => acoes.removerDocumento(d.id))}
-                    className="rounded-p p-1 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100"
+                    className="rounded-p p-1 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                   >
                     <Trash2 aria-hidden strokeWidth={1.75} className="size-3.5" />
                   </button>
@@ -755,7 +820,7 @@ function Documentos({ t }: { t: TarefaCompleta }) {
           })}
         </ul>
       ) : (
-        !aberto && <p className="text-[0.875rem] text-texto-2">Nenhum documento ligado.</p>
+        !podeEditar && <p className="text-[0.875rem] text-texto-2">Nenhum documento ligado.</p>
       )}
       {aberto && (
         <form
@@ -809,7 +874,7 @@ function Documentos({ t }: { t: TarefaCompleta }) {
           </div>
         </form>
       )}
-    </section>
+    </Secao>
   );
 }
 

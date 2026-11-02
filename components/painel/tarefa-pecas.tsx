@@ -49,7 +49,7 @@ export function progresso(t: Pick<TarefaResumo, "atribuicoes">) {
 }
 
 // Cartão de tarefa (seção 9.3): etiquetas, título, prazo, ícones e avatares.
-// Com `itensDe`, mostra embaixo do título os itens daquela pessoa, marcáveis.
+// Com `itensDe`, fica enxuto: título, itens daquela pessoa, marcáveis, e prazo.
 export function CartaoTarefa({
   tarefa: t,
   itensDe,
@@ -64,6 +64,8 @@ export function CartaoTarefa({
   const { pessoa, etiqueta } = usePainel();
   const { feitos, total } = progresso(t);
   const atrasada = estaAtrasada(t);
+  const enxuto = Boolean(itensDe);
+  const etiquetas = enxuto ? [] : t.etiquetas;
   const itens = itensDe ? t.atribuicoes.find((a) => a.pessoa_id === itensDe)?.itens ?? [] : [];
   return (
     <article
@@ -80,16 +82,17 @@ export function CartaoTarefa({
           className="absolute top-2.5 right-2.5 size-4 fill-caramelo/25 text-caramelo"
         />
       )}
-      {(t.etiquetas.length > 0 || atrasada) && (
+      {(etiquetas.length > 0 || atrasada) && (
         <div className="mb-2 flex flex-wrap gap-1.5 pr-5">
           {atrasada && <ChipAtrasada />}
-          {t.etiquetas.map((e) => (
+          {etiquetas.map((e) => (
             <ChipEtiqueta key={e} etiqueta={etiqueta(e)} />
           ))}
         </div>
       )}
       <Link
         href={`/painel/tarefas/${t.id}`}
+        scroll={false}
         className={cn(
           "line-clamp-3 pr-5 font-medium text-texto after:absolute after:inset-0 after:content-[''] hover:underline",
           t.status === "feito" && "text-texto-2",
@@ -104,29 +107,37 @@ export function CartaoTarefa({
           ))}
         </div>
       )}
-      <div className="mt-2.5 flex items-center gap-3 text-texto-2">
-        <Prazo prazo={t.prazo} status={t.status} curto />
-        {t.documentos > 0 && (
-          <span className="inline-flex items-center gap-1 text-[0.8125rem]" title={`${t.documentos} documentos`}>
-            <FileText aria-hidden strokeWidth={1.75} className="size-3.5" />
-            <span className="t-dado">{t.documentos}</span>
+      {enxuto ? (
+        t.prazo && (
+          <div className="mt-2.5">
+            <Prazo prazo={t.prazo} status={t.status} curto />
+          </div>
+        )
+      ) : (
+        <div className="mt-2.5 flex items-center gap-3 text-texto-2">
+          <Prazo prazo={t.prazo} status={t.status} curto />
+          {t.documentos > 0 && (
+            <span className="inline-flex items-center gap-1 text-[0.8125rem]" title={`${t.documentos} documentos`}>
+              <FileText aria-hidden strokeWidth={1.75} className="size-3.5" />
+              <span className="t-dado">{t.documentos}</span>
+            </span>
+          )}
+          {t.comentarios > 0 && (
+            <span className="inline-flex items-center gap-1 text-[0.8125rem]" title={`${t.comentarios} comentários`}>
+              <MessageSquare aria-hidden strokeWidth={1.75} className="size-3.5" />
+              <span className="t-dado">{t.comentarios}</span>
+            </span>
+          )}
+          {total > 0 && (
+            <span className="t-dado text-[0.8125rem]" title="Itens feitos">
+              {feitos}/{total}
+            </span>
+          )}
+          <span className="ml-auto">
+            <PilhaAvatares pessoas={t.atribuicoes.map((a) => pessoa(a.pessoa_id))} />
           </span>
-        )}
-        {t.comentarios > 0 && (
-          <span className="inline-flex items-center gap-1 text-[0.8125rem]" title={`${t.comentarios} comentários`}>
-            <MessageSquare aria-hidden strokeWidth={1.75} className="size-3.5" />
-            <span className="t-dado">{t.comentarios}</span>
-          </span>
-        )}
-        {total > 0 && (
-          <span className="t-dado text-[0.8125rem]" title="Itens feitos">
-            {feitos}/{total}
-          </span>
-        )}
-        <span className="ml-auto">
-          <PilhaAvatares pessoas={t.atribuicoes.map((a) => pessoa(a.pessoa_id))} />
-        </span>
-      </div>
+        </div>
+      )}
     </article>
   );
 }

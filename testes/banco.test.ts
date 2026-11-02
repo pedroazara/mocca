@@ -253,6 +253,29 @@ describe("RLS", () => {
     });
   });
 
+  it("proposta do Claude: só o admin lê e decide, e ninguém logado cria ou apaga", async () => {
+    const { id } = (await um<{ id: string }>(
+      "insert into proposta (operacao, dados) values ('criar_tarefa', '{\"titulo\":\"x\"}') returning id",
+    ))!;
+    const auth = (email: string) => um<{ id: string }>("select auth_id as id from pessoa where email = $1", [email]);
+    const contar = () => um<{ n: number }>("select count(*)::int n from proposta");
+    const criar = () => db.query("insert into proposta (operacao, dados) values ('comentar', '{}')");
+
+    for (const email of ["gabriel.leonardo@exemplo.com", "leomar.santos@exemplo.com"])
+      await como({ usuario: (await auth(email))!.id }, async () => {
+        expect((await contar())!.n).toBe(0);
+        expect((await db.query("update proposta set status = 'aprovada' where id = $1", [id])).affectedRows).toBe(0);
+        await expect(criar()).rejects.toThrow();
+      });
+
+    await como({ usuario: (await auth("pedro.henrique@exemplo.com"))!.id }, async () => {
+      expect((await contar())!.n).toBe(1);
+      await expect(criar()).rejects.toThrow();
+      await expect(db.query("delete from proposta where id = $1", [id])).rejects.toThrow();
+      expect((await db.query("update proposta set status = 'recusada' where id = $1", [id])).affectedRows).toBe(1);
+    });
+  });
+
   it("perfil público só aceita links do LinkedIn", async () => {
     const pessoaId = (await um<{ id: string }>("select id from pessoa where apelido = 'Marcos'"))!.id;
     for (const url of ["javascript:alert(1)", "https://linkedin.com.exemplo.com/in/x", "http://linkedin.com/in/x"])

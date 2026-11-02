@@ -1,5 +1,7 @@
 "use client";
 
+import { Archive } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { estiloControle } from "@/components/ui/campo";
 import { cn } from "@/lib/utils";
@@ -63,6 +65,13 @@ export function FiltrosQuadro() {
           Limpar filtros
         </button>
       )}
+      <Link
+        href="/painel/arquivadas"
+        className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-p px-2 text-[0.875rem] text-texto-2 hover:bg-superficie-2 hover:text-texto"
+      >
+        <Archive aria-hidden strokeWidth={1.75} className="size-4" />
+        Arquivadas
+      </Link>
     </div>
   );
 }

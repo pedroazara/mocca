@@ -172,6 +172,7 @@ Títulos com `text-wrap: balance`. Parágrafos com no máximo 68 caracteres de l
 | `--raio-g` | 16 px | Blocos do site, fotos |
 | `--sombra-cartao` | `0 1px 2px rgb(74 44 29 / .06), 0 2px 8px rgb(74 44 29 / .05)` | Só cartões arrastáveis e flutuantes |
 | `--sombra-flutuante` | `0 8px 24px rgb(74 44 29 / .14)` | Menus, cartão flutuante, toast |
+| `--sobreposicao` | `rgb(43 26 17 / .4)`, no escuro `rgb(0 0 0 / .6)` | Atrás de janelas e gavetas: sempre escurece |
 
 Cartões: borda 1 px `--linha`, fundo `--superficie`, raio `--raio-m`. Sem borda colorida lateral.
 

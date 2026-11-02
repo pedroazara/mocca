@@ -28,6 +28,10 @@ export function dataHora(iso: string | Date) {
   return format(emBrasilia(iso), "dd/MM 'às' HH:mm", { locale: ptBR });
 }
 
+export function dataHoraComAno(iso: string | Date) {
+  return format(emBrasilia(iso), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+}
+
 export function dataLonga(iso: string | Date) {
   return format(emBrasilia(iso), "EEEE, d 'de' MMMM 'às' HH:mm", { locale: ptBR });
 }

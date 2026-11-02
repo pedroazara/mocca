@@ -6,5 +6,5 @@ export const dynamic = "force-dynamic";
 // DELETE /api/v1/tarefas/{id}/atribuicoes/{pessoa}
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string; pessoa: string }> }) {
   const { id, pessoa } = await params;
-  return comApi(req, () => removerAtribuicao(id, decodeURIComponent(pessoa)));
+  return comApi(req, (token) => removerAtribuicao(id, decodeURIComponent(pessoa), token), 202);
 }

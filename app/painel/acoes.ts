@@ -2,6 +2,7 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { aprovarProposta as aprovar, ErroApi } from "@/lib/api/servico";
 import { pessoaLogada, type PessoaLogada } from "@/lib/auth";
 import { comoUsuario, mensagemDeErro, type Consulta } from "@/lib/banco";
 import { avisarAtribuicao } from "@/lib/email";
@@ -577,6 +578,34 @@ export async function criarToken(nome: string) {
 export async function revogarToken(id: string) {
   return agir(async (q) => {
     exigir(await q("update token_api set revogado = true where id = $1 returning id", [id]), "Só o admin revoga tokens.");
+  });
+}
+
+// Propostas do Claude (seção 11.4). Aprovar grava como o Claude, com o service
+// role, para o histórico sair em nome dele. O service role ignora o RLS: a
+// conferência de admin aqui embaixo é a proteção real.
+export async function aprovarProposta(id: string) {
+  const eu = await pessoaLogada();
+  if (!eu) return { ok: false as const, erro: "Sua sessão expirou. Entre de novo." };
+  if (eu.papel !== "admin") return { ok: false as const, erro: "Só o admin aprova as propostas do Claude." };
+  try {
+    const dado = await aprovar(id, eu.id);
+    revalidatePath("/painel", "layout");
+    return { ok: true as const, dado };
+  } catch (e) {
+    return { ok: false as const, erro: e instanceof ErroApi ? e.message : mensagemDeErro(e) };
+  }
+}
+
+export async function recusarProposta(id: string) {
+  return agir(async (q, eu) => {
+    exigir(
+      await q(
+        "update proposta set status = 'recusada', decidido_por = $2, decidido_em = now() where id = $1 and status = 'pendente' returning id",
+        [id, eu.id],
+      ),
+      "Esta proposta já foi decidida, ou você não pode decidir propostas.",
+    );
   });
 }
 

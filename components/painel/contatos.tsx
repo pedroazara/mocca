@@ -138,7 +138,7 @@ function PainelContato({ contato: c, aoFechar }: { contato: Contato; aoFechar: (
   return (
     <Dialog.Root open onOpenChange={(a) => !a && aoFechar()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-texto/20" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-sobreposicao" />
         <Dialog.Content
           aria-describedby={undefined}
           className="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-linha bg-fundo shadow-flutuante data-[state=open]:animate-[painel-entra_200ms_ease-out] sm:w-[560px]"
@@ -221,7 +221,7 @@ function PainelContato({ contato: c, aoFechar }: { contato: Contato; aoFechar: (
             <p className="mt-2 rounded-m bg-superficie p-4 whitespace-pre-line text-texto">{c.mensagem}</p>
 
             {c.tarefa_id && (
-              <Link href={`/painel/tarefas/${c.tarefa_id}`} className="link mt-4 inline-flex items-center gap-1.5">
+              <Link href={`/painel/tarefas/${c.tarefa_id}`} scroll={false} className="link mt-4 inline-flex items-center gap-1.5">
                 <ExternalLink aria-hidden strokeWidth={1.75} className="size-4" /> Ver a tarefa “Responder contato”
               </Link>
             )}

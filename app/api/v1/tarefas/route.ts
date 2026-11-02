@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   );
 }
 
-// POST /api/v1/tarefas: cria com atribuições, itens e documentos numa transação
+// POST /api/v1/tarefas: propõe tarefa com atribuições, itens e documentos (202: espera a aprovação do admin)
 export async function POST(req: Request) {
-  return comApi(req, async () => criarTarefa(validar(esquemaNovaTarefa, await corpoJson(req))), 201);
+  return comApi(req, async (token) => criarTarefa(validar(esquemaNovaTarefa, await corpoJson(req)), token), 202);
 }

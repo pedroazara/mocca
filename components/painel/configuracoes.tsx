@@ -122,7 +122,7 @@ export function PaginaConfiguracoes({ config, tokens, siteUrl }: { config: Confi
         </div>
       </Bloco>
 
-      <Bloco titulo="Tokens da API do Claude" descricao="O Claude usa um token para criar e atribuir tarefas pela API e pelo conector MCP. O token aparece uma única vez.">
+      <Bloco titulo="Tokens da API do Claude" descricao="O Claude usa um token para pedir mudanças pela API e pelo conector MCP. Nada entra no painel sem a sua aprovação, em Aprovações. O token aparece uma única vez.">
         <form
           className="flex flex-wrap gap-2"
           onSubmit={(e) => {
@@ -156,8 +156,10 @@ export function PaginaConfiguracoes({ config, tokens, siteUrl }: { config: Confi
               </Botao>
             </div>
             <p className="t-pequeno mt-3 text-texto-2">
-              Conector MCP: <code className="t-dado">{siteUrl}/api/mcp</code> · API: <code className="t-dado">{siteUrl}/api/v1</code> · cabeçalho{" "}
-              <code className="t-dado">Authorization: Bearer &lt;token&gt;</code>
+              No conector do Claude: URL <code className="t-dado">{siteUrl}/api/mcp</code>, autenticação “Sem login” e, em Cabeçalhos de requisição, o nome{" "}
+              <code className="t-dado">authorization</code> com o valor <code className="t-dado">Bearer</code>, um espaço e o token. O token já começa com{" "}
+              <code className="t-dado">mocca_</code>: cole inteiro, uma vez só. O valor salvo não pode ser editado: para trocar, remova o conector e adicione
+              de novo. A API REST fica em <code className="t-dado">{siteUrl}/api/v1</code>, com o mesmo cabeçalho.
             </p>
           </div>
         )}

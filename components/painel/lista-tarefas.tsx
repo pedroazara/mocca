@@ -162,6 +162,7 @@ function LinhaTarefa({ tarefa: t, pessoaId }: { tarefa: TarefaResumo; pessoaId: 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <Link
               href={`/painel/tarefas/${t.id}`}
+              scroll={false}
               className={cn("font-medium hover:underline", feita ? "text-texto-2 line-through" : "text-texto")}
             >
               {t.titulo}

@@ -95,15 +95,17 @@ export function ChipAtrasada() {
   );
 }
 
-// Prazo com cor de estado: atrasado em erro, até 2 dias em alerta.
+// Cor do prazo: atrasado em erro, até 2 dias em alerta.
+export function corPrazo(prazo: string, status: Status) {
+  if (status === "feito") return "text-texto-2";
+  if (estaAtrasada({ prazo, status })) return "text-erro";
+  return diasAtePrazo(prazo) <= 2 ? "text-alerta" : "text-texto-2";
+}
+
 export function Prazo({ prazo, status, curto = false }: { prazo: string | null; status: Status; curto?: boolean }) {
   if (!prazo) return null;
-  const atrasada = estaAtrasada({ prazo, status });
-  const dias = diasAtePrazo(prazo);
-  const cor =
-    status === "feito" ? "text-texto-2" : atrasada ? "text-erro" : dias <= 2 ? "text-alerta" : "text-texto-2";
   return (
-    <span className={cn("t-dado inline-flex items-center gap-1 text-[0.8125rem]", cor)} title={textoPrazo(prazo)}>
+    <span className={cn("t-dado inline-flex items-center gap-1 text-[0.8125rem]", corPrazo(prazo, status))} title={textoPrazo(prazo)}>
       <Clock aria-hidden strokeWidth={1.75} className="size-3.5" />
       {curto || status === "feito" ? dataCurta(prazo) : `${dataCurta(prazo)} · ${textoPrazo(prazo)}`}
     </span>

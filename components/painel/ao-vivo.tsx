@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { supabaseNavegador } from "@/lib/supabase/navegador";
 
 // Mudanças de outras pessoas aparecem sem recarregar (seção 13.3).
-// Em produção: Supabase Realtime nas tabelas tarefa, atribuicao e item.
+// Em produção: Supabase Realtime nas tabelas tarefa, atribuicao, item e proposta.
 // No modo local (sem Supabase): atualiza a cada 15 s enquanto a aba está visível.
 
 export function AoVivo() {
@@ -21,7 +21,7 @@ export function AoVivo() {
     if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
       const supabase = supabaseNavegador();
       const canal = supabase.channel("painel");
-      for (const tabela of ["tarefa", "atribuicao", "item"])
+      for (const tabela of ["tarefa", "atribuicao", "item", "proposta"])
         canal.on("postgres_changes", { event: "*", schema: "public", table: tabela }, atualizar);
       canal.subscribe();
       return () => {

@@ -1,4 +1,4 @@
-import { DetalheTarefa, TarefaNaoEncontrada } from "@/components/painel/detalhe-tarefa";
+import { AcoesTarefa, DetalheTarefa, TarefaNaoEncontrada } from "@/components/painel/detalhe-tarefa";
 import { JanelaTarefa } from "@/components/painel/janela-tarefa";
 import { exigirPessoa } from "@/lib/auth";
 import { comoUsuario } from "@/lib/banco";
@@ -14,6 +14,7 @@ export default async function TarefaNaJanela({ params }: { params: Promise<{ id:
       titulo={t?.titulo ?? "Tarefa"}
       rotulo={t?.semana ? `Semana ${t.semana}` : "Sem semana"}
       hrefPagina={`/painel/tarefas/${id}`}
+      acoes={t && <AcoesTarefa tarefa={t} />}
     >
       {t ? <DetalheTarefa tarefa={t} /> : <TarefaNaoEncontrada />}
     </JanelaTarefa>

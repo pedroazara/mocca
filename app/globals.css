@@ -49,6 +49,7 @@
   --raio-g: 16px;  /* blocos do site público */
   --sombra-cartao: 0 1px 2px rgb(74 44 29 / 0.06), 0 2px 8px rgb(74 44 29 / 0.05);
   --sombra-flutuante: 0 8px 24px rgb(74 44 29 / 0.14);
+  --sobreposicao: rgb(43 26 17 / 0.4);   /* atrás de janelas e gavetas: sempre escurece */
 
   /* derivados (ver DUVIDAS.md): fundo do rodapé e os 5 tons da grade de talhões,
      do creme ao espresso, misturados a partir das cores da marca */
@@ -107,6 +108,7 @@
     color-scheme: dark;
 
     --rodape-fundo: #120C08;
+    --sobreposicao: rgb(0 0 0 / 0.6);
     --logo-cima: #D49360;
     --logo-baixo: var(--caramelo-texto);
     --talhao-1: color-mix(in oklab, var(--torra) 28%, var(--superficie-2));
@@ -140,6 +142,7 @@
   color-scheme: dark;
 
   --rodape-fundo: #120C08;
+  --sobreposicao: rgb(0 0 0 / 0.6);
   --logo-cima: #D49360;
   --logo-baixo: var(--caramelo-texto);
   --talhao-1: color-mix(in oklab, var(--torra) 28%, var(--superficie-2));
@@ -183,6 +186,7 @@
   --color-et-negocio: var(--et-negocio);
   --color-et-marketing: var(--et-marketing);
   --color-rodape-fundo: var(--rodape-fundo);
+  --color-sobreposicao: var(--sobreposicao);
   --color-talhao-1: var(--talhao-1);
   --color-talhao-2: var(--talhao-2);
   --color-talhao-3: var(--talhao-3);

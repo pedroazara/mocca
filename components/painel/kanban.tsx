@@ -168,7 +168,7 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
       }}
     >
       <div className="-mx-4 overflow-x-auto px-4 pb-4 lg:-mx-8 lg:px-8">
-        <div className="grid min-w-[1080px] grid-cols-4 gap-4">
+        <div className="grid min-w-[860px] grid-cols-4 gap-4">
           {STATUS.map((s) => {
             const lista = colunas[s.valor];
             const visiveis =

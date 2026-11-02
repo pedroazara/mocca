@@ -6,6 +6,7 @@ import type {
   Etiqueta,
   Perfil,
   Pessoa,
+  Proposta,
   Reuniao,
   Semana,
   Status,
@@ -108,11 +109,13 @@ export async function tarefa(q: Consulta, id: string): Promise<TarefaCompleta | 
 }
 
 export async function contadores(q: Consulta, pessoaId: string) {
-  const [c] = await q<{ minhas: number; contatos: number }>(
+  // quem não é admin não enxerga proposta nenhuma (RLS), e o contador fica em 0
+  const [c] = await q<{ minhas: number; contatos: number; aprovacoes: number }>(
     `select
        (select count(distinct t.id) from tarefa t join atribuicao a on a.tarefa_id = t.id
          where a.pessoa_id = $1 and t.status <> 'feito' and not t.arquivada)::int as minhas,
-       (select count(*) from contato where status = 'novo')::int as contatos`,
+       (select count(*) from contato where status = 'novo')::int as contatos,
+       (select count(*) from proposta where status = 'pendente')::int as aprovacoes`,
     [pessoaId],
   );
   return c;
@@ -162,6 +165,39 @@ export async function contato(q: Consulta, id: string) {
 
 export async function tokens(q: Consulta) {
   return q<TokenApi>("select id, nome, criado_em, ultimo_uso, revogado from token_api order by criado_em desc");
+}
+
+const CONSULTA_PROPOSTA = `
+  select p.id, p.operacao, p.dados, p.tarefa_id, p.status::text as status, p.criado_em, p.decidido_em,
+         p.decidido_por, p.erro, k.nome as token_nome, t.titulo as tarefa_titulo, i.texto as item_texto,
+         x.papel::text as papel_atual,
+         case when p.operacao = 'remover_atribuicao' and x.id is not null then (
+           select coalesce(jsonb_agg(jsonb_build_object('texto', y.texto, 'feito', y.feito) order by y.posicao, y.id), '[]'::jsonb)
+             from item y where y.atribuicao_id = x.id
+         ) end as itens_da_pessoa,
+         case when p.operacao = 'atualizar_tarefa' and t.id is not null then jsonb_build_object(
+           'titulo', t.titulo,
+           'descricao', t.descricao,
+           'status', t.status,
+           'prazo', t.prazo,
+           'semana', (select s.numero from semana s where s.id = t.semana_id),
+           'ligada_entrega', t.ligada_entrega,
+           'etiquetas', (select coalesce(jsonb_agg(e.nome order by e.nome), '[]'::jsonb)
+                           from tarefa_etiqueta te join etiqueta e on e.id = te.etiqueta_id
+                          where te.tarefa_id = t.id)
+         ) end as atual
+    from proposta p
+    left join token_api k on k.id = p.token_id
+    left join tarefa t on t.id = p.tarefa_id
+    left join item i on i.id::text = p.dados->>'item_id'
+    left join atribuicao x on x.tarefa_id = p.tarefa_id and x.pessoa_id::text = p.dados->>'pessoa'`;
+
+export async function propostasPendentes(q: Consulta) {
+  return q<Proposta>(`${CONSULTA_PROPOSTA} where p.status = 'pendente' order by p.criado_em`);
+}
+
+export async function propostasDecididas(q: Consulta) {
+  return q<Proposta>(`${CONSULTA_PROPOSTA} where p.status <> 'pendente' order by p.decidido_em desc limit 30`);
 }
 
 export async function documentosDaSemana(q: Consulta, semanaId: string) {

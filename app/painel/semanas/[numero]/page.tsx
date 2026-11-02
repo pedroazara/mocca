@@ -20,7 +20,7 @@ export default async function PaginaSemanaDoPrograma({ params }: { params: Promi
     <>
       <TopoPagina
         titulo={`Semana ${n}`}
-        migalhas={[{ href: "/painel/semanas", rotulo: "Semanas do programa" }]}
+        migalhas={[{ href: "/painel/semanas", rotulo: "Cronograma" }]}
         semanaNovaTarefa={n}
       />
       <ConteudoPagina className="flex flex-col gap-8">

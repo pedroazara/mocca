@@ -10,10 +10,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   return comApi(
     req,
-    async () => {
+    async (token) => {
       const c = validar(esquema, await corpoJson(req));
-      return adicionarItem(id, c.pessoa, c.texto);
+      return adicionarItem(id, c.pessoa, c.texto, token);
     },
-    201,
+    202,
   );
 }

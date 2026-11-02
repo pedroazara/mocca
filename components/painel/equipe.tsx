@@ -165,7 +165,7 @@ function FormPessoa({ pessoa, perfil, aoFechar }: { pessoa: Pessoa | null; perfi
   return (
     <Dialog.Root open onOpenChange={(a) => !a && aoFechar()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-texto/30" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-sobreposicao" />
         <Dialog.Content
           aria-describedby={undefined}
           className="fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-g border border-linha bg-superficie p-6 shadow-flutuante"

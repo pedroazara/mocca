@@ -30,7 +30,7 @@ Outros comandos:
 | Comando | O que faz |
 |---|---|
 | `npm run build` e `npm start` | Build de produção e servidor |
-| `npm test` | Testes (Vitest): migrações e RLS num Postgres embutido, schema do contato, datas, pauta, resolução de pessoas da API e importação do Trello |
+| `npm test` | Testes (Vitest): migrações e RLS num Postgres embutido, aprovação das propostas do Claude, schema do contato, datas, pauta, resolução de pessoas da API e importação do Trello |
 | `npm run lint` / `npm run typecheck` | ESLint e TypeScript |
 | `npm run gerar:curvas` | Regera as curvas de nível do fundo (`components/publico/curvas-dados.ts`) |
 | `npm run gerar:produtividade` | Regera o mapa de produtividade ilustrativo do hero (`components/publico/produtividade-dados.ts`) |
@@ -75,7 +75,7 @@ Para conferir o RLS: com a chave `anon`, nenhuma tabela pode devolver dados. O t
 
 ## O painel
 
-Em `/painel`, só para quem está na equipe. Admin (Pedro) edita tudo e acessa Configurações; membros editam tarefas e itens; o orientador lê e comenta. O botão "Nova tarefa" (atalho N) fica no topo das páginas.
+Em `/painel`, só para quem está na equipe. Admin (Pedro) edita tudo, aprova o que o Claude pede e acessa Configurações; membros editam tarefas e itens; o orientador lê e comenta. O botão "Nova tarefa" (atalho N) fica no topo das páginas.
 
 | Página | O que tem |
 |---|---|
@@ -87,6 +87,7 @@ Em `/painel`, só para quem está na equipe. Admin (Pedro) edita tudo e acessa C
 | **Equipe** | Um cartão por pessoa com a frente de trabalho e os números (abertas, atrasadas, feitas na semana); a página de cada pessoa lista as tarefas dela. O admin adiciona, edita e desativa pessoas |
 | **Reuniões** | Pauta gerada da próxima reunião (entrega da semana, atrasadas, concluídas desde a última, contatos novos), presença, anotações, decisões e tarefas criadas na reunião |
 | **Contatos** | Mensagens do formulário do site, com status, responsável, notas e exportação em CSV. Cada contato novo cria a tarefa "Responder contato" |
+| **Aprovações** (admin) | O que o Claude pediu com token e ainda não entrou no painel, com Aprovar e Recusar. Em alterações, mostra o valor de hoje e o proposto. A barra lateral conta as pendentes |
 | **Configurações** (admin) | Reunião semanal, responsável pelos contatos, datas do programa, tokens da API, importação do Trello e tema |
 
 **Paleta de comandos:** `Ctrl/Cmd + K` ou `/` busca tarefas, pessoas, semanas, etiquetas e reuniões, e tem as ações rápidas (nova tarefa, nova reunião, alternar tema). Outros atalhos: `N` nova tarefa, `G S` / `G M` / `G Q` para Semana, Minhas tarefas e Quadro, e `?` mostra a lista.
@@ -95,52 +96,66 @@ Mudanças feitas por outras pessoas aparecem sozinhas (Supabase Realtime em prod
 
 ## API e conector do Claude
 
-O Claude cria e atribui tarefas pelo mesmo banco, com um token criado em **Configurações › Tokens da API do Claude**. O token (`mocca_...`) aparece uma única vez; no banco fica só o hash. Tudo o que entra pela API aparece no histórico como "Claude".
+O Claude lê o painel e pede mudanças com um token criado em **Configurações › Tokens da API do Claude**. O token aparece uma única vez e já começa com `mocca_`: cole inteiro, sem repetir o prefixo. No banco fica só o hash.
+
+### Aprovação do admin
+
+Nada do que chega com token grava direto. Leituras respondem na hora; toda escrita, pela API ou pelo conector, vira uma **proposta pendente** e só entra no painel depois que um admin aprova em **Aprovações** (`/painel/aprovacoes`).
+
+- A resposta do pedido é `{ "status": "pendente", "proposta_id": "...", "tarefa_id": null, "link": "...", "mensagem": "..." }`. Na API REST, o código é `202`.
+- O pedido é conferido na hora: pessoa ou etiqueta errada ou repetida, semana ou tarefa errada volta como erro e não cria proposta.
+- Ao aprovar, a mudança é aplicada numa transação só e aparece no histórico como "Claude". O e-mail de tarefa atribuída sai nesse momento.
+- Se não der para aplicar (a tarefa sumiu, a pessoa saiu da equipe), a proposta fica como `falhou`, com o motivo, e nada é gravado. Um erro inesperado, como uma queda do banco, mantém a proposta pendente, para tentar de novo.
+- Não há edição antes de aprovar: se a proposta estiver errada, recuse e peça de novo.
+- Tarefa nova não tem id até ser aprovada, então atribuições, itens e documentos vão dentro do próprio `criar_tarefa`.
+
+O Claude acompanha os pedidos com `listar_propostas` (MCP) ou `GET /api/v1/propostas` (REST).
 
 ### Conector MCP
 
-Endereço: `https://SEU_DOMINIO/api/mcp` (stateless, Streamable HTTP). Ferramentas: `listar_pessoas`, `listar_semanas`, `listar_tarefas`, `ver_tarefa`, `criar_tarefa`, `atualizar_tarefa`, `atribuir`, `marcar_item`, `adicionar_documento`, `comentar` e `pauta_proxima_reuniao`.
+Endereço: `https://SEU_DOMINIO/api/mcp` (stateless, Streamable HTTP, só `POST`; `GET` e `DELETE` respondem `405`). Ferramentas: `listar_pessoas`, `listar_semanas`, `listar_tarefas`, `ver_tarefa`, `criar_tarefa`, `atualizar_tarefa`, `atribuir`, `marcar_item`, `adicionar_documento`, `comentar`, `listar_propostas` e `pauta_proxima_reuniao`. As que escrevem só criam propostas.
 
 **No Claude Code:**
 
 ```bash
-claude mcp add --transport http mocca https://SEU_DOMINIO/api/mcp --header "Authorization: Bearer mocca_SEU_TOKEN"
+claude mcp add --transport http mocca https://SEU_DOMINIO/api/mcp --header "Authorization: Bearer COLE_O_TOKEN_AQUI"
 ```
 
-**No Claude (app e site):** em Configurações › Conectores › Adicionar conector personalizado, cole a URL com o token no fim, porque essa tela não deixa mandar cabeçalho:
+**No Claude (app e site):** em Configurações › Conectores › Adicionar conector personalizado:
 
-```
-https://SEU_DOMINIO/api/mcp?token=mocca_SEU_TOKEN
-```
+1. Em URL, cole `https://SEU_DOMINIO/api/mcp`, sem o token no endereço.
+2. Em Autenticação, escolha **Sem login**. O painel não tem OAuth: as outras opções tentam abrir um login que não existe.
+3. Em Cabeçalhos de requisição (recurso em beta), adicione o nome `authorization` com o valor `Bearer COLE_O_TOKEN_AQUI`. O valor é enviado exatamente como foi digitado: precisa começar com `Bearer ` e ter o token inteiro, uma vez só.
 
-Trate essa URL como uma senha. Se ela vazar, revogue o token em Configurações e crie outro.
+O valor salvo não aparece de novo e não pode ser editado: para trocar o token, remova o conector e adicione de novo. Se o token vazar, revogue em Configurações e crie outro. Mais detalhes na [documentação de conectores do Claude](https://claude.com/docs/connectors/custom/add-unlisted.md).
 
 Exemplo de pedido: "Crie a tarefa 'Entrevistas de disposição a pagar' na semana 2, responsável Gabriel com os itens agendar 3 produtores e conduzir as entrevistas, apoio Marcos para preencher a planilha, prazo sexta."
 
 ### REST (`/api/v1`)
 
-Todas as rotas pedem `Authorization: Bearer mocca_...` e respondem JSON. Pessoas podem ser indicadas por id, e-mail, apelido ou nome, sem diferenciar maiúsculas e acentos; nome ambíguo ou inexistente volta com erro 422 e a lista de pessoas válidas. Toda escrita devolve o `link` da tarefa no painel. Limite: 120 requisições por minuto por token.
+Todas as rotas pedem `Authorization: Bearer` e o token, e respondem JSON. Pessoas podem ser indicadas por id, e-mail, apelido ou nome, sem diferenciar maiúsculas e acentos; nome ambíguo ou inexistente volta com erro 422 e a lista de pessoas válidas. Toda escrita responde `202` com a proposta pendente e o `link` dela no painel. Limite: 120 requisições por minuto por token.
 
 | Método e rota | O que faz |
 |---|---|
 | `GET /api/v1/pessoas` | Equipe |
 | `GET /api/v1/semanas?atual=true` | Semanas do programa (ou só a atual) |
 | `GET /api/v1/tarefas?semana=&pessoa=&status=&etiqueta=&atrasadas=` | Lista tarefas |
-| `POST /api/v1/tarefas` | Cria tarefa com atribuições, itens e documentos, numa transação só |
-| `GET` / `PATCH /api/v1/tarefas/{id}` | Vê ou altera (título, descrição, status, prazo, semana, etiquetas) |
-| `POST /api/v1/tarefas/{id}/atribuicoes` | Atribui uma pessoa (com itens) |
-| `DELETE /api/v1/tarefas/{id}/atribuicoes/{pessoa}` | Remove a atribuição |
-| `POST /api/v1/tarefas/{id}/itens` | Adiciona item a uma atribuição |
-| `PATCH /api/v1/itens/{id}` | Marca, desmarca ou renomeia um item |
-| `POST /api/v1/tarefas/{id}/documentos` | Anexa link do Google Drive ou Docs |
-| `POST /api/v1/tarefas/{id}/comentarios` | Comenta como "Claude" |
+| `POST /api/v1/tarefas` | Propõe tarefa com atribuições, itens e documentos |
+| `GET` / `PATCH /api/v1/tarefas/{id}` | Vê, ou propõe alterar (título, descrição, status, prazo, semana, etiquetas) |
+| `POST /api/v1/tarefas/{id}/atribuicoes` | Propõe atribuir uma pessoa (com itens) |
+| `DELETE /api/v1/tarefas/{id}/atribuicoes/{pessoa}` | Propõe remover a atribuição |
+| `POST /api/v1/tarefas/{id}/itens` | Propõe adicionar item de uma pessoa, que entra na tarefa se ainda não estiver nela |
+| `PATCH /api/v1/itens/{id}` | Propõe marcar, desmarcar ou renomear um item |
+| `POST /api/v1/tarefas/{id}/documentos` | Propõe anexar link do Google Drive ou Docs |
+| `POST /api/v1/tarefas/{id}/comentarios` | Propõe comentar como "Claude" |
+| `GET /api/v1/propostas?status=` | Lista as propostas e a situação de cada uma |
 | `GET /api/v1/reunioes/proxima` | Pauta da próxima reunião |
 
 Exemplo:
 
 ```bash
 curl -X POST https://SEU_DOMINIO/api/v1/tarefas \
-  -H "Authorization: Bearer mocca_SEU_TOKEN" \
+  -H "Authorization: Bearer COLE_O_TOKEN_AQUI" \
   -H "Content-Type: application/json; charset=utf-8" \
   --data-binary @tarefa.json
 ```
@@ -170,7 +185,7 @@ Em Configurações › Importar do Trello, envie o JSON exportado do quadro (men
 
 Os e-mails saem de `moccaufla@gmail.com`, pelo SMTP do Gmail. O Resend da especificação não serve aqui porque só envia de um domínio próprio verificado.
 
-- **Tarefa atribuída:** quem recebe uma tarefa ganha um e-mail com título, papel, prazo, itens e link, venha a atribuição do painel, da API, do conector do Claude ou do formulário do site. Quem atribui a si mesmo não recebe. Trocar o papel, duplicar uma tarefa e importar do Trello não enviam nada.
+- **Tarefa atribuída:** quem recebe uma tarefa ganha um e-mail com título, papel, prazo, itens e link, venha a atribuição do painel, do formulário do site ou de uma proposta do Claude, que só avisa quando o admin aprova. Quem atribui a si mesmo não recebe. Trocar o papel, duplicar uma tarefa e importar do Trello não enviam nada.
 - **Contato pelo site:** quem preenche o formulário recebe uma confirmação de texto fixo, sem repetir a mensagem, porque qualquer um pode digitar o endereço de outra pessoa. O limite de 5 envios por hora e o Turnstile valem aqui também.
 
 Para ligar:
@@ -187,6 +202,8 @@ Em produção, os links dos e-mails usam `NEXT_PUBLIC_SITE_URL`, e a equipe prec
 2. Em Settings › Environment Variables, cadastre as variáveis da tabela acima (`DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TURNSTILE_SECRET_KEY` e `GMAIL_APP_PASSWORD` sem o prefixo `NEXT_PUBLIC_`).
 3. No Cloudflare Turnstile, cadastre o domínio da Vercel (e o domínio próprio, quando houver).
 4. Cada push na `main` publica o site; cada pull request ganha uma prévia.
+
+Aplique as migrações novas no Supabase (`npx supabase db push`) **antes** de publicar o código que depende delas. A barra lateral consulta `proposta` em toda página do painel: sem a migração `20261102120000_proposta.sql`, o painel inteiro e as escritas do Claude dão erro 500. A migração só acrescenta, então o código antigo continua funcionando com ela.
 
 ## Estrutura
 

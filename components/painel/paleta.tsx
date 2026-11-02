@@ -2,6 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import {
+  Archive,
   CalendarRange,
   Columns3,
   CornerDownLeft,
@@ -121,7 +122,7 @@ export function PaletaComandos() {
   };
 
   const grupos = useMemo<Grupo[]>(() => {
-    const ir = (href: string) => () => router.push(href);
+    const ir = (href: string, opcoes?: { scroll: boolean }) => () => router.push(href, opcoes);
     const t = normalizar(termo);
     const casa = (...textos: (string | null | undefined)[]) => !t || textos.some((x) => x && normalizar(x).includes(t));
 
@@ -132,6 +133,7 @@ export function PaletaComandos() {
       { id: "semana", rotulo: "Ir para a semana atual", detalhe: "G S", Icone: CalendarRange, executar: ir("/painel") },
       { id: "minhas", rotulo: "Minhas tarefas", detalhe: "G M", Icone: UserCheck, executar: ir("/painel/minhas-tarefas") },
       { id: "quadro", rotulo: "Quadro", detalhe: "G Q", Icone: Columns3, executar: ir("/painel/quadro") },
+      { id: "arquivadas", rotulo: "Tarefas arquivadas", Icone: Archive, executar: ir("/painel/arquivadas") },
       ...(podeEditar
         ? [
             {
@@ -170,7 +172,7 @@ export function PaletaComandos() {
         rotulo: x.titulo,
         detalhe: [x.semana ? `semana ${x.semana}` : null, rotuloStatus(x.status as Status)].filter(Boolean).join(" · "),
         Icone: ListTodo,
-        executar: ir(`/painel/tarefas/${x.id}`),
+        executar: ir(`/painel/tarefas/${x.id}`, { scroll: false }),
       })),
     });
     lista.push({
@@ -254,7 +256,7 @@ export function PaletaComandos() {
     <>
       <Dialog.Root open={aberta} onOpenChange={mudarAberta}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-texto/30" />
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-sobreposicao" />
           <Dialog.Content
             aria-describedby={undefined}
             className="fixed top-[10dvh] left-1/2 z-50 flex max-h-[75dvh] w-[min(600px,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-g border border-linha bg-superficie shadow-flutuante"
@@ -329,7 +331,7 @@ export function PaletaComandos() {
 
       <Dialog.Root open={atalhos} onOpenChange={setAtalhos}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-texto/30" />
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-sobreposicao" />
           <Dialog.Content
             aria-describedby={undefined}
             className="fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[min(440px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-g border border-linha bg-superficie p-6 shadow-flutuante"

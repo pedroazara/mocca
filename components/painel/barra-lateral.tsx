@@ -6,6 +6,7 @@ import {
   CalendarRange,
   ChevronsLeft,
   ChevronsRight,
+  ClipboardCheck,
   Columns3,
   ExternalLink,
   Flag,
@@ -38,22 +39,37 @@ import { Avatar } from "./elementos";
 const CHAVE_RECOLHIDA = "mocca-barra-recolhida";
 export const EVENTO_ABRIR_MENU = "mocca:abrir-menu";
 
-type ItemNav = { href: string; rotulo: string; Icone: typeof CalendarRange; contador?: number; exato?: boolean };
+type ItemNav = { href: string; rotulo: string; Icone: typeof CalendarRange; contador?: number; exato?: boolean; novoGrupo?: boolean };
 
-function useItens(contadores: { minhas: number; contatos: number }): ItemNav[] {
+type Contadores = { minhas: number; contatos: number; aprovacoes: number };
+
+function useItens(contadores: Contadores, ehAdmin: boolean): ItemNav[] {
   return [
     { href: "/painel", rotulo: "Semana", Icone: CalendarRange, exato: true },
     { href: "/painel/minhas-tarefas", rotulo: "Minhas tarefas", Icone: UserCheck, contador: contadores.minhas },
     { href: "/painel/quadro", rotulo: "Quadro", Icone: Columns3 },
-    { href: "/painel/semanas", rotulo: "Semanas do programa", Icone: Flag },
+    { href: "/painel/semanas", rotulo: "Cronograma", Icone: Flag, novoGrupo: true },
     { href: "/painel/reunioes", rotulo: "Reuniões", Icone: MessagesSquare },
-    { href: "/painel/contatos", rotulo: "Contatos", Icone: Inbox, contador: contadores.contatos },
+    { href: "/painel/contatos", rotulo: "Contatos", Icone: Inbox, contador: contadores.contatos, novoGrupo: true },
     { href: "/painel/equipe", rotulo: "Equipe", Icone: Users },
+    ...(ehAdmin ? [{ href: "/painel/aprovacoes", rotulo: "Aprovações", Icone: ClipboardCheck, contador: contadores.aprovacoes }] : []),
   ];
 }
 
 function ativo(caminho: string, item: { href: string; exato?: boolean }) {
-  return item.exato ? caminho === item.href || caminho.startsWith("/painel/tarefas") : caminho.startsWith(item.href);
+  // a tarefa em página inteira e as arquivadas ficam sob o Quadro nas migalhas
+  if (item.href === "/painel/quadro" && /^\/painel\/(tarefas|arquivadas)/.test(caminho)) return true;
+  return item.exato ? caminho === item.href : caminho.startsWith(item.href);
+}
+
+// Com a tarefa aberta na janela, a URL é a da tarefa, mas a tela por trás continua
+// a mesma, e o item ativo também.
+function useCaminhoDaTela() {
+  const caminho = usePathname();
+  const [tela, setTela] = useState(caminho);
+  const naTarefa = caminho.startsWith("/painel/tarefas");
+  if (!naTarefa && tela !== caminho) setTela(caminho);
+  return naTarefa ? tela : caminho;
 }
 
 function Lista({
@@ -65,13 +81,13 @@ function Lista({
   recolhida: boolean;
   aoNavegar?: () => void;
 }) {
-  const caminho = usePathname();
+  const caminho = useCaminhoDaTela();
   return (
     <ul className="flex flex-col gap-0.5">
       {itens.map((item) => {
         const atual = ativo(caminho, item);
         return (
-          <li key={item.href}>
+          <li key={item.href} className={cn(item.novoGrupo && "mt-3")}>
             <Link
               href={item.href}
               onClick={aoNavegar}
@@ -182,13 +198,13 @@ function MenuUsuario({ recolhida }: { recolhida: boolean }) {
   );
 }
 
-export function BarraLateral({ contadores }: { contadores: { minhas: number; contatos: number } }) {
+export function BarraLateral({ contadores }: { contadores: Contadores }) {
   const { ehAdmin } = usePainel();
-  const itens = useItens(contadores);
+  const itens = useItens(contadores, ehAdmin);
   const config: ItemNav = { href: "/painel/configuracoes", rotulo: "Configurações", Icone: Settings };
   const [recolhida, setRecolhida] = useState(false);
   const [gaveta, setGaveta] = useState(false);
-  const caminho = usePathname();
+  const caminho = useCaminhoDaTela();
 
   useEffect(() => {
     try {
@@ -271,7 +287,7 @@ export function BarraLateral({ contadores }: { contadores: { minhas: number; con
       {/* celular: gaveta */}
       <Dialog.Root open={gaveta} onOpenChange={setGaveta}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-texto/30 lg:hidden" />
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-sobreposicao lg:hidden" />
           <Dialog.Content
             aria-describedby={undefined}
             className="fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] flex-col bg-superficie shadow-flutuante data-[state=open]:animate-[menu-entra_200ms_ease-out] lg:hidden"

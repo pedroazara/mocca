@@ -14,7 +14,7 @@ import { usePainel } from "./contexto";
 import { iconeDocumento, tituloPelaUrl } from "./detalhe-tarefa";
 import { Markdown } from "./markdown";
 
-// Semanas do programa (seção 9.5): linha do tempo com anel de progresso,
+// Cronograma (seção 9.5): linha do tempo com anel de progresso,
 // tabela, e na página da semana as anotações, documentos e a edição (admin).
 
 const estadoSemana = { nao_iniciada: "neutro", em_andamento: "info", entregue: "ok" } as const;
