@@ -32,6 +32,8 @@ Na tela Semana, a Atenção e a Próxima reunião subiram para uma coluna latera
 
 Quatro defeitos deixavam o card estranho e também foram corrigidos. No tema escuro, a sobreposição clareava o fundo em vez de escurecer, porque usava `--texto`; agora há o token `--sobreposicao`, usado em todas as janelas e gavetas do painel. Abrir um card rolava a tela de trás até o fim, e os links para a tarefa passaram a usar `scroll={false}`. Com a tarefa aberta, a barra lateral pulava para Semana, e agora fica na tela de trás. No toque, as lixeiras de item e de documento nunca apareciam, porque só surgiam com o mouse por cima.
 
+4j. **Semana sem divisão por pessoa (pedido do Pedro).** Com os dados reais, o bloco "Por pessoa" da seção 9.1 mostrava uma coluna com "0 de 4 feitas" ao lado de nomes com "Nada nesta semana", e passava a ideia de um acompanhamento de quem faz o quê. O Pedro explicou que o trabalho é colaborativo e não é tão à risca assim. O bloco virou "Tarefas da semana": um cartão por tarefa, com todos os itens marcáveis e os avatares de quem participa, sem agrupar por pessoa e sem contagem individual. No card, a seção "Quem faz o quê" da entrada 4i virou "Pessoas", e saiu o contador de itens de cada pessoa, que só repetia o que estava à vista. Atribuições e itens por pessoa continuam no banco, na API e no MCP. A tela Equipe não mudou.
+
 ## Decisões técnicas
 
 4. **Funções de RLS como `security definer`.** A seção 10.3 define `sou_membro()`, `posso_editar()` e `sou_admin()` como funções SQL comuns. Como elas consultam `pessoa`, e a política de `pessoa` chama essas funções, o Postgres entraria em recursão infinita. Ficaram `security definer` com `search_path` fixo.
