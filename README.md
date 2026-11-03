@@ -30,7 +30,7 @@ Outros comandos:
 | Comando | O que faz |
 |---|---|
 | `npm run build` e `npm start` | Build de produção e servidor |
-| `npm test` | Testes (Vitest): migrações e RLS num Postgres embutido, aprovação das propostas do Claude, schema do contato, datas, pauta, resolução de pessoas da API e importação do Trello |
+| `npm test` | Testes (Vitest): migrações e RLS num Postgres embutido, aprovação das propostas do Claude, schema do contato, datas, pauta, resolução de pessoas da API, importação do Trello e leitura do Drive (com o Google simulado) |
 | `npm run lint` / `npm run typecheck` | ESLint e TypeScript |
 | `npm run gerar:curvas` | Regera as curvas de nível do fundo (`components/publico/curvas-dados.ts`) |
 | `npm run gerar:produtividade` | Regera o mapa de produtividade ilustrativo do hero (`components/publico/produtividade-dados.ts`) |
@@ -47,6 +47,8 @@ Outros comandos:
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare › Turnstile | Em desenvolvimento: `1x00000000000000000000AA` |
 | `TURNSTILE_SECRET_KEY` | idem | Em desenvolvimento: `1x0000000000000000000000000000000AA` |
 | `GMAIL_APP_PASSWORD` | Conta Google do MoCCa (ver "E-mails automáticos") | **Secreta, só no servidor.** Sem ela, nenhum e-mail sai |
+| `GOOGLE_DRIVE_FOLDER` | Drive › pasta do projeto › Compartilhar › Copiar link | Link (ou id) da pasta que a aba Arquivos mostra (ver "Arquivos do Google Drive") |
+| `GOOGLE_SERVICE_ACCOUNT_KEY` | Google Cloud › Contas de serviço › Chaves | **Secreta, só no servidor.** O JSON inteiro da chave. Sem ela, a aba Arquivos avisa que a pasta não está ligada |
 | `NEXT_PUBLIC_SITE_URL` | | URL pública, sem barra no fim. Usada no sitemap, nas imagens de compartilhamento e nos links que a API devolve |
 
 O servidor fala com o Postgres direto (`DATABASE_URL`), e não pela API REST do Supabase. Cada consulta roda numa transação com o papel `authenticated` e o id da pessoa logada (ou com o `service_role`, no formulário e na API do Claude), então o RLS vale do mesmo jeito. A `SUPABASE_SERVICE_ROLE_KEY` só é usada para criar a conta no primeiro acesso.
@@ -86,6 +88,7 @@ Em `/painel`, só para quem está na equipe. Admin (Pedro) edita tudo, aprova o 
 | **Semanas** | As 12 semanas do programa, com entrega, status, link do entregável, anotações e documentos da semana |
 | **Equipe** | Um cartão por pessoa com a frente de trabalho e os números (abertas, atrasadas, feitas na semana); a página de cada pessoa lista as tarefas dela. O admin adiciona, edita e desativa pessoas |
 | **Reuniões** | Pauta gerada da próxima reunião (entrega da semana, atrasadas, concluídas desde a última, contatos novos), presença, anotações, decisões e tarefas criadas na reunião |
+| **Arquivos** | A pasta do projeto no Google Drive: as pastas com o caminho, a busca em todas elas e os arquivos modificados por último. Cada arquivo mostra as tarefas, semanas e atas do painel em que aparece, e abre no Drive |
 | **Contatos** | Mensagens do formulário do site, com status, responsável, notas e exportação em CSV. Cada contato novo cria a tarefa "Responder contato" |
 | **Aprovações** (admin) | O que o Claude pediu com token e ainda não entrou no painel, com Aprovar e Recusar. Em alterações, mostra o valor de hoje e o proposto. A barra lateral conta as pendentes |
 | **Configurações** (admin) | Reunião semanal, responsável pelos contatos, datas do programa, tokens da API, importação do Trello e tema |
@@ -196,10 +199,32 @@ Para ligar:
 
 Em produção, os links dos e-mails usam `NEXT_PUBLIC_SITE_URL`, e a equipe precisa estar com os e-mails reais: nada é enviado para endereços `@exemplo.com`, os do seed. O limite do Gmail é de cerca de 500 envios por dia.
 
+## Arquivos do Google Drive
+
+A aba **Arquivos** (`/painel/arquivos`) mostra a pasta do projeto no Drive. O servidor lê a pasta com uma conta de serviço do Google, que só enxerga o que foi compartilhado com ela e só lê os metadados (nome, tipo, data, quem mexeu e link), nunca o conteúdo. Os arquivos abrem no próprio Drive, com a conta Google de quem clicou: quem ainda não tem acesso à pasta pede por lá.
+
+Para ligar (uma vez só):
+
+1. Em <https://console.cloud.google.com>, entre com uma conta pessoal, como a `moccaufla@gmail.com`, e crie um projeto. Projetos de uma organização, como a da UFLA, costumam bloquear a criação de chaves.
+2. Em APIs e serviços › Biblioteca, ative a **Google Drive API**.
+3. Em IAM e administrador › Contas de serviço, crie uma conta de serviço, sem dar papel nenhum no projeto. Na conta criada, em Chaves › Adicionar chave › Criar nova chave, escolha JSON. O arquivo que baixar é a chave: guarde como uma senha.
+4. No Drive, compartilhe a pasta do projeto com o e-mail da conta de serviço (`...@....iam.gserviceaccount.com`), como **Leitor**.
+5. Cadastre no `.env.local` e nas variáveis da Vercel `GOOGLE_DRIVE_FOLDER`, com o link da pasta (`https://drive.google.com/drive/folders/...`), e `GOOGLE_SERVICE_ACCOUNT_KEY`, com o conteúdo inteiro do JSON. Na Vercel, o JSON pode ser colado como está; num lugar que só aceite uma linha, use o JSON em base64 (`base64 -w0 chave.json`).
+6. Publique de novo. A aba mostra a pasta, ou o motivo de não conseguir; o admin vê também o e-mail da conta de serviço e a resposta do Google.
+
+Como funciona:
+
+- A pasta inteira vem numa consulta por nível de pastas e fica 1 minuto na memória do servidor. O Atualizar, embaixo da lista, lê de novo na hora. Navegar entre pastas, buscar e ver os recentes não volta ao servidor, e a pasta aberta fica na URL (`?pasta=`), para mandar o link.
+- Cada arquivo mostra onde aparece no painel (documentos das tarefas e das semanas, links de entregável e atas de reunião), pelo id do link do Drive.
+- Quem mexeu por último aparece com o nome que tem na equipe quando o e-mail do Google é o mesmo do painel. O e-mail não sai do servidor.
+- Atalhos do Drive abrem o destino no Drive, sem entrar nele pelo painel. Uma pasta com mais de 5.000 itens é lida só em parte, com aviso.
+- No modo local, sem as duas variáveis, a aba mostra uma pasta de exemplo, com os documentos dos dados de exemplo.
+- Trocar de pasta é trocar `GOOGLE_DRIVE_FOLDER` e publicar de novo. Para desligar, tire o compartilhamento da conta de serviço no Drive ou apague a chave no Google Cloud.
+
 ## Deploy (Vercel)
 
 1. Suba o repositório para o GitHub e importe o projeto na Vercel (framework: Next.js, sem configurações extras).
-2. Em Settings › Environment Variables, cadastre as variáveis da tabela acima (`DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TURNSTILE_SECRET_KEY` e `GMAIL_APP_PASSWORD` sem o prefixo `NEXT_PUBLIC_`).
+2. Em Settings › Environment Variables, cadastre as variáveis da tabela acima (`DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TURNSTILE_SECRET_KEY`, `GMAIL_APP_PASSWORD` e `GOOGLE_SERVICE_ACCOUNT_KEY` sem o prefixo `NEXT_PUBLIC_`).
 3. No Cloudflare Turnstile, cadastre o domínio da Vercel (e o domínio próprio, quando houver).
 4. Cada push na `main` publica o site; cada pull request ganha uma prévia.
 
@@ -221,6 +246,7 @@ components/ui/        botões, campos, chips, acordeão
 lib/banco/            acesso ao Postgres (remoto ou PGlite), sempre com RLS
 lib/painel/           consultas, tipos, datas, pauta e importação do Trello
 lib/api/              regras da API (tokens, validação, resolução de pessoas)
+lib/drive/            leitura da pasta do Google Drive (conta de serviço) e regras da aba Arquivos
 scripts/              geradores de SVG estático e de ícones
 supabase/             migrações, seed, dados de exemplo e a simulação do Supabase para o modo local
 testes/               Vitest

@@ -7,6 +7,7 @@ import {
   Columns3,
   CornerDownLeft,
   Flag,
+  FolderOpen,
   Keyboard,
   ListTodo,
   MessagesSquare,
@@ -134,6 +135,7 @@ export function PaletaComandos() {
       { id: "minhas", rotulo: "Minhas tarefas", detalhe: "G M", Icone: UserCheck, executar: ir("/painel/minhas-tarefas") },
       { id: "quadro", rotulo: "Quadro", detalhe: "G Q", Icone: Columns3, executar: ir("/painel/quadro") },
       { id: "arquivadas", rotulo: "Tarefas arquivadas", Icone: Archive, executar: ir("/painel/arquivadas") },
+      { id: "arquivos", rotulo: "Arquivos do Drive", Icone: FolderOpen, executar: ir("/painel/arquivos") },
       ...(podeEditar
         ? [
             {

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { aprovarProposta as aprovar, ErroApi } from "@/lib/api/servico";
 import { pessoaLogada, type PessoaLogada } from "@/lib/auth";
 import { comoUsuario, mensagemDeErro, type Consulta } from "@/lib/banco";
+import { esquecerArvore } from "@/lib/drive";
 import { avisarAtribuicao } from "@/lib/email";
 import { buscar, configuracao, semanas as listarSemanas } from "@/lib/painel/dados";
 import { fimDaSemanaIso, proximaReuniao } from "@/lib/painel/datas";
@@ -668,6 +669,18 @@ export async function importarTrello(json: TrelloJson) {
         );
     return { criadas, puladas };
   });
+}
+
+// ---------------------------------------------------------------- arquivos do Drive
+
+// Lê a pasta do Drive de novo, sem esperar o minuto do cache. Só leitura: não
+// passa por agir(), que revalida o painel inteiro.
+export async function atualizarArquivos(): Promise<Resultado> {
+  const eu = await pessoaLogada();
+  if (!eu) return { ok: false, erro: "Sua sessão expirou. Entre de novo." };
+  esquecerArvore();
+  revalidatePath("/painel/arquivos");
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------- paleta de comandos
