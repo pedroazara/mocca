@@ -109,6 +109,7 @@ O projeto tem duas partes no mesmo código e no mesmo domínio:
     semanas/[numero]/page.tsx
     reunioes/page.tsx
     reunioes/[id]/page.tsx
+    arquivos/page.tsx
     contatos/page.tsx
     equipe/page.tsx
     configuracoes/page.tsx
@@ -150,6 +151,8 @@ SUPABASE_SERVICE_ROLE_KEY=        só no servidor
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
 GMAIL_APP_PASSWORD=               fase 4
+GOOGLE_DRIVE_FOLDER=              aba Arquivos: link ou id da pasta do projeto no Drive
+GOOGLE_SERVICE_ACCOUNT_KEY=       só no servidor: JSON da chave da conta de serviço do Google
 NEXT_PUBLIC_SITE_URL=https://[PREENCHER].vercel.app
 ```
 
@@ -497,10 +500,11 @@ Texto simples conforme a LGPD: quais dados o formulário coleta, para quê, por 
     - `Columns3` Quadro
     - `Flag` Cronograma
     - `MessagesSquare` Reuniões
+    - `FolderOpen` Arquivos
     - `Inbox` Contatos (com contador de novos)
     - `Users` Equipe
     - `ClipboardCheck` Aprovações (só admin, com contador de pendentes)
-  - Um respiro, sem títulos, separa três grupos: Semana, Minhas tarefas e Quadro; Cronograma e Reuniões; Contatos, Equipe e Aprovações.
+  - Um respiro, sem títulos, separa três grupos: Semana, Minhas tarefas e Quadro; Cronograma, Reuniões e Arquivos; Contatos, Equipe e Aprovações.
   - Com a tarefa aberta na janela, o item ativo continua sendo o da tela de trás.
   - Base: `Settings` Configurações (só admin), avatar e nome da pessoa logada com menu (Tema, Sair).
   - Botão para recolher a barra (estado salvo em `localStorage`).
@@ -662,6 +666,16 @@ Cores das pessoas (avatares), todas com texto creme com contraste ≥ 4,5:1:
 
 - Lista das tarefas arquivadas, da mais recente para a mais antiga, com semana, status e data, e o botão "Restaurar".
 - Não entra na barra lateral: chega-se por um link no Quadro e pela paleta de comandos.
+
+### 9.12 Arquivos (`/painel/arquivos`)
+
+- A pasta do projeto no Google Drive, lida pelo servidor com uma conta de serviço que só lê metadados (seção 3.3 e README). Os arquivos abrem no Drive, em outra aba, com a conta Google de quem clicou. Todos os papéis veem a aba.
+- Abas **Pastas** e **Recentes**, e o campo "Buscar em todas as pastas" (pelo nome, sem diferenciar maiúsculas e acentos, com a pasta de cada resultado).
+- Pastas: o caminho da raiz até a pasta aberta, cada parte um link, o botão "Abrir no Drive" e a lista, pastas primeiro e depois arquivos, por nome ("Semana 2" antes de "Semana 10"). A pasta aberta fica na URL (`?pasta=`), e trocar de pasta não volta ao servidor.
+- Linha do item: ícone por tipo, nome e uma linha de dados com tipo, data da última mudança, quem mexeu (o nome da equipe quando o e-mail é o mesmo) e o tamanho dos arquivos enviados; pastas mostram quantos itens têm. Quando o arquivo está ligado no painel, "No painel:" leva às tarefas (na janela), semanas e atas em que ele aparece.
+- Recentes: os 30 arquivos modificados por último, de todas as pastas, com a pasta de cada um.
+- Embaixo da lista: "Lida do Drive em 03/11 às 14:32" e Atualizar. A leitura fica 1 minuto no servidor.
+- Sem a pasta ligada, a tela diz isso; o admin vê o passo a passo, o que falta e o e-mail da conta de serviço. Se o Google recusar, a tela mostra o motivo e "Tentar de novo"; o admin vê também a resposta do Google.
 
 ---
 
