@@ -6,7 +6,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { SQL_ATRIBUICAO } from "@/lib/email/mensagens";
+import { SQL_ATRIBUICAO, SQL_LEMBRETES } from "@/lib/email/mensagens";
 import { SQL_LIGAR_CONTA } from "@/lib/login";
 import { SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
 
@@ -382,6 +382,29 @@ describe("passar tarefa de semana", () => {
     await como({ usuario: leomar }, async () => {
       expect(await um("select id from tarefa where id = $1", [t.id])).toBeDefined();
       expect(await mover(t.id, 4)).toBeUndefined();
+    });
+  });
+});
+
+describe("lembrete da véspera", () => {
+  it("lista as tarefas abertas do dia, por pessoa ativa, só com os itens abertos", async () => {
+    await como("service_role", async () => {
+      const gab = (await um<{ id: string }>("select id from pessoa where apelido = 'Gabriel'"))!.id;
+      const nova = async (titulo: string, prazo: string, status = "a_fazer", arquivada = false) => {
+        const t = (await um<{ id: string }>(
+          "insert into tarefa (titulo, prazo, status, arquivada) values ($1, $2, $3::status_tarefa, $4) returning id",
+          [titulo, prazo, status, arquivada],
+        ))!.id;
+        return (await um<{ id: string }>("insert into atribuicao (tarefa_id, pessoa_id) values ($1, $2) returning id", [t, gab]))!.id;
+      };
+      const a = await nova("Vence amanhã", "2026-11-10T23:59:00-03:00");
+      await db.query("insert into item (atribuicao_id, texto, feito, posicao) values ($1, 'Feito', true, 1), ($1, 'Aberto', false, 2)", [a]);
+      // ficam de fora: já feita, arquivada e a do dia seguinte
+      await nova("Já feita", "2026-11-10T12:00:00-03:00", "feito");
+      await nova("Arquivada", "2026-11-10T12:00:00-03:00", "a_fazer", true);
+      await nova("Depois", "2026-11-11T00:30:00-03:00");
+      const linhas = (await db.query<{ titulo: string; itens: string[]; nome: string }>(SQL_LEMBRETES, ["2026-11-10"])).rows;
+      expect(linhas.map((l) => [l.nome, l.titulo, l.itens])).toEqual([["Gabriel", "Vence amanhã", ["Aberto"]]]);
     });
   });
 });

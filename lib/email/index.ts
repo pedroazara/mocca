@@ -5,7 +5,16 @@ import { EMAIL_MOCCA } from "@/components/publico/navegacao";
 import { comoServico } from "@/lib/banco";
 import { linkTarefa } from "@/lib/painel/links";
 import type { PapelAtribuicao } from "@/lib/painel/tipos";
-import { confirmacaoContato, enderecoDeExemplo, SQL_ATRIBUICAO, tarefaAtribuida, type Mensagem } from "./mensagens";
+import {
+  confirmacaoContato,
+  enderecoDeExemplo,
+  lembretesDaVespera,
+  SQL_ATRIBUICAO,
+  SQL_LEMBRETES,
+  tarefaAtribuida,
+  type LinhaLembrete,
+  type Mensagem,
+} from "./mensagens";
 
 // E-mails automáticos, enviados pela conta do MoCCa no Gmail (SMTP com senha de
 // app). Sem GMAIL_APP_PASSWORD nada sai, só fica no log. Falha de envio nunca
@@ -90,4 +99,13 @@ export function avisarContatoRecebido(contatoId: string, contato: { nome: string
     const confirmacao = anterior?.n ? [] : [confirmacaoContato({ para: contato.email, nome: contato.nome })];
     return [...confirmacao, ...avisos.flat()];
   });
+}
+
+// Lembrete da véspera (fase 4), chamado pela rota agendada /api/cron/lembretes:
+// cada pessoa recebe um e-mail só, com as tarefas abertas dela que vencem no dia.
+export async function enviarLembretes(dia: string) {
+  const linhas = await comoServico((q) => q<LinhaLembrete>(SQL_LEMBRETES, [dia]));
+  const mensagens = lembretesDaVespera(linhas, linkTarefa);
+  await enviar(mensagens);
+  return { tarefas: new Set(linhas.map((l) => l.tarefa_id)).size, emails: mensagens.length };
 }

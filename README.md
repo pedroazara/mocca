@@ -2,7 +2,7 @@
 
 Site público do MoCCa (Monitoramento de Colheita de Café, equipe da UFLA) e painel de tarefas da equipe. A especificação completa está em [`ESPECIFICACAO.md`](ESPECIFICACAO.md); o que foi decidido de forma diferente e o que falta fazer estão em [`DUVIDAS.md`](DUVIDAS.md).
 
-**Estado atual:** fase 1 (site público), fase 2 (painel), fase 3 (API e MCP do Claude) e a importação do Trello prontas. Da fase 4 falta o lembrete por e-mail na véspera do prazo.
+**Estado atual:** as quatro fases estão prontas: site público, painel, API e MCP do Claude, importação do Trello e os confortos da fase 4, inclusive o lembrete por e-mail na véspera do prazo.
 
 Stack: Next.js 15 (App Router) + TypeScript, Tailwind CSS 4, Radix, lucide-react, react-hook-form + zod, dnd-kit, Postgres do Supabase (com RLS), Supabase Auth (e-mail e senha), Cloudflare Turnstile, MCP SDK, Vitest.
 
@@ -49,6 +49,7 @@ Outros comandos:
 | `GMAIL_APP_PASSWORD` | Conta Google do MoCCa (ver "E-mails automáticos") | **Secreta, só no servidor.** Sem ela, nenhum e-mail sai |
 | `GOOGLE_DRIVE_FOLDER` | Drive › pasta do projeto › Compartilhar › Copiar link | Link (ou id) da pasta que a aba Arquivos mostra (ver "Arquivos do Google Drive") |
 | `GOOGLE_SERVICE_ACCOUNT_KEY` | Google Cloud › Contas de serviço › Chaves | **Secreta, só no servidor.** O JSON inteiro da chave. Sem ela, a aba Arquivos avisa que a pasta não está ligada |
+| `CRON_SECRET` | Gere uma sequência aleatória longa (por exemplo, `openssl rand -hex 32`) | **Secreta, só no servidor.** Protege o lembrete da véspera do prazo; a Vercel envia sozinha nas chamadas agendadas. Sem ela, nenhum lembrete sai |
 | `NEXT_PUBLIC_SITE_URL` | | URL pública, sem barra no fim. Usada no sitemap, nas imagens de compartilhamento e nos links que a API devolve |
 
 O servidor fala com o Postgres direto (`DATABASE_URL`), e não pela API REST do Supabase. Cada consulta roda numa transação com o papel `authenticated` e o id da pessoa logada (ou com o `service_role`, no formulário e na API do Claude), então o RLS vale do mesmo jeito. A `SUPABASE_SERVICE_ROLE_KEY` só é usada para criar a conta no primeiro acesso.
@@ -191,7 +192,8 @@ Em Configurações › Importar do Trello, envie o JSON exportado do quadro (men
 Os e-mails saem de `moccaufla@gmail.com`, pelo SMTP do Gmail. O Resend da especificação não serve aqui porque só envia de um domínio próprio verificado.
 
 - **Tarefa atribuída:** quem recebe uma tarefa ganha um e-mail com título, papel, prazo, itens e link, venha a atribuição do painel, do formulário do site ou de uma proposta do Claude, que só avisa quando o admin aprova. Quem atribui a si mesmo não recebe. Trocar o papel, duplicar uma tarefa e importar do Trello não enviam nada.
-- **Contato pelo site:** quem preenche o formulário recebe uma confirmação de texto fixo, sem repetir a mensagem, porque qualquer um pode digitar o endereço de outra pessoa. O limite de 5 envios por hora e o Turnstile valem aqui também.
+- **Contato pelo site:** quem preenche o formulário recebe uma confirmação de texto fixo, sem repetir a mensagem, porque qualquer um pode digitar o endereço de outra pessoa. O limite de 5 envios por hora e o Turnstile valem aqui também, e o mesmo endereço recebe no máximo uma confirmação por dia.
+- **Véspera do prazo:** todo dia às 8h de Brasília, a Vercel chama `/api/cron/lembretes` (agendado no `vercel.json`), e cada pessoa recebe um e-mail só com as tarefas abertas dela que vencem no dia seguinte, com os itens dela ainda não feitos. Tarefa feita ou arquivada não entra. Precisa da variável `CRON_SECRET` na Vercel; para testar à mão: `curl -H "Authorization: Bearer $CRON_SECRET" https://SEU_DOMINIO/api/cron/lembretes`.
 
 Para ligar:
 
