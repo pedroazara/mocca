@@ -116,7 +116,7 @@ export function ListaTarefasPessoa({ tarefas, pessoaId }: { tarefas: TarefaResum
               <h2 className={cn("t-rotulo mb-2", g.titulo === "Atrasadas" ? "text-erro" : "text-texto-2")}>
                 {g.titulo} <span className="t-dado">({g.lista.length})</span>
               </h2>
-              <ul className="flex flex-col divide-y divide-linha rounded-m border border-linha bg-superficie">
+              <ul className="flex flex-col divide-y divide-linha overflow-hidden rounded-g border border-linha bg-superficie">
                 {g.lista.map((t) => (
                   <LinhaTarefa key={t.id} tarefa={t} pessoaId={pessoaId} />
                 ))}
@@ -156,7 +156,7 @@ function LinhaTarefa({ tarefa: t, pessoaId }: { tarefa: TarefaResumo; pessoaId: 
                 avisar("Tarefa feita.", { desfazer: () => atualizarTarefa(t.id, { status: t.status }) });
             });
           }}
-          className="mt-1 size-[18px] shrink-0 accent-[var(--ok)]"
+          className="mt-[3px] shrink-0"
         />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

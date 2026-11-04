@@ -242,7 +242,7 @@ export default function Inicio() {
                       "lg:after:ml-2 lg:after:-mr-8 lg:after:h-0 lg:after:flex-1 lg:after:border-t-2 lg:after:border-dotted lg:after:border-caramelo/60 lg:after:content-['']",
                   )}
                 >
-                  <span className="t-dado text-[0.875rem] font-medium text-caramelo">{numero}</span>
+                  <span className="t-dado text-[0.875rem] font-medium text-link">{numero}</span>
                 </div>
                 <h3 className="t-h3 mt-3 text-texto">{titulo}</h3>
                 <p className="mt-2 max-w-[36ch] text-texto-2">{texto}</p>
@@ -305,7 +305,7 @@ export default function Inicio() {
                   conjunto="cartao"
                   className="absolute -top-20 -left-20 -z-10 size-96 text-creme/15 [mask-image:radial-gradient(circle_at_40%_40%,black,transparent_72%)]"
                 />
-                <p className="t-rotulo text-creme/75">Para</p>
+                <p className="t-rotulo text-creme/90">Para</p>
                 <h3 className="mt-2 max-w-[12ch] font-titulo text-[2.25rem] leading-[1.06] font-bold md:text-[2.5rem]">
                   {nome}
                 </h3>
@@ -362,7 +362,10 @@ export default function Inicio() {
                 </span>
                 <div className="flex flex-1 flex-col gap-2 border-b border-linha pb-8 sm:flex-row sm:items-start sm:justify-between sm:gap-6 [li:last-child_&]:border-0 [li:last-child_&]:pb-0">
                   <p className="font-medium text-texto">{e.texto}</p>
-                  <Chip estado={e.estado}>{e.rotulo}</Chip>
+                  {/* no celular a coluna estica os filhos: o selo fica do tamanho do texto */}
+                  <Chip estado={e.estado} className="self-start">
+                    {e.rotulo}
+                  </Chip>
                 </div>
               </li>
             ))}

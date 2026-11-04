@@ -52,11 +52,13 @@ export function resumirProposta(p: Proposta, nome: (id: string) => string): Resu
       campo("Semana", c.semana, a?.semana, semana);
       campo("Etiquetas", c.etiquetas, a?.etiquetas, etiquetas);
       campo("Ligada à entrega", c.ligada_entrega, a?.ligada_entrega, simNao);
-      return {
-        titulo: `Alterar ${tarefa}`,
-        linhas,
-        ...(c.etiquetas ? { aviso: "As etiquetas propostas substituem a lista inteira: a tarefa fica só com elas." } : {}),
-      };
+      const avisos = [
+        ...(c.etiquetas ? ["As etiquetas propostas substituem a lista inteira: a tarefa fica só com elas."] : []),
+        ...(typeof c.semana === "number" && c.prazo === undefined
+          ? ["Se o prazo cai dentro da semana em que a tarefa está hoje, ele vai junto para a semana nova."]
+          : []),
+      ];
+      return { titulo: `Alterar ${tarefa}`, linhas, ...(avisos.length ? { aviso: avisos.join(" ") } : {}) };
     }
 
     case "atribuir": {

@@ -12,7 +12,17 @@ import { ChipAtrasada, ChipEtiqueta, PilhaAvatares, Prazo } from "./elementos";
 
 // Peças de tarefa usadas em várias telas: item de checklist marcável e cartão.
 
-export function ItemMarcavel({ item, desabilitado = false }: { item: Item; desabilitado?: boolean }) {
+// `aoMarcar` roda dentro da mesma transição, para quem está em volta (o anel de
+// progresso da tela Semana) também mudar na hora.
+export function ItemMarcavel({
+  item,
+  desabilitado = false,
+  aoMarcar,
+}: {
+  item: Item;
+  desabilitado?: boolean;
+  aoMarcar?: (feito: boolean) => void;
+}) {
   const { avisar, podeEditar } = usePainel();
   const [feito, setFeito] = useOptimistic(item.feito);
   const [, iniciar] = useTransition();
@@ -32,11 +42,12 @@ export function ItemMarcavel({ item, desabilitado = false }: { item: Item; desab
           const novo = e.target.checked;
           iniciar(async () => {
             setFeito(novo);
+            aoMarcar?.(novo);
             const r = await marcarItem(item.id, novo);
             if (!r.ok) avisar(r.erro, { erro: true });
           });
         }}
-        className="mt-0.5 size-4 shrink-0 accent-[var(--botao-primario)]"
+        className="mt-px shrink-0"
       />
       <span className={cn(feito ? "text-texto-2 line-through" : "text-texto")}>{item.texto}</span>
     </label>
@@ -55,11 +66,14 @@ export function CartaoTarefa({
   comItens = false,
   className,
   arrastando = false,
+  foraDoTab = false,
 }: {
   tarefa: TarefaResumo;
   comItens?: boolean;
   className?: string;
   arrastando?: boolean;
+  // no Quadro, quem recebe o foco é o cartão arrastável em volta
+  foraDoTab?: boolean;
 }) {
   const { pessoa, etiqueta } = usePainel();
   const { feitos, total } = progresso(t);
@@ -92,6 +106,8 @@ export function CartaoTarefa({
       <Link
         href={`/painel/tarefas/${t.id}`}
         scroll={false}
+        tabIndex={foraDoTab ? -1 : undefined}
+        aria-hidden={foraDoTab || undefined}
         className={cn(
           "line-clamp-3 pr-5 font-medium text-texto after:absolute after:inset-0 after:content-[''] hover:underline",
           t.status === "feito" && "text-texto-2",
@@ -126,7 +142,8 @@ export function CartaoTarefa({
           </span>
         )}
         <span className="ml-auto">
-          <PilhaAvatares pessoas={t.atribuicoes.map((a) => pessoa(a.pessoa_id))} />
+          {/* no cartão do Quadro cabem 3; o resto vira "+N" */}
+          <PilhaAvatares pessoas={t.atribuicoes.map((a) => pessoa(a.pessoa_id))} maximo={3} />
         </span>
       </div>
     </article>

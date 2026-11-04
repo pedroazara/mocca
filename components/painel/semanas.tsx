@@ -82,7 +82,7 @@ export function LinhaDoTempoSemanas({ tarefas }: { tarefas: TarefaResumo[] }) {
         </ol>
       </div>
 
-      <div className="overflow-x-auto rounded-m border border-linha bg-superficie">
+      <div className="overflow-x-auto rounded-g border border-linha bg-superficie">
         <table className="w-full min-w-[760px] text-left text-[0.9375rem]">
           <thead className="bg-superficie-2">
             <tr className="t-rotulo text-texto-2">
@@ -259,7 +259,7 @@ export function DetalhesSemana({
                     type="button"
                     aria-label={`Remover ${d.titulo}`}
                     onClick={() => iniciar(async () => void (await removerDocumento(d.id)))}
-                    className="rounded-p p-1 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100"
+                    className="rounded-p p-1 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                   >
                     <Trash2 aria-hidden strokeWidth={1.75} className="size-3.5" />
                   </button>

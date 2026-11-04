@@ -44,7 +44,7 @@ export function ListaReunioes({ reunioes }: { reunioes: Reuniao[] }) {
       {reunioes.length === 0 ? (
         <EstadoVazio texto="As reuniões da equipe aparecem aqui, com pauta, decisões e tarefas criadas." />
       ) : (
-        <ul className="flex flex-col divide-y divide-linha rounded-m border border-linha bg-superficie">
+        <ul className="flex flex-col divide-y divide-linha overflow-hidden rounded-g border border-linha bg-superficie">
           {reunioes.map((r) => {
             const futura = new Date(r.data).getTime() > agora;
             return (
@@ -279,7 +279,7 @@ export function PaginaReuniao({ reuniao: r, pauta, criadas }: { reuniao: Reuniao
                     type="button"
                     aria-label="Apagar decisão"
                     onClick={() => rodar(() => removerDecisao(d.id))}
-                    className="rounded-p p-1 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100"
+                    className="rounded-p p-1 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                   >
                     <Trash2 aria-hidden strokeWidth={1.75} className="size-3.5" />
                   </button>

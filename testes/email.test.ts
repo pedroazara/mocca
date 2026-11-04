@@ -2,12 +2,12 @@
 // falha de envio. O SMTP e o banco são simulados; a consulta real está em banco.test.ts.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { confirmacaoContato, enderecoDeExemplo, tarefaAtribuida } from "@/lib/email/mensagens";
+import { confirmacaoContato, enderecoDeExemplo, lembretesDaVespera, tarefaAtribuida } from "@/lib/email/mensagens";
 
 const sim = vi.hoisted(() => ({
   fila: [] as (() => Promise<unknown>)[],
   sendMail: vi.fn(),
-  linhas: {} as { atribuicao?: unknown[]; contato?: unknown[] },
+  linhas: {} as { atribuicao?: unknown[]; contato?: unknown[]; anteriores?: number; lembretes?: unknown[] },
 }));
 
 vi.mock("server-only", () => ({}));
@@ -15,10 +15,15 @@ vi.mock("next/server", () => ({ after: (fn: () => Promise<unknown>) => sim.fila.
 vi.mock("nodemailer", () => ({ default: { createTransport: () => ({ sendMail: sim.sendMail }) } }));
 vi.mock("@/lib/banco", () => ({
   comoServico: (fn: (q: (sql: string) => Promise<unknown[]>) => Promise<unknown>) =>
-    fn(async (sql) => (sql.includes("t.contato_id") ? sim.linhas.contato : sim.linhas.atribuicao) ?? []),
+    fn(async (sql) => {
+      if (sql.includes("t.contato_id")) return sim.linhas.contato ?? [];
+      if (sql.includes("from contato")) return [{ n: sim.linhas.anteriores ?? 0 }];
+      if (sql.includes("not t.arquivada")) return sim.linhas.lembretes ?? [];
+      return sim.linhas.atribuicao ?? [];
+    }),
 }));
 
-const { avisarAtribuicao, avisarContatoRecebido } = await import("@/lib/email");
+const { avisarAtribuicao, avisarContatoRecebido, enviarLembretes } = await import("@/lib/email");
 
 const aposResposta = () => Promise.all(sim.fila.splice(0).map((fn) => fn()));
 const destinos = () => sim.sendMail.mock.calls.map(([m]) => m.to);
@@ -68,6 +73,29 @@ describe("textos dos e-mails", () => {
       expect(m.html).not.toContain("spam");
       expect(m.html).not.toContain("<b>");
     }
+  });
+
+  it("o lembrete da véspera lista as tarefas, os itens abertos e o link, com o HTML escapado", () => {
+    const [m] = lembretesDaVespera(
+      [
+        {
+          para: "gabriel@ufla.br",
+          nome: "Gabriel",
+          papel: "apoio",
+          tarefa_id: "t9",
+          titulo: "Visita <técnica>",
+          prazo: "2026-11-10T02:59:00.000Z",
+          itens: ["Levar o protótipo & o notebook"],
+        },
+      ],
+      (id) => `https://mocca.test/painel/tarefas/${id}`,
+    );
+    expect(m.assunto).toBe("Amanhã vence: Visita <técnica>");
+    expect(m.texto).toContain("Prazo: 09/11 · você está de apoio");
+    expect(m.texto).toContain("- Levar o protótipo & o notebook");
+    expect(m.texto).toContain("https://mocca.test/painel/tarefas/t9");
+    expect(m.html).toContain("Visita &lt;técnica&gt;");
+    expect(m.html).toContain("Levar o protótipo &amp; o notebook");
   });
 
   it("reconhece os endereços de exemplo do seed", () => {
@@ -137,6 +165,40 @@ describe("envio", () => {
     await aposResposta();
     expect(sim.sendMail).not.toHaveBeenCalled();
     expect(console.info).toHaveBeenCalledOnce();
+  });
+
+  it("não confirma de novo para o mesmo endereço no mesmo dia, mas avisa o responsável", async () => {
+    sim.linhas.contato = [{ tarefa_id: "t1", pessoa_id: "p1" }];
+    sim.linhas.anteriores = 1;
+    avisarContatoRecebido("c2", { nome: "Maria Teste", email: "maria@fazenda.test" });
+    await aposResposta();
+    expect(destinos()).toEqual(["gabriel@ufla.br"]);
+  });
+
+  it("lembrete da véspera: um e-mail por pessoa, com as tarefas dela", async () => {
+    const base = { papel: "responsavel", prazo: "2026-11-10T02:59:00.000Z", itens: [] };
+    sim.linhas.lembretes = [
+      { ...base, para: "gabriel@ufla.br", nome: "Gabriel", tarefa_id: "t1", titulo: "Ligar para a cooperativa" },
+      { ...base, para: "gabriel@ufla.br", nome: "Gabriel", tarefa_id: "t2", titulo: "Relatar a conversa" },
+      { ...base, para: "marcos@ufla.br", nome: "Marcos", tarefa_id: "t1", titulo: "Ligar para a cooperativa", papel: "apoio" },
+    ];
+    expect(await enviarLembretes("2026-11-09")).toEqual({ tarefas: 2, emails: 2, enviados: 2 });
+    expect(destinos()).toEqual(["gabriel@ufla.br", "marcos@ufla.br"]);
+    expect(sim.sendMail.mock.calls[0][0].subject).toBe("Amanhã vencem 2 tarefas suas no MoCCa");
+    expect(sim.sendMail.mock.calls[1][0].subject).toBe("Amanhã vence: Ligar para a cooperativa");
+  });
+
+  it("o lembrete conta só o que saiu: sem senha, endereço de exemplo e falha de envio não contam", async () => {
+    const base = { papel: "responsavel", prazo: "2026-11-10T02:59:00.000Z", itens: [], tarefa_id: "t1", titulo: "Ligar" };
+    sim.linhas.lembretes = [
+      { ...base, para: "gabriel@ufla.br", nome: "Gabriel" },
+      { ...base, para: "marcos@exemplo.com", nome: "Marcos" },
+      { ...base, para: "lucas@ufla.br", nome: "Lucas" },
+    ];
+    sim.sendMail.mockRejectedValueOnce(new Error("535 senha recusada"));
+    expect(await enviarLembretes("2026-11-09")).toEqual({ tarefas: 1, emails: 3, enviados: 1 });
+    vi.stubEnv("GMAIL_APP_PASSWORD", "");
+    expect((await enviarLembretes("2026-11-09")).enviados).toBe(0);
   });
 
   it("uma falha de envio não derruba nada e os outros e-mails ainda saem", async () => {

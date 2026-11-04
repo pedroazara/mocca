@@ -1,10 +1,10 @@
 "use client";
 
-import { AlertTriangle, ArrowLeft, ArrowRight, CalendarClock, ExternalLink, Inbox, UserX } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, CalendarArrowRight, CalendarClock, ExternalLink, Inbox, UserX } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { criarReuniao } from "@/app/painel/acoes";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import { atualizarTarefa, criarReuniao, moverParaSemana } from "@/app/painel/acoes";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { Botao } from "@/components/ui/botao";
 import { Chip } from "@/components/ui/chip";
@@ -14,7 +14,14 @@ import { rotuloStatus } from "@/lib/painel/tipos";
 import { cn } from "@/lib/utils";
 import { usePainel } from "./contexto";
 import { EstadoVazio } from "./elementos";
-import { CartaoTarefa } from "./tarefa-pecas";
+import {
+  animarSaida,
+  EVENTO_PASSOU_SEMANA,
+  focarVizinha,
+  lembrarChegada,
+  TarefasDaSemana,
+  useUmDeCadaVez,
+} from "./tarefas-semana";
 
 // Tela "Semana" (seção 9.1): em 10 segundos, o que a equipe precisa entregar
 // nesta semana e o que está atrasado. A entrega e as tarefas da semana ficam na
@@ -45,7 +52,11 @@ export function VisaoSemana({
   const { semanas, pessoa, podeEditar, avisar } = usePainel();
   const router = useRouter();
   const [criando, iniciar] = useTransition();
+  const [, iniciarTrazer] = useTransition();
   const [verTudo, setVerTudo] = useState(false);
+  const [trazidas, trazer] = useOptimistic<string[], string>([], (lista, id) => [...lista, id]);
+  const itensAtencao = useRef(new Map<string, HTMLLIElement>());
+  const umDeCadaVez = useUmDeCadaVez();
   const daSemana = tarefas.filter((t) => t.semana === semana.numero);
   const feitas = daSemana.filter((t) => t.status === "feito").length;
   const pct = daSemana.length ? Math.round((feitas / daSemana.length) * 100) : 0;
@@ -54,11 +65,12 @@ export function VisaoSemana({
   // cada tarefa aparece uma vez só, com tudo o que há de errado com ela
   const atencao = [
     ...tarefas
-      .filter((t) => estaAtrasada(t) || semResponsavel(t))
+      .filter((t) => (estaAtrasada(t) || semResponsavel(t)) && !trazidas.includes(t.id))
       .map((t) => {
         const atrasada = estaAtrasada(t);
         return {
           id: `t-${t.id}`,
+          tarefa: t,
           href: `/painel/tarefas/${t.id}`,
           manterRolagem: true,
           titulo: t.titulo,
@@ -69,6 +81,7 @@ export function VisaoSemana({
       }),
     ...contatosParados.map((c) => ({
       id: `c-${c.id}`,
+      tarefa: null,
       href: `/painel/contatos?id=${c.id}`,
       manterRolagem: false,
       titulo: c.nome,
@@ -81,6 +94,25 @@ export function VisaoSemana({
     semana.entrega_url ?? documentosSemana.find((d) => d.tipo === "entregavel")?.url ?? null;
   const total = semanas.length;
   const href = (n: number) => (base === "/painel" ? `/painel?semana=${n}` : `/painel/semanas/${n}`);
+
+  // Atenção: a tarefa atrasada de outra semana vem para esta, com o prazo junto
+  // (DUVIDAS 4m). Sai da lista deslizando e chega destacada nas tarefas da semana.
+  async function trazerParaEsta(t: TarefaResumo) {
+    if (!umDeCadaVez()) return;
+    const item = itensAtencao.current.get(t.id);
+    await animarSaida(item, "esquerda");
+    focarVizinha(item, "atencao");
+    lembrarChegada(t.id);
+    iniciarTrazer(async () => {
+      trazer(t.id);
+      const r = await moverParaSemana(t.id, semana.numero);
+      if (!r.ok) avisar(r.erro, { erro: true });
+      else
+        avisar(`Tarefa trazida para a semana ${semana.numero}.`, {
+          desfazer: () => void atualizarTarefa(t.id, { semana: t.semana, prazo: t.prazo }),
+        });
+    });
+  }
 
   // atrasadas primeiro, feitas por último
   const tarefasSemana = [...daSemana].sort(
@@ -114,22 +146,7 @@ export function VisaoSemana({
               {diaCurto(semana.inicio)} a {diaCurto(semana.fim)}
             </span>
           </p>
-          <Botao
-            asChild={semana.numero < total}
-            variante="fantasma"
-            tamanho="icone"
-            className="size-9"
-            disabled={semana.numero >= total}
-            aria-label="Próxima semana"
-          >
-            {semana.numero < total ? (
-              <Link href={href(semana.numero + 1)}>
-                <ArrowRight aria-hidden />
-              </Link>
-            ) : (
-              <ArrowRight aria-hidden />
-            )}
-          </Botao>
+          <SetaProxima numero={semana.numero + 1} href={semana.numero < total ? href(semana.numero + 1) : null} />
         </div>
         <div className="flex min-w-[240px] items-center gap-3">
           <div
@@ -209,23 +226,55 @@ export function VisaoSemana({
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:grid-cols-1">
           {/* 2. atenção */}
           <section aria-labelledby="atencao" className="rounded-g border border-linha bg-superficie p-5">
-            <h2 id="atencao" className="t-rotulo text-texto-2">
+            <h2 id="atencao" tabIndex={-1} className="t-rotulo text-texto-2">
               Atenção {atencao.length > 0 && <span className="t-dado">({atencao.length})</span>}
             </h2>
             {atencao.length === 0 ? (
               <p className="mt-3 text-texto-2">Nada atrasado, tudo com responsável e nenhum contato esperando.</p>
             ) : (
               <>
-                <ul className="mt-2 flex flex-col divide-y divide-linha">
-                  {(verTudo ? atencao : atencao.slice(0, LIMITE_ATENCAO)).map(({ id, href, manterRolagem, titulo, Icone, cor, detalhe }) => (
-                    <li key={id} className="flex gap-3 py-2.5">
+                <ul
+                  className="mt-2 flex flex-col divide-y divide-linha"
+                  onClickCapture={(e) => {
+                    // o segundo clique de um duplo clique no "Trazer" cairia na de baixo, que sobe
+                    if (e.detail < 2) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
+                  {(verTudo ? atencao : atencao.slice(0, LIMITE_ATENCAO)).map(({ id, tarefa, href, manterRolagem, titulo, Icone, cor, detalhe }) => (
+                    <li
+                      key={id}
+                      ref={(el) => {
+                        if (!tarefa) return;
+                        if (el) itensAtencao.current.set(tarefa.id, el);
+                        else itensAtencao.current.delete(tarefa.id);
+                      }}
+                      className="group flex gap-3 py-2.5"
+                    >
                       <Icone aria-hidden strokeWidth={1.75} className={cn("mt-0.5 size-4 shrink-0", cor)} />
                       <div className="min-w-0 flex-1">
                         <Link href={href} scroll={!manterRolagem} className="block truncate text-texto hover:underline">
                           {titulo}
                         </Link>
-                        <p className={cn("t-dado text-[0.8125rem]", cor)}>{detalhe}</p>
+                        <p className={cn("t-dado text-[0.8125rem]", cor)}>
+                          {detalhe}
+                          {tarefa?.semana && tarefa.semana !== semana.numero && (
+                            <span className="text-texto-2"> · S{tarefa.semana}</span>
+                          )}
+                        </p>
                       </div>
+                      {podeEditar && tarefa && tarefa.semana !== semana.numero && estaAtrasada(tarefa) && (
+                        <button
+                          type="button"
+                          onClick={() => void trazerParaEsta(tarefa)}
+                          aria-label={`Trazer “${tarefa.titulo}” para a semana ${semana.numero}`}
+                          title={`Trazer para a semana ${semana.numero}`}
+                          className="relative -mr-1 self-center rounded-p p-1.5 text-texto-2 transition-[opacity,color,background-color] duration-150 after:absolute after:-inset-1.5 after:content-[''] hover:bg-superficie-2 hover:text-texto focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:opacity-0"
+                        >
+                          <CalendarArrowRight aria-hidden strokeWidth={1.75} className="size-4" />
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -252,13 +301,16 @@ export function VisaoSemana({
                 <ul className="mt-3 space-y-1 text-[0.875rem] text-texto-2">
                   <li>Entrega da semana: {semana.entrega_titulo ?? "não definida"}</li>
                   <li>
-                    <span className="t-dado">{proxima.atrasadas}</span> tarefas atrasadas
+                    <span className="t-dado">{proxima.atrasadas}</span>{" "}
+                    {proxima.atrasadas === 1 ? "tarefa atrasada" : "tarefas atrasadas"}
                   </li>
                   <li>
-                    <span className="t-dado">{proxima.concluidas}</span> concluídas desde a última reunião
+                    <span className="t-dado">{proxima.concluidas}</span>{" "}
+                    {proxima.concluidas === 1 ? "concluída" : "concluídas"} desde a última reunião
                   </li>
                   <li>
-                    <span className="t-dado">{proxima.contatos}</span> contatos novos
+                    <span className="t-dado">{proxima.contatos}</span>{" "}
+                    {proxima.contatos === 1 ? "contato novo" : "contatos novos"}
                   </li>
                 </ul>
                 <div className="mt-4">
@@ -300,21 +352,56 @@ export function VisaoSemana({
         </div>
 
         {/* 4. tarefas da semana */}
-        <section aria-labelledby="tarefas-semana" className="xl:col-start-1 xl:row-start-2">
-          <h2 id="tarefas-semana" className="t-rotulo mb-3 text-texto-2">
-            Tarefas da semana
-          </h2>
-          {tarefasSemana.length ? (
-            <div className="columns-[260px] gap-3">
-              {tarefasSemana.map((t) => (
-                <CartaoTarefa key={t.id} tarefa={t} comItens className="mb-3 break-inside-avoid" />
-              ))}
-            </div>
-          ) : (
-            <p className="text-[0.875rem] text-texto-2">Nenhuma tarefa nesta semana.</p>
-          )}
-        </section>
+        <div className="xl:col-start-1 xl:row-start-2">
+          <TarefasDaSemana tarefas={tarefasSemana} semana={semana} todas={tarefas} />
+        </div>
       </div>
     </div>
+  );
+}
+
+// Seta "próxima semana": quando uma tarefa passa para lá pelo botão da linha,
+// ela pula e mostra um "+1" (DUVIDAS 4m).
+function SetaProxima({ numero, href }: { numero: number; href: string | null }) {
+  const [recebeu, setRecebeu] = useState<number | null>(null);
+  useEffect(() => {
+    const ouvir = (e: Event) => {
+      if ((e as CustomEvent<{ numero: number }>).detail?.numero === numero) setRecebeu(Date.now());
+    };
+    window.addEventListener(EVENTO_PASSOU_SEMANA, ouvir);
+    return () => window.removeEventListener(EVENTO_PASSOU_SEMANA, ouvir);
+  }, [numero]);
+  return (
+    <span className="relative">
+      <Botao
+        asChild={Boolean(href)}
+        variante="fantasma"
+        tamanho="icone"
+        className="size-9"
+        disabled={!href}
+        aria-label="Próxima semana"
+      >
+        {href ? (
+          <Link href={href}>
+            <ArrowRight
+              key={recebeu ?? "parada"}
+              aria-hidden
+              className={cn(recebeu && "animate-[mocca-receber_520ms_var(--ease-saida)_200ms]")}
+            />
+          </Link>
+        ) : (
+          <ArrowRight aria-hidden />
+        )}
+      </Botao>
+      {recebeu && (
+        <span
+          key={recebeu}
+          aria-hidden
+          className="t-dado pointer-events-none absolute -top-2 left-1/2 animate-[mocca-mais-um_900ms_ease-out_200ms_forwards] rounded-full bg-caramelo px-1.5 text-[0.6875rem] font-semibold text-botao-primario-texto opacity-0"
+        >
+          +1
+        </span>
+      )}
+    </span>
   );
 }

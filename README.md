@@ -2,7 +2,7 @@
 
 Site público do MoCCa (Monitoramento de Colheita de Café, equipe da UFLA) e painel de tarefas da equipe. A especificação completa está em [`ESPECIFICACAO.md`](ESPECIFICACAO.md); o que foi decidido de forma diferente e o que falta fazer estão em [`DUVIDAS.md`](DUVIDAS.md).
 
-**Estado atual:** fase 1 (site público), fase 2 (painel), fase 3 (API e MCP do Claude) e a importação do Trello prontas. Da fase 4 falta o lembrete por e-mail na véspera do prazo.
+**Estado atual:** as quatro fases estão prontas: site público, painel, API e MCP do Claude, importação do Trello e os confortos da fase 4, inclusive o lembrete por e-mail na véspera do prazo.
 
 Stack: Next.js 15 (App Router) + TypeScript, Tailwind CSS 4, Radix, lucide-react, react-hook-form + zod, dnd-kit, Postgres do Supabase (com RLS), Supabase Auth (e-mail e senha), Cloudflare Turnstile, MCP SDK, Vitest.
 
@@ -43,15 +43,16 @@ Outros comandos:
 | `DATABASE_URL` | Supabase › Connect › Transaction pooler (porta 6543) | **Só no servidor.** Sem ela, modo local (só em desenvolvimento) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase › Project Settings › API | Login e atualizações ao vivo |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | idem | Pública. O RLS bloqueia tudo para o usuário anônimo |
-| `SUPABASE_SERVICE_ROLE_KEY` | idem | **Secreta, só no servidor.** Cria a conta no primeiro acesso |
+| `SUPABASE_SERVICE_ROLE_KEY` | idem | **Secreta, só no servidor.** Cria a conta no primeiro acesso e apaga a antiga quando o admin troca o e-mail de alguém |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare › Turnstile | Em desenvolvimento: `1x00000000000000000000AA` |
 | `TURNSTILE_SECRET_KEY` | idem | Em desenvolvimento: `1x0000000000000000000000000000000AA` |
 | `GMAIL_APP_PASSWORD` | Conta Google do MoCCa (ver "E-mails automáticos") | **Secreta, só no servidor.** Sem ela, nenhum e-mail sai |
 | `GOOGLE_DRIVE_FOLDER` | Drive › pasta do projeto › Compartilhar › Copiar link | Link (ou id) da pasta que a aba Arquivos mostra (ver "Arquivos do Google Drive") |
 | `GOOGLE_SERVICE_ACCOUNT_KEY` | Google Cloud › Contas de serviço › Chaves | **Secreta, só no servidor.** O JSON inteiro da chave. Sem ela, a aba Arquivos avisa que a pasta não está ligada |
+| `CRON_SECRET` | Gere uma sequência aleatória longa (por exemplo, `openssl rand -hex 32`) | **Secreta, só no servidor.** Protege o lembrete da véspera do prazo; a Vercel envia sozinha nas chamadas agendadas. Sem ela, nenhum lembrete sai |
 | `NEXT_PUBLIC_SITE_URL` | | URL pública, sem barra no fim. Usada no sitemap, nas imagens de compartilhamento e nos links que a API devolve |
 
-O servidor fala com o Postgres direto (`DATABASE_URL`), e não pela API REST do Supabase. Cada consulta roda numa transação com o papel `authenticated` e o id da pessoa logada (ou com o `service_role`, no formulário e na API do Claude), então o RLS vale do mesmo jeito. A `SUPABASE_SERVICE_ROLE_KEY` só é usada para criar a conta no primeiro acesso.
+O servidor fala com o Postgres direto (`DATABASE_URL`), e não pela API REST do Supabase. Cada consulta roda numa transação com o papel `authenticated` e o id da pessoa logada (ou com o `service_role`, no formulário e na API do Claude), então o RLS vale do mesmo jeito. A `SUPABASE_SERVICE_ROLE_KEY` só é usada no login: cria a conta no primeiro acesso e, quando o admin troca o e-mail de alguém na Equipe, apaga a conta antiga (DUVIDAS 27).
 
 ## Banco de dados (Supabase)
 
@@ -69,7 +70,9 @@ Depois rode o `supabase/seed.sql` uma vez no SQL Editor do Supabase (ele pode ro
 
 Antes do seed, troque os e-mails de exemplo (`nome.sobrenome@exemplo.com`) pelos e-mails reais. O login só deixa entrar quem está na tabela `pessoa` com `ativo = true`.
 
-Login por e-mail e senha: em `/entrar`, a pessoa digita o e-mail cadastrado. No primeiro acesso, ela cria a senha ali mesmo, sem confirmação por e-mail; depois, entra com ela. **Até criar a senha, a conta pode ser tomada por quem souber o e-mail**, então cada pessoa deve fazer o primeiro acesso logo depois do cadastro, e o admin antes de todos. Em Authentication › Sign In / Providers, desligue "Allow new users to sign up": a conta é criada pelo servidor, e o cadastro direto no Supabase não deve ficar aberto.
+Login por e-mail e senha: em `/entrar`, a pessoa digita o e-mail cadastrado. No primeiro acesso, ela cria a senha ali mesmo, sem confirmação por e-mail; depois, entra com ela. **Até criar a senha, a conta pode ser tomada por quem souber o e-mail**, então cada pessoa deve fazer o primeiro acesso logo depois do cadastro, e o admin antes de todos. Em Authentication › Sign In / Providers, desligue "Allow new users to sign up": a conta é criada pelo servidor, e o cadastro direto no Supabase não deve ficar aberto. Mesmo que ele fique aberto por engano, uma conta criada por fora não entra no painel: só o primeiro acesso pela tela `/entrar` liga a conta à pessoa da equipe. Em Project Settings › Data API, tire o esquema `public` dos esquemas expostos: o painel fala com o Postgres direto e não usa essa API (o Realtime não depende dela).
+
+Senhas erradas: depois de 8 tentativas erradas do mesmo e-mail (ou 30 do mesmo IP) em 15 minutos, o login pede para esperar.
 
 Esqueceu a senha: apague o usuário em Authentication › Users. A pessoa continua na equipe, com as tarefas, e cria uma senha nova no próximo acesso.
 
@@ -81,7 +84,7 @@ Em `/painel`, só para quem está na equipe. Admin (Pedro) edita tudo, aprova o 
 
 | Página | O que tem |
 |---|---|
-| **Semana** (`/painel`) | A semana atual do programa: a entrega do Avança Café e o prazo, as tarefas por pessoa, o que pede atenção (atrasadas, sem responsável, contatos sem resposta) e a próxima reunião. Setas para ir às outras semanas |
+| **Semana** (`/painel`) | A semana atual do programa: a entrega do Avança Café e o prazo, as tarefas da semana (uma linha por tarefa, com o anel dos passos feitos; os passos abrem ali mesmo), o que pede atenção (atrasadas, sem responsável, contatos sem resposta) e a próxima reunião. Arrastar uma tarefa abre a barra das 12 semanas para passá-la de semana, com o prazo junto. Setas para ir às outras semanas |
 | **Minhas tarefas** | Só o que tem você como responsável ou apoio, separado em atrasadas, esta semana, próximas semanas, anteriores e sem semana |
 | **Quadro** | Kanban (A fazer, Fazendo, Em revisão, Feito) com arrastar e soltar, também pelo teclado (espaço para pegar, setas para mover). Filtros por semana, pessoa, etiqueta e atrasadas |
 | **Tarefa** | Abre numa janela central (ou em página inteira), em duas colunas: descrição em Markdown, uma atribuição por pessoa com a sua lista de itens, documentos do Drive, comentários e histórico à esquerda; semana, prazo, etiquetas, entrega e origem à direita |
@@ -93,7 +96,7 @@ Em `/painel`, só para quem está na equipe. Admin (Pedro) edita tudo, aprova o 
 | **Aprovações** (admin) | O que o Claude pediu com token e ainda não entrou no painel, com Aprovar e Recusar. Em alterações, mostra o valor de hoje e o proposto. A barra lateral conta as pendentes |
 | **Configurações** (admin) | Reunião semanal, responsável pelos contatos, datas do programa, tokens da API, importação do Trello e tema |
 
-**Paleta de comandos:** `Ctrl/Cmd + K` ou `/` busca tarefas, pessoas, semanas, etiquetas e reuniões, e tem as ações rápidas (nova tarefa, nova reunião, alternar tema). Outros atalhos: `N` nova tarefa, `G S` / `G M` / `G Q` para Semana, Minhas tarefas e Quadro, e `?` mostra a lista.
+**Paleta de comandos:** `Ctrl/Cmd + K` ou `/` busca tarefas, pessoas, semanas, etiquetas e reuniões, e tem as ações rápidas (nova tarefa, nova reunião, alternar tema). Outros atalhos: `N` nova tarefa, `G S` / `G M` / `G Q` para Semana, Minhas tarefas e Quadro, e `?` mostra a lista. Com uma tarefa aberta: `E` edita o título, `A` atribui pessoa e `D` vai para o prazo. No Quadro, com o cartão em foco, `Enter` abre a tarefa e `Espaço` pega e solta.
 
 Mudanças feitas por outras pessoas aparecem sozinhas (Supabase Realtime em produção; a cada 15 s no modo local).
 
@@ -189,7 +192,8 @@ Em Configurações › Importar do Trello, envie o JSON exportado do quadro (men
 Os e-mails saem de `moccaufla@gmail.com`, pelo SMTP do Gmail. O Resend da especificação não serve aqui porque só envia de um domínio próprio verificado.
 
 - **Tarefa atribuída:** quem recebe uma tarefa ganha um e-mail com título, papel, prazo, itens e link, venha a atribuição do painel, do formulário do site ou de uma proposta do Claude, que só avisa quando o admin aprova. Quem atribui a si mesmo não recebe. Trocar o papel, duplicar uma tarefa e importar do Trello não enviam nada.
-- **Contato pelo site:** quem preenche o formulário recebe uma confirmação de texto fixo, sem repetir a mensagem, porque qualquer um pode digitar o endereço de outra pessoa. O limite de 5 envios por hora e o Turnstile valem aqui também.
+- **Contato pelo site:** quem preenche o formulário recebe uma confirmação de texto fixo, sem repetir a mensagem, porque qualquer um pode digitar o endereço de outra pessoa. O limite de 5 envios por hora e o Turnstile valem aqui também, e o mesmo endereço recebe no máximo uma confirmação por dia.
+- **Véspera do prazo:** todo dia às 8h de Brasília, a Vercel chama `/api/cron/lembretes` (agendado no `vercel.json`), e cada pessoa recebe um e-mail só com as tarefas abertas dela que vencem no dia seguinte, com os itens dela ainda não feitos. Tarefa feita ou arquivada não entra. Precisa da variável `CRON_SECRET` na Vercel; para testar à mão: `curl -H "Authorization: Bearer $CRON_SECRET" https://SEU_DOMINIO/api/cron/lembretes`. A resposta diz quantas tarefas vencem amanhã, quantos e-mails foram montados (`emails`, um por pessoa) e quantos o Gmail aceitou (`enviados`): sem `GMAIL_APP_PASSWORD`, para os endereços de exemplo ou com falha no envio, não conta.
 
 Para ligar:
 
@@ -229,6 +233,8 @@ Como funciona:
 4. Cada push na `main` publica o site; cada pull request ganha uma prévia.
 
 Aplique as migrações novas no Supabase (`npx supabase db push`) **antes** de publicar o código que depende delas. A barra lateral consulta `proposta` em toda página do painel: sem a migração `20261102120000_proposta.sql`, o painel inteiro e as escritas do Claude dão erro 500. A migração só acrescenta, então o código antigo continua funcionando com ela.
+
+**Exceção, as migrações de 2026-11-04** (`20261104120000` a `20261104150000`): aqui a ordem é a inversa. Publique o código primeiro e só depois rode o `npx supabase db push`. O código novo funciona com ou sem elas, mas a `20261104130000_ligacao_da_conta.sql` tira do banco a ligação automática da conta de que o código antigo dependia: com ela aplicada e o código antigo no ar, o primeiro acesso cria uma conta solta e a pessoa cai em "Acesso negado". Pelo mesmo motivo, depois de aplicá-las, não volte a Vercel para uma publicação anterior a elas.
 
 ## Estrutura
 

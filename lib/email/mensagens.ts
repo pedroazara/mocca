@@ -82,3 +82,61 @@ export function confirmacaoContato(d: { para: string; nome: string }): Mensagem 
     html: corpoHtml([saudacao, ...linhas].map((l) => `<p>${escapar(l)}</p>`).join("")),
   };
 }
+
+// Lembrete da véspera (fase 4): as tarefas abertas que vencem no dia $1
+// (YYYY-MM-DD, em Brasília), uma linha por pessoa ativa atribuída, com os
+// itens dela que ainda não foram feitos. Tarefa arquivada ou feita não entra.
+export const SQL_LEMBRETES = `
+  select p.email as para, coalesce(p.apelido, p.nome) as nome, a.papel::text as papel,
+         t.id as tarefa_id, t.titulo, t.prazo,
+         coalesce((select json_agg(i.texto order by i.posicao, i.id) from item i
+                    where i.atribuicao_id = a.id and not i.feito), '[]'::json) as itens
+    from tarefa t
+    join atribuicao a on a.tarefa_id = t.id
+    join pessoa p on p.id = a.pessoa_id
+   where not t.arquivada and t.status <> 'feito' and p.ativo
+     and (t.prazo at time zone 'America/Sao_Paulo')::date = $1::date
+   order by p.email, t.prazo, t.titulo`;
+
+export type LinhaLembrete = {
+  para: string;
+  nome: string;
+  papel: PapelAtribuicao;
+  tarefa_id: string;
+  titulo: string;
+  prazo: string;
+  itens: string[];
+};
+
+// Um e-mail por pessoa, com todas as tarefas dela que vencem amanhã.
+export function lembretesDaVespera(linhas: LinhaLembrete[], link: (tarefaId: string) => string): Mensagem[] {
+  const porPessoa = new Map<string, LinhaLembrete[]>();
+  for (const l of linhas) porPessoa.set(l.para, [...(porPessoa.get(l.para) ?? []), l]);
+  return [...porPessoa.values()].map((tarefas) => {
+    const { para, nome } = tarefas[0];
+    const assunto =
+      tarefas.length === 1 ? `Amanhã vence: ${tarefas[0].titulo}` : `Amanhã vencem ${tarefas.length} tarefas suas no MoCCa`;
+    const abertura =
+      tarefas.length === 1 ? "Uma tarefa sua no painel do MoCCa vence amanhã." : `${tarefas.length} tarefas suas no painel do MoCCa vencem amanhã.`;
+    const blocoTexto = (t: LinhaLembrete) =>
+      [
+        t.titulo,
+        `Prazo: ${dataCurta(t.prazo)}${t.papel === "apoio" ? " · você está de apoio" : ""}`,
+        ...(t.itens.length ? ["Seus itens abertos:", ...t.itens.map((i) => `- ${i}`)] : []),
+        `Abrir: ${link(t.tarefa_id)}`,
+      ].join("\n");
+    const blocoHtml = (t: LinhaLembrete) =>
+      [
+        `<p><strong>${escapar(t.titulo)}</strong><br>Prazo: ${escapar(dataCurta(t.prazo))}${t.papel === "apoio" ? " · você está de apoio" : ""}</p>`,
+        t.itens.length ? `<p>Seus itens abertos:</p><ul>${t.itens.map((i) => `<li>${escapar(i)}</li>`).join("")}</ul>` : "",
+        `<p><a href="${escapar(link(t.tarefa_id))}">Abrir a tarefa</a></p>`,
+      ].join("");
+    const fecho = "Se já terminou, marque como feita no painel e este lembrete para de chegar.";
+    return {
+      para,
+      assunto,
+      texto: [`Olá, ${nome}.`, abertura, ...tarefas.map(blocoTexto), fecho].join("\n\n"),
+      html: corpoHtml([`<p>Olá, ${escapar(nome)}.</p>`, `<p>${escapar(abertura)}</p>`, ...tarefas.map(blocoHtml), `<p>${escapar(fecho)}</p>`].join("")),
+    };
+  });
+}

@@ -4,13 +4,16 @@ import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { aprovarProposta as aprovar, ErroApi } from "@/lib/api/servico";
 import { pessoaLogada, type PessoaLogada } from "@/lib/auth";
-import { comoUsuario, mensagemDeErro, type Consulta } from "@/lib/banco";
+import { comoServico, comoUsuario, mensagemDeErro, modoLocal, type Consulta } from "@/lib/banco";
 import { esquecerArvore } from "@/lib/drive";
+import { contaQueSobrou } from "@/lib/login";
 import { avisarAtribuicao } from "@/lib/email";
 import { buscar, configuracao, semanas as listarSemanas } from "@/lib/painel/dados";
 import { fimDaSemanaIso, proximaReuniao } from "@/lib/painel/datas";
+import { SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
 import { ehJpegBase64, normalizarLinkedin } from "@/lib/painel/perfil";
 import { planejarImportacao, type TrelloJson } from "@/lib/painel/trello";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import type {
   PapelAtribuicao,
   PapelPainel,
@@ -167,6 +170,16 @@ export async function moverTarefa(id: string, status: Status, posicao: number) {
       await q("update tarefa set status = $2::status_tarefa, posicao = $3 where id = $1 returning id", [id, status, posicao]),
     );
     return id;
+  });
+}
+
+// Passa a tarefa para outra semana (tela Semana: arrastar ou "próxima semana").
+// O prazo vai junto quando caía dentro da semana antiga, no mesmo dia da semana
+// e horário; prazo fora da semana (ou sem prazo) fica como está.
+export async function moverParaSemana(id: string, numero: number) {
+  return agir(async (q) => {
+    if (!Number.isInteger(numero) || numero < 1 || numero > 12) throw new Recusa("Semana inválida.");
+    return exigir(await q<{ id: string; prazo: string | null }>(SQL_MOVER_PARA_SEMANA, [id, numero])).prazo;
   });
 }
 
@@ -519,19 +532,38 @@ export async function criarPessoa(d: DadosPessoa) {
 }
 
 export async function atualizarPessoa(id: string, d: DadosPessoa & { ativo?: boolean }) {
-  return agirNaEquipe(async (q) => {
+  let sobrou: string | null = null;
+  const r = await agirNaEquipe(async (q) => {
     const v = validarPessoa(d);
-    exigir(
-      await q(
+    const [antes] = await q<{ email: string; auth_id: string | null }>("select email, auth_id from pessoa where id = $1", [id]);
+    const depois = exigir(
+      await q<{ email: string; auth_id: string | null }>(
         `update pessoa set nome = $2, apelido = $3, email = $4, frente = $5, papel = $6::papel_painel, cor = $7,
                 ativo = coalesce($8, ativo)
-          where id = $1 returning id`,
+          where id = $1 returning email, auth_id`,
         [id, v.nome, v.apelido, v.email, v.frente, d.papel, d.cor, d.ativo ?? null],
       ),
       "Só o admin edita pessoas.",
     );
+    sobrou = contaQueSobrou(antes, depois);
     await gravarPerfil(q, id, v);
   });
+  if (r.ok && sobrou) await apagarContaAntiga(id, sobrou);
+  return r;
+}
+
+// Depois de trocar o e-mail (DUVIDAS 27): a conta antiga é apagada, e a pessoa
+// cria a senha de novo com o e-mail novo. No modo local não há contas de
+// verdade, e a pessoa só continua ligada ao mesmo login.
+async function apagarContaAntiga(pessoaId: string, authId: string) {
+  if (modoLocal) {
+    await comoServico((q) => q("update pessoa set auth_id = $1 where id = $2 and auth_id is null", [authId, pessoaId]));
+    return;
+  }
+  const { error } = await supabaseAdmin()
+    .auth.admin.deleteUser(authId)
+    .catch((e: Error) => ({ error: e }));
+  if (error) console.error("[equipe] conta antiga não apagada:", authId, error.message);
 }
 
 export async function definirAtivo(id: string, ativo: boolean) {

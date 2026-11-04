@@ -249,7 +249,7 @@ export function FormularioContato() {
             type="checkbox"
             aria-invalid={erro("consentimento") ? true : undefined}
             aria-describedby={erro("consentimento") ? "consentimento-erro" : undefined}
-            className="mt-0.5 size-5 shrink-0 accent-[var(--botao-primario)]"
+            className="mt-0.5 size-5 shrink-0"
           />
           <span>
             Concordo que a equipe MoCCa guarde estes dados para responder ao meu contato.{" "}

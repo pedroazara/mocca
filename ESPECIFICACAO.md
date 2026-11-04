@@ -227,16 +227,16 @@ Cores da marca (da logo, não alterar):
   --botao-primario-hover: #5E3A27;
 
   /* estados (semânticas, separadas da marca) */
-  --ok: #3F7A4A;      --ok-fundo: #E1EEDF;
-  --alerta: #8F6210;  --alerta-fundo: #F5E8C8;
+  --ok: #3A7245;      --ok-fundo: #E1EEDF;
+  --alerta: #8A5E0F;  --alerta-fundo: #F5E8C8;
   --erro: #A2412F;    --erro-fundo: #F5DED7;
   --info: #2F5F86;    --info-fundo: #DDE8F1;
 
   /* etiquetas das tarefas (seção 9.3) */
   --et-entregas: #A2412F;
   --et-validacao: #2F5F86;
-  --et-tecnico: #3F7A4A;
-  --et-negocio: #8F6210;
+  --et-tecnico: #3A7245;
+  --et-negocio: #8A5E0F;
   --et-marketing: #7A3F7A;
 
   /* tipografia */
@@ -342,8 +342,10 @@ Direto, concreto, de quem conhece o campo. Frases curtas. Exemplos e cenas em ve
 | Botão secundário | Borda 1 px `--texto`, fundo transparente. Hover `--superficie-2`. |
 | Botão fantasma | Sem borda, texto `--texto-2`, hover `--superficie-2`. Usado em ações de linha. |
 | Link | `--link`, sublinhado com `text-underline-offset: 3px`. |
-| Foco | `outline: 2px solid var(--foco); outline-offset: 2px` em todo elemento interativo. Nunca remover. |
-| Campo de texto | Altura 40 px, borda `--linha`, raio `--raio-p`, fundo `--superficie`. Rótulo sempre visível acima (não usar só placeholder). Erro em `--erro` abaixo do campo com ícone. |
+| Foco | `outline: 2px solid var(--foco); outline-offset: 2px` em todo elemento interativo. Nunca remover. Nos campos de texto, data, hora e listas de opções, o contorno de 2 px vem por cima da borda (`outline-offset: -1px`), acendendo-a em `--foco`, com um halo de 4 px da mesma cor a 20%; num campo com erro (`aria-invalid`), contorno e halo vêm em `--erro`. |
+| Campo de texto | Altura 40 px, borda `--linha` (`--borda-campo` com o mouse por cima), raio `--raio-m`, fundo `--superficie`. Rótulo sempre visível acima (não usar só placeholder). Erro em `--erro` abaixo do campo com ícone. |
+| Lista de opções | Como o campo de texto, sem a seta do navegador: a seta é o `ChevronDown` do site, em `--texto-2`, desenhada pelo CSS global. |
+| Caixa de seleção | Feita à mão no CSS global, igual no site e no painel: 18 px, quadrado com raio 6 px, borda 1,5 px `--borda-campo` (pelo menos 3:1 com a superfície), fundo `--superficie`. Marcada: fundo `--botao-primario` e o visto em `--botao-primario-texto`, que entra crescendo. Borda `--caramelo` com o mouse por cima; encolhe um pouco ao clicar. |
 | Chip de etiqueta | Altura 22 px, raio 999 px, fundo da cor da etiqueta a 14% de opacidade, texto na cor da etiqueta, ponto de 6 px à esquerda. |
 | Avatar | Círculo com iniciais (Sora 600) sobre a cor da pessoa (seção 9.4). Tamanhos 20, 28 e 40 px. Pilha de avatares sobrepostos em −6 px com borda 2 px `--superficie`. |
 | Toast | Canto inferior direito, `--superficie` com `--sombra-flutuante`. Ação de "Desfazer" por 6 s em exclusões e movimentações. |
@@ -544,9 +546,11 @@ Bloco 3, **Próxima reunião**:
 - Data, pauta gerada (seção 9.6) e botão "Abrir pauta".
 
 Bloco 4, **Tarefas da semana**:
-- Um cartão enxuto por tarefa (título, itens, prazo e avatares de quem participa), em colunas de no mínimo 260 px, sem rolagem lateral. Todos os itens de checklist aparecem embaixo do título, com caixas marcáveis ali mesmo.
-- Tarefas atrasadas primeiro, com chip `atrasada` (erro), e feitas por último.
+- Uma lista, uma linha por tarefa: à esquerda, um anel com o progresso dos passos (itens) feitos, que vira um visto quando a tarefa está feita; o título (abre a tarefa); embaixo, uma linha com o chip `atrasada` (erro) ou o status quando for `fazendo` ou `em revisão`, o botão "0 de 8 passos", o prazo, as etiquetas e os avatares de quem participa.
+- Os passos ficam recolhidos. O botão "0 de 8 passos" (ou o anel) abre os passos ali mesmo, marcáveis, cada um com o avatar de quem cuida dele, sem agrupar por pessoa. "Mostrar todos os passos" abre todas as tarefas que ainda não foram feitas. Quando todos os passos estão feitos, aparece "Marcar a tarefa como feita".
+- Tarefas atrasadas primeiro e feitas por último.
 - Sem cabeçalho por pessoa e sem contagem individual.
+- **Passar de semana**: arrastar a linha (mouse, ou segurar e arrastar no toque) abre embaixo a barra das 12 semanas, com uma bolinha por tarefa aberta em cada uma. Ao soltar, o cartão voa até a semana, que pula com um "+1", e a linha some da lista. O botão do calendário na linha passa para a semana seguinte, e a linha desliza para a direita enquanto a seta "próxima semana" do topo pula. Na Atenção, a tarefa atrasada de outra semana tem o mesmo botão, que a traz para a semana aberta. O prazo vai junto quando caía dentro da semana antiga (mesmo dia da semana e horário; o do último dia vai para o último dia da nova, e o prazo nunca sai da semana de destino, mesmo com semanas de tamanhos diferentes: só numa semana curta, sem aquele dia da semana, ele fica na ponta mais perto). Aviso "Tarefa passou para a semana 4 · Desfazer"; na semana de destino, a tarefa chega destacada. Com movimento reduzido, tudo troca sem animação.
 
 ### 9.2 Minhas tarefas (`/painel/minhas-tarefas`)
 
@@ -588,7 +592,7 @@ Clicar numa tarefa abre uma **janela central** de até 1040 px (tela cheia no ce
 2. **Cabeçalho**: título editável inline (Sora 600, 1.375rem) e o status em quatro botões, na ordem das colunas do Quadro.
 3. **Detalhes** (grade de rótulo à esquerda e valor à direita, numa coluna que acompanha a rolagem):
    - Prazo (seletor de data; padrão = fim da semana), com a contagem embaixo ("atrasada há 2 dias")
-   - Semana (seletor com as 12 semanas)
+   - Semana (seletor com as 12 semanas); trocar de semana leva o prazo junto quando ele caía na semana antiga
    - Etiquetas (multisseleção)
    - Ligada à entrega do programa (caixa)
    - Criada por / origem (`manual`, `reunião`, `Claude`, `contato do site`), só leitura, numa linha discreta no fim

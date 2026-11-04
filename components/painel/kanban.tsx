@@ -5,7 +5,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useDroppable,
   useSensor,
   useSensors,
@@ -63,9 +64,16 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
 
   // id estável: sem ele, o dnd-kit gera ids diferentes no servidor e no navegador
   const idDnd = useId();
+  // No toque, segurar um instante antes de arrastar: com o arrasto imediato, o
+  // navegador começava a rolar o quadro e cancelava o movimento.
   const sensores = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+    // Espaço pega e solta; o Enter fica para abrir a tarefa (CartaoArrastavel)
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space"] },
+    }),
   );
 
   const colunaDe = (id: UniqueIdentifier): Status | undefined => {
@@ -163,7 +171,7 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
         announcements: anuncios,
         screenReaderInstructions: {
           draggable:
-            "Para mover uma tarefa, aperte espaço para pegar, use as setas para mudar de lugar ou de coluna, e espaço de novo para soltar. Esc cancela.",
+            "Enter abre a tarefa. Para mover, aperte espaço para pegar, use as setas para mudar de lugar ou de coluna, e espaço de novo para soltar. Esc cancela.",
         },
       }}
     >
@@ -239,6 +247,17 @@ function Coluna({
             <CartaoArrastavel key={t.id} tarefa={t} desabilitado={!podeEditar} arrastou={arrastou} />
           ))}
         </SortableContext>
+        {tarefas.length === 0 && (
+          // coluna vazia: diz o que fazer em vez de só mostrar um vão
+          <p
+            className={cn(
+              "rounded-m border border-dashed px-3 py-6 text-center text-[0.8125rem] text-texto-2 transition-colors duration-150",
+              isOver ? "border-caramelo bg-caramelo/10 text-texto" : "border-linha",
+            )}
+          >
+            {podeEditar ? "Arraste uma tarefa para cá" : "Nenhuma tarefa"}
+          </p>
+        )}
         {ocultas > 0 && (
           <Link href={`${caminho}?${verTodas.toString()}`} className="link px-1 text-[0.875rem]">
             Ver todas ({ocultas} a mais)
@@ -250,14 +269,25 @@ function Coluna({
   );
 }
 
+// O cartão inteiro é o botão do teclado: Enter abre a tarefa, espaço pega. O
+// link do título fica fora do Tab, para não haver um controle dentro do outro.
 function CartaoArrastavel({ tarefa, desabilitado, arrastou }: { tarefa: TarefaResumo; desabilitado: boolean; arrastou: React.RefObject<boolean> }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tarefa.id, disabled: desabilitado });
+  const router = useRouter();
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
       {...listeners}
+      onKeyDown={(e) => {
+        listeners?.onKeyDown?.(e);
+        if (e.key === "Enter" && !isDragging && e.target === e.currentTarget) {
+          e.preventDefault();
+          router.push(`/painel/tarefas/${tarefa.id}`, { scroll: false });
+        }
+      }}
+      aria-label={tarefa.titulo}
       aria-roledescription="tarefa arrastável"
       onClickCapture={(e) => {
         if (arrastou.current) {
@@ -265,9 +295,9 @@ function CartaoArrastavel({ tarefa, desabilitado, arrastou }: { tarefa: TarefaRe
           e.stopPropagation();
         }
       }}
-      className={cn("touch-manipulation rounded-m outline-offset-2", isDragging && "opacity-40")}
+      className={cn("touch-manipulation rounded-m outline-offset-2 [-webkit-touch-callout:none]", isDragging && "opacity-40")}
     >
-      <CartaoTarefa tarefa={tarefa} className="cursor-grab active:cursor-grabbing" />
+      <CartaoTarefa tarefa={tarefa} foraDoTab className="cursor-grab active:cursor-grabbing" />
     </div>
   );
 }

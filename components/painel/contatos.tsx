@@ -66,7 +66,7 @@ export function TabelaContatos({ contatos, aberto }: { contatos: Contato[]; aber
       {contatos.length === 0 ? (
         <EstadoVazio texto="Os contatos enviados pelo formulário do site aparecem aqui, cada um com uma tarefa para responder." />
       ) : (
-        <div className="overflow-x-auto rounded-m border border-linha bg-superficie">
+        <div className="overflow-x-auto rounded-g border border-linha bg-superficie">
           <table className="w-full min-w-[820px] text-left text-[0.9375rem]">
             <thead className="bg-superficie-2">
               <tr className="t-rotulo text-texto-2">

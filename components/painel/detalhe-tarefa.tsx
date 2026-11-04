@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useOptimistic, useRef, useState, useTransition } from "react";
+import { createContext, useContext, useEffect, useId, useOptimistic, useRef, useState, useTransition } from "react";
 import * as acoes from "@/app/painel/acoes";
 import { Botao } from "@/components/ui/botao";
 import { estiloControle } from "@/components/ui/campo";
@@ -75,25 +75,76 @@ const CLAUDE = { id: "claude", nome: "Claude", apelido: "Claude", cor: "#B9733F"
 // acima disso, a descrição (um roteiro colado, por exemplo) abre recolhida
 const LIMITE_DESCRICAO = 600;
 
+// Atalhos da tarefa aberta (seção 8.3): E edita o título, A atribui pessoa e
+// D vai para o prazo. Cada tarefa na tela tem o seu canal (a página inteira
+// pode estar embaixo da janela de outra tarefa), e cada parte dela escuta o seu.
+const EVENTO_ATALHO_TAREFA = "mocca:atalho-tarefa";
+type AtalhoTarefa = "titulo" | "atribuir" | "prazo";
+const CanalAtalhos = createContext<EventTarget | null>(null);
+
+function useAtalhoTarefa(qual: AtalhoTarefa, fazer: () => void) {
+  const canal = useContext(CanalAtalhos);
+  const ref = useRef(fazer);
+  ref.current = fazer;
+  useEffect(() => {
+    if (!canal) return;
+    const ouvir = (e: Event) => {
+      if ((e as CustomEvent<AtalhoTarefa>).detail === qual) ref.current();
+    };
+    canal.addEventListener(EVENTO_ATALHO_TAREFA, ouvir);
+    return () => canal.removeEventListener(EVENTO_ATALHO_TAREFA, ouvir);
+  }, [canal, qual]);
+}
+
+function AtalhosTarefa({ canal, raiz }: { canal: EventTarget; raiz: React.RefObject<HTMLDivElement | null> }) {
+  const { podeEditar } = usePainel();
+  useEffect(() => {
+    if (!podeEditar) return;
+    const tecla = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const alvo = e.target as HTMLElement | null;
+      // digitando num campo, ou com outra janela por cima (menu, seletor), não vale
+      if (alvo?.closest("input, textarea, select, [contenteditable=true], [role=menu], [role=listbox]")) return;
+      if (document.querySelector("[data-radix-popper-content-wrapper]")) return;
+      // só a tarefa de cima: a janela aberta por último precisa conter esta
+      const janelas = document.querySelectorAll("[role=dialog][data-state=open], [role=alertdialog][data-state=open]");
+      const topo = janelas[janelas.length - 1];
+      if (!raiz.current || (topo && !topo.contains(raiz.current))) return;
+      const qual = ({ e: "titulo", a: "atribuir", d: "prazo" } as const)[e.key.toLowerCase() as "e" | "a" | "d"];
+      if (!qual) return;
+      e.preventDefault();
+      canal.dispatchEvent(new CustomEvent(EVENTO_ATALHO_TAREFA, { detail: qual }));
+    };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [podeEditar, canal, raiz]);
+  return null;
+}
+
 export function DetalheTarefa({ tarefa: t }: { tarefa: TarefaCompleta }) {
+  const [canal] = useState(() => new EventTarget());
+  const raiz = useRef<HTMLDivElement>(null);
   return (
-    <div className="@container flex flex-col gap-6">
-      <Cabecalho t={t} />
-      {t.arquivada && (
-        <p className="rounded-m bg-superficie-2 px-3 py-2 text-[0.875rem] text-texto-2">
-          Esta tarefa está arquivada e não aparece no Quadro nem nas listas.
-        </p>
-      )}
-      <div className="grid grid-cols-1 gap-x-8 gap-y-7 @3xl:grid-cols-[minmax(0,1fr)_280px]">
-        <Propriedades t={t} />
-        <div className="flex min-w-0 flex-col gap-7 @3xl:col-start-1 @3xl:row-start-1">
-          <Descricao t={t} />
-          <Pessoas t={t} />
-          <Documentos t={t} />
-          <ComentariosEHistorico t={t} />
+    <CanalAtalhos.Provider value={canal}>
+      <div ref={raiz} className="@container flex flex-col gap-6">
+        <AtalhosTarefa canal={canal} raiz={raiz} />
+        <Cabecalho t={t} />
+        {t.arquivada && (
+          <p className="rounded-m bg-superficie-2 px-3 py-2 text-[0.875rem] text-texto-2">
+            Esta tarefa está arquivada e não aparece no Quadro nem nas listas.
+          </p>
+        )}
+        <div className="grid grid-cols-1 gap-x-8 gap-y-7 @3xl:grid-cols-[minmax(0,1fr)_280px]">
+          <Propriedades t={t} />
+          <div className="flex min-w-0 flex-col gap-7 @3xl:col-start-1 @3xl:row-start-1">
+            <Descricao t={t} />
+            <Pessoas t={t} />
+            <Documentos t={t} />
+            <ComentariosEHistorico t={t} />
+          </div>
         </div>
       </div>
-    </div>
+    </CanalAtalhos.Provider>
   );
 }
 
@@ -240,6 +291,7 @@ function Cabecalho({ t }: { t: TarefaCompleta }) {
   const [titulo, setTitulo] = useState(t.titulo);
   const [, rodar] = useRodar();
   useEffect(() => setTitulo(t.titulo), [t.titulo]);
+  useAtalhoTarefa("titulo", () => podeEditar && setEditando(true));
 
   const salvar = async () => {
     setEditando(false);
@@ -255,6 +307,7 @@ function Cabecalho({ t }: { t: TarefaCompleta }) {
           value={titulo}
           maxLength={200}
           onChange={(e) => setTitulo(e.target.value)}
+          data-esc-local
           onBlur={salvar}
           onKeyDown={(e) => {
             if (e.key === "Enter") salvar();
@@ -293,6 +346,17 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
   const [, iniciar] = useTransition();
   const linha = "grid grid-cols-[76px_minmax(0,1fr)] items-center gap-3 min-h-9";
   const criador = pessoa(t.criado_por);
+  const campoPrazo = useRef<HTMLInputElement>(null);
+  useAtalhoTarefa("prazo", () => {
+    const c = campoPrazo.current;
+    if (!c || c.disabled) return;
+    c.focus();
+    try {
+      c.showPicker();
+    } catch {
+      // navegador sem showPicker: o campo fica focado, e as setas mudam a data
+    }
+  });
 
   return (
     <section
@@ -303,6 +367,7 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
         <span className="pt-2 text-[0.875rem] text-texto-2">Prazo</span>
         <div className="min-w-0">
           <input
+            ref={campoPrazo}
             type="date"
             value={paraCampoData(t.prazo)}
             disabled={!podeEditar}
@@ -321,7 +386,12 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
           aria-label="Semana"
           value={t.semana ?? ""}
           disabled={!podeEditar}
-          onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { semana: e.target.value ? Number(e.target.value) : null }))}
+          // trocar de semana leva o prazo junto, como na tela Semana (DUVIDAS 4m)
+          onChange={(e) =>
+            rodar(() =>
+              e.target.value ? acoes.moverParaSemana(t.id, Number(e.target.value)) : acoes.atualizarTarefa(t.id, { semana: null }),
+            )
+          }
           className={cn(estiloControle, "h-9 w-full")}
         >
           <option value="">Sem semana</option>
@@ -360,7 +430,7 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
                               await rodar(() => acoes.definirEtiquetas(t.id, nova));
                             });
                           }}
-                          className="size-4 accent-[var(--botao-primario)]"
+                         
                         />
                         <ChipEtiqueta etiqueta={e} />
                       </label>
@@ -378,7 +448,7 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
           checked={t.ligada_entrega}
           disabled={!podeEditar}
           onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { ligada_entrega: e.target.checked }))}
-          className="mt-0.5 size-4 shrink-0 accent-[var(--botao-primario)]"
+          className="mt-px shrink-0"
         />
         Ligada à entrega do programa
       </label>
@@ -515,6 +585,7 @@ function AtribuirPessoa({ t }: { t: TarefaCompleta }) {
   const [, rodar] = useRodar();
   const livres = ativas.filter((p) => !t.atribuicoes.some((a) => a.pessoa_id === p.id));
   const temResponsavel = t.atribuicoes.some((a) => a.papel === "responsavel");
+  useAtalhoTarefa("atribuir", () => livres.length > 0 && setAberto(true));
   return (
     <Popover.Root open={aberto} onOpenChange={setAberto}>
       <Popover.Trigger asChild>
@@ -632,6 +703,7 @@ function BlocoPessoa({ a }: { a: Atribuicao }) {
               autoFocus
               value={novo}
               onChange={(e) => setNovo(e.target.value)}
+              data-esc-local
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
                   e.stopPropagation();
@@ -706,7 +778,7 @@ function ItemEditavel({ item }: { item: Item }) {
             await rodar(() => acoes.marcarItem(item.id, novo));
           });
         }}
-        className="mt-0.5 size-4 shrink-0 accent-[var(--botao-primario)]"
+        className="mt-px shrink-0"
       />
       {editando ? (
         <input
@@ -714,6 +786,7 @@ function ItemEditavel({ item }: { item: Item }) {
           value={texto}
           maxLength={500}
           onChange={(e) => setTexto(e.target.value)}
+          data-esc-local
           onBlur={salvar}
           onKeyDown={(e) => {
             if (e.key === "Enter") salvar();
@@ -920,7 +993,7 @@ function ComentariosEHistorico({ t }: { t: TarefaCompleta }) {
                         <button
                           type="button"
                           onClick={() => rodar(() => acoes.apagarComentario(c.id))}
-                          className="ml-2 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100"
+                          className="ml-2 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                         >
                           apagar
                         </button>
@@ -986,6 +1059,9 @@ function descreverHistorico(h: Historico, nome: (id: string | null) => string) {
       return `${quem} mudou o status de ${rotuloStatus(d.de as Status)} para ${rotuloStatus(d.para as Status)}.`;
     case "prazo":
       return d.para ? `${quem} mudou o prazo para ${dataHora(d.para)}.` : `${quem} tirou o prazo.`;
+    case "semana":
+      if (!d.para) return `${quem} tirou a tarefa da semana ${d.de}.`;
+      return d.de ? `${quem} passou a tarefa da semana ${d.de} para a ${d.para}.` : `${quem} pôs a tarefa na semana ${d.para}.`;
     case "atribuiu":
       return `${quem} atribuiu ${nome(d.pessoa_id)} como ${d.papel === "apoio" ? "apoio" : "responsável"}.`;
     case "desatribuiu":

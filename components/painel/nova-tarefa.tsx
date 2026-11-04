@@ -180,7 +180,7 @@ export function DialogoNovaTarefa({
                 type="checkbox"
                 checked={entrega}
                 onChange={(e) => setEntrega(e.target.checked)}
-                className="size-4 accent-[var(--botao-primario)]"
+               
               />
               Ligada à entrega do programa
             </label>

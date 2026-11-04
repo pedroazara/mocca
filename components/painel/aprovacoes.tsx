@@ -46,7 +46,7 @@ function Cartao({ proposta: p, children }: { proposta: Proposta; children?: Reac
   const r = resumirProposta(p, nome);
   const quem = p.decidido_por ? nome(p.decidido_por) : null;
   return (
-    <li id={`proposta-${p.id}`} className="scroll-mt-20 rounded-m border border-linha bg-superficie p-4">
+    <li id={`proposta-${p.id}`} className="scroll-mt-20 rounded-g border border-linha bg-superficie p-4">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <h3 className="min-w-0 font-medium break-words text-texto">{r.titulo}</h3>
         <Chip estado={estadoProposta[p.status]}>{p.status}</Chip>

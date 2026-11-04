@@ -33,7 +33,8 @@ export function Avatar({
     <span
       title={titulo ? pessoa.nome : undefined}
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-titulo font-semibold text-creme",
+        // o fio por dentro destaca as cores escuras (o café do Pedro) no tema escuro
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-titulo font-semibold text-creme shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--texto)_14%,transparent)]",
         tamanhos[tamanho],
         className,
       )}
@@ -44,21 +45,33 @@ export function Avatar({
   );
 }
 
-export function PilhaAvatares({ pessoas, tamanho = 20 }: { pessoas: (Pessoa | undefined)[]; tamanho?: 20 | 28 }) {
+export function PilhaAvatares({
+  pessoas,
+  tamanho = 20,
+  maximo = 4,
+}: {
+  pessoas: (Pessoa | undefined)[];
+  tamanho?: 20 | 28;
+  maximo?: number;
+}) {
   const lista = pessoas.filter(Boolean) as Pessoa[];
   if (!lista.length) return null;
   return (
-    <span className="flex items-center" aria-label={lista.map((p) => p.nome).join(", ")}>
-      {lista.slice(0, 4).map((p, i) => (
+    <span className="flex shrink-0 items-center" aria-label={lista.map((p) => p.nome).join(", ")}>
+      {lista.slice(0, maximo).map((p, i) => (
         <Avatar
           key={p.id}
           pessoa={p}
           tamanho={tamanho}
           titulo
-          className={cn("ring-2 ring-superficie", i > 0 && "-ml-1.5")}
+          className={cn(
+            // no tamanho 20, sobrepor pouco: com mais, a segunda inicial some
+            tamanho === 20 ? "ring-[1.5px] ring-superficie" : "ring-2 ring-superficie",
+            i > 0 && (tamanho === 20 ? "-ml-px" : "-ml-1.5"),
+          )}
         />
       ))}
-      {lista.length > 4 && <span className="t-dado ml-1 text-[0.75rem] text-texto-2">+{lista.length - 4}</span>}
+      {lista.length > maximo && <span className="t-dado ml-1 text-[0.75rem] text-texto-2">+{lista.length - maximo}</span>}
     </span>
   );
 }

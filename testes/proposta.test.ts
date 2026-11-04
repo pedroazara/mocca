@@ -171,6 +171,13 @@ describe("aprovar", () => {
     expect(await um("select t.status::text, s.numero from tarefa t join semana s on s.id = t.semana_id where t.id = $1", [id])).toEqual({ status: "fazendo", numero: 4 });
     await aprovar(await api.atualizarTarefa(id, { etiquetas: ["Marketing"] }, token));
     expect(await contar("tarefa_etiqueta", "tarefa_id = $1", [id])).toBe(1);
+    // trocar só a semana leva o prazo junto, como no painel (DUVIDAS 4m)
+    await db.query("update tarefa set prazo = '2026-11-16T23:59:00-03:00' where id = $1", [id]); // fim da semana 4
+    await aprovar(await api.atualizarTarefa(id, { semana: 5 }, token));
+    expect(await um("select s.numero, t.prazo from tarefa t join semana s on s.id = t.semana_id where t.id = $1", [id])).toEqual({
+      numero: 5,
+      prazo: new Date("2026-11-24T02:59:00.000Z"),
+    });
     await aprovar(await api.atualizarTarefa(id, { semana: null, prazo: null }, token));
     expect(await um("select semana_id, prazo from tarefa where id = $1", [id])).toEqual({ semana_id: null, prazo: null });
 

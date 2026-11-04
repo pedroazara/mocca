@@ -98,7 +98,7 @@ function criarServidor(tokenId: string) {
     "atualizar_tarefa",
     {
       title: "Atualizar tarefa",
-      description: `Propõe mudar título, descrição, status, prazo, semana, etiquetas ou a ligação com a entrega. ${SO_DEPOIS} Envie só o que muda; etiquetas substitui a lista inteira.`,
+      description: `Propõe mudar título, descrição, status, prazo, semana, etiquetas ou a ligação com a entrega. ${SO_DEPOIS} Envie só o que muda; etiquetas substitui a lista inteira. Mudar só a semana leva o prazo junto, se ele caía na semana antiga.`,
       inputSchema: { id: z.string(), ...api.esquemaAtualizacao.shape },
     },
     ({ id, ...campos }) => executar(() => api.atualizarTarefa(id, api.validar(api.esquemaAtualizacao, campos), tokenId)),

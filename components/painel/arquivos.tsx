@@ -315,7 +315,7 @@ function Resultados({ arvore, termo, nav }: { arvore: ArvoreDrive; termo: string
 
 function ListaItens({ itens, nav, comLocal = false }: { itens: ItemDrive[]; nav: Navegacao; comLocal?: boolean }) {
   return (
-    <ul className="flex flex-col divide-y divide-linha rounded-m border border-linha bg-superficie">
+    <ul className="flex flex-col divide-y divide-linha overflow-hidden rounded-g border border-linha bg-superficie">
       {itens.map((i) => (
         <LinhaItem key={i.id} item={i} nav={nav} comLocal={comLocal} />
       ))}

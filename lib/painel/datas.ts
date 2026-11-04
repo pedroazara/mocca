@@ -62,8 +62,11 @@ export function fimDaSemanaIso(fim: string) {
 }
 
 // 23:59 de Brasília no dia dado, em ISO UTC ("...Z"), igual ao que o banco devolve.
+// Monta a data pelas partes: um texto sem fuso ("2026-11-09T23:59:00") seria lido
+// no fuso do computador, e no servidor (UTC) o prazo virava 20:59 de Brasília.
 function fimDoDia(dia: string) {
-  return new Date(new TZDate(`${dia}T23:59:00`, FUSO).getTime()).toISOString();
+  const [ano, mes, d] = dia.split("-").map(Number);
+  return new Date(new TZDate(ano, mes - 1, d, 23, 59, 0, FUSO).getTime()).toISOString();
 }
 
 // Dias de calendário (Brasília) entre hoje e o prazo: negativo = atrasado.
