@@ -374,6 +374,32 @@ describe("passar tarefa de semana", () => {
     });
   });
 
+  it("com semanas de tamanhos diferentes (datas mudadas pelo admin), o prazo fica dentro da semana nova", async () => {
+    await como("service_role", async () => {
+      const datas = (await db.query<{ numero: number; inicio: string; fim: string }>(
+        "select numero, inicio::text, fim::text from semana where numero in (3, 4) order by numero",
+      )).rows;
+      try {
+        // semana 3 esticada até quarta, 11/11; semana 4 de quinta 12/11 a quarta 18/11
+        await db.query("update semana set fim = '2026-11-11' where numero = 3");
+        await db.query("update semana set inicio = '2026-11-12', fim = '2026-11-18' where numero = 4");
+        const sexta = (await criar("2026-11-06T18:00:00-03:00"))!;
+        expect(iso((await mover(sexta.id, 4))!.prazo)).toBe("2026-11-13T21:00:00.000Z"); // sexta 13/11, 18:00
+        const fim = (await criar("2026-11-11T23:59:00-03:00"))!;
+        expect(iso((await mover(fim.id, 4))!.prazo)).toBe("2026-11-19T02:59:00.000Z"); // fim da semana 4: 18/11
+        // semana 4 curta, de 10/11 a 13/11: o prazo não passa do fim dela
+        await db.query("update semana set fim = '2026-11-09' where numero = 3");
+        await db.query("update semana set inicio = '2026-11-10', fim = '2026-11-13' where numero = 4");
+        const fimDa3 = (await criar("2026-11-09T23:59:00-03:00"))!;
+        expect(iso((await mover(fimDa3.id, 4))!.prazo)).toBe("2026-11-14T02:59:00.000Z"); // 13/11, 23:59
+        const sabado = (await criar("2026-11-07T12:00:00-03:00"))!;
+        expect(iso((await mover(sabado.id, 4))!.prazo)).toBe("2026-11-13T15:00:00.000Z"); // 13/11, 12:00
+      } finally {
+        for (const d of datas) await db.query("update semana set inicio = $2, fim = $3 where numero = $1", [d.numero, d.inicio, d.fim]);
+      }
+    });
+  });
+
   it("orientador vê a tarefa, mas não passa de semana", async () => {
     // o login do orientador já foi ligado à pessoa num teste anterior
     const leomar = (await um<{ auth_id: string }>("select auth_id from pessoa where apelido = 'Leomar'"))!.auth_id;
