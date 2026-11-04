@@ -1,12 +1,12 @@
-// Testa as ações do login (app/entrar/acoes.ts) com as migrações de verdade num
-// Postgres embutido (PGlite). Só o Next e o Supabase Auth são simulados: o
-// createUser grava em auth.users, como o Supabase faz.
+// Testa as ações do login (app/entrar/acoes.ts) e a troca de e-mail na Equipe
+// (atualizarPessoa) com as migrações de verdade num Postgres embutido (PGlite).
+// Só o Next e o Supabase Auth são simulados: o createUser grava em auth.users e
+// recusa um e-mail que já tem conta, e o deleteUser apaga, como o Supabase faz.
 
 import { PGlite } from "@electric-sql/pglite";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { contaQueSobrou } from "@/lib/login";
 
 const raiz = join(__dirname, "..");
 
@@ -15,6 +15,9 @@ const sim = vi.hoisted(() => ({
   signIn: vi.fn(),
   createUser: vi.fn(),
   deleteUser: vi.fn(),
+  eu: vi.fn(),
+  // comoServico em conexões separadas (ver o mock de @/lib/banco)
+  conexoes: false,
 }));
 
 vi.mock("next/headers", () => ({
@@ -26,24 +29,60 @@ vi.mock("next/navigation", () => ({
     throw new Error(`REDIRECT:${url}`);
   },
 }));
-vi.mock("@/lib/auth", () => ({ COOKIE_LOCAL: "mocca_local" }));
+vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/lib/email", () => ({ avisarAtribuicao: vi.fn() }));
+vi.mock("@/lib/auth", () => ({ COOKIE_LOCAL: "mocca_local", pessoaLogada: sim.eu }));
 vi.mock("@/lib/supabase/server", () => ({
   supabaseServidor: async () => ({ auth: { signInWithPassword: sim.signIn } }),
 }));
 vi.mock("@/lib/supabase/admin", () => ({
   supabaseAdmin: () => ({ auth: { admin: { createUser: sim.createUser, deleteUser: sim.deleteUser } } }),
 }));
-vi.mock("@/lib/banco", () => ({
-  modoLocal: false,
-  modoLocalPermitido: false,
-  comoServico: <T>(fn: (q: (sql: string, p?: unknown[]) => Promise<unknown[]>) => Promise<T>) =>
+vi.mock("@/lib/banco", () => {
+  type Q = (sql: string, p?: unknown[]) => Promise<unknown[]>;
+  const naTransacao = <T>(claims: object, papel: string, fn: (q: Q) => Promise<T>) =>
     sim.db.transaction(async (tx) => {
-      await tx.exec("set local role service_role");
+      await tx.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify(claims)]);
+      await tx.exec(`set local role ${papel}`);
       return fn(async (sql, p = []) => (await tx.query(sql, p)).rows);
-    }),
-}));
+    });
+  // Na produção, cada chamada tem a sua conexão (o pooler), e chamadas
+  // simultâneas se intercalam. O PGlite tem uma conexão só e faria uma esperar
+  // a outra de qualquer jeito, e aí a trava nunca seria posta à prova. Aqui cada
+  // comando vai sozinho, e a trava do Postgres (pg_advisory_xact_lock) vira uma
+  // fila por chave, solta quando a "transação" acaba.
+  const filas = new Map<string, Promise<void>>();
+  const emConexoes = async <T>(fn: (q: Q) => Promise<T>) => {
+    const soltar: (() => void)[] = [];
+    try {
+      return await fn(async (sql, p = []) => {
+        if (!sql.includes("pg_advisory_xact_lock")) return (await sim.db.query(sql, p)).rows;
+        const chave = String(p[0]);
+        const antes = filas.get(chave) ?? Promise.resolve();
+        let solta = () => {};
+        filas.set(chave, antes.then(() => new Promise<void>((r) => (solta = r))));
+        await antes;
+        soltar.push(solta);
+        return [];
+      });
+    } finally {
+      soltar.forEach((s) => s());
+    }
+  };
+  return {
+    modoLocal: false,
+    modoLocalPermitido: false,
+    mensagemDeErro: (e: unknown) => String(e),
+    comoUsuario: <T>(authId: string, fn: (q: Q) => Promise<T>) =>
+      naTransacao({ sub: authId, role: "authenticated" }, "authenticated", fn),
+    comoServico: <T>(fn: (q: Q) => Promise<T>) =>
+      sim.conexoes ? emConexoes(fn) : naTransacao({ role: "service_role" }, "service_role", fn),
+  };
+});
 
 const { criarSenha, entrarComSenha } = await import("@/app/entrar/acoes");
+const { atualizarPessoa } = await import("@/app/painel/acoes");
 
 async function novoBanco(ate = "99999999999999") {
   const db = new PGlite();
@@ -56,12 +95,13 @@ async function novoBanco(ate = "99999999999999") {
 
 const um = async <T>(sql: string, p: unknown[] = []) => (await sim.db.query<T>(sql, p)).rows[0];
 
-// o createUser do Supabase: grava a conta e devolve o id
+const erroAuth = (code: string) => ({ data: { user: null }, error: { name: "AuthApiError", status: 422, code, message: code } });
+// o createUser do Supabase: um e-mail, uma conta; grava a conta e devolve o id
 const criaConta = async ({ email }: { email: string }) => {
+  if (await um("select 1 from auth.users where lower(email) = lower($1)", [email])) return erroAuth("email_exists");
   const u = await um<{ id: string }>("insert into auth.users (email) values ($1) returning id", [email]);
   return { data: { user: { id: u!.id } }, error: null };
 };
-const erroAuth = (code: string) => ({ data: { user: null }, error: { name: "AuthApiError", status: 422, code, message: code } });
 const senhaErrada = { error: { message: "Invalid login credentials", code: "invalid_credentials" } };
 
 let avisos: ReturnType<typeof vi.spyOn>;
@@ -70,6 +110,7 @@ beforeEach(() => {
   sim.signIn.mockReset();
   sim.createUser.mockReset();
   sim.deleteUser.mockReset();
+  sim.conexoes = false;
   avisos = vi.spyOn(console, "warn").mockImplementation(() => {});
   erros = vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -132,6 +173,7 @@ describe("freio do login (entrarComSenha)", () => {
   });
 
   it("tentativas simultâneas também entram na conta", async () => {
+    sim.conexoes = true;
     // o login de verdade é uma ida e volta pela rede até o Supabase
     sim.signIn.mockImplementation(() => new Promise((r) => setTimeout(() => r(senhaErrada), 30)));
     const r = await Promise.all(
@@ -163,34 +205,60 @@ describe("freio do login (entrarComSenha)", () => {
   });
 });
 
-describe("troca de e-mail na Equipe", () => {
+describe("troca de e-mail na Equipe (atualizarPessoa)", () => {
+  type Dados = { id: string; nome: string; apelido: string; email: string; frente: string; papel: "membro"; cor: string };
+  let gabriel: Dados;
   beforeEach(async () => {
     sim.db = await novoBanco();
+    // o admin logado
+    const conta = await um<{ id: string }>("insert into auth.users (email) values ('pedro.henrique@exemplo.com') returning id");
+    const admin = await um<{ id: string }>("update pessoa set auth_id = $1 where papel = 'admin' returning id", [conta!.id]);
+    sim.eu.mockResolvedValue({ id: admin!.id, authId: conta!.id, papel: "admin" });
+    // o Gabriel já criou a senha
     sim.createUser.mockImplementation(criaConta);
     sim.signIn.mockResolvedValue({ error: null });
     await criarSenha("gabriel.leonardo@exemplo.com", "senha-boa-123", "/painel").catch(() => undefined);
+    // o deleteUser do Supabase apaga a conta
+    sim.deleteUser.mockImplementation(async (id: string) => {
+      await sim.db.query("delete from auth.users where id = $1", [id]);
+      return { data: null, error: null };
+    });
+    gabriel = (await um<Dados>(
+      "select id, nome, apelido, email, frente, papel::text as papel, cor from pessoa where apelido = 'Gabriel'",
+    ))!;
   });
 
-  const gabriel = () => um<{ email: string; auth_id: string | null }>("select email, auth_id from pessoa where apelido = 'Gabriel'");
+  const ligacao = async () => (await um<{ email: string; auth_id: string | null }>("select email, auth_id from pessoa where id = $1", [gabriel.id]))!;
 
-  it("só maiúsculas e minúsculas diferentes não desligam a conta", async () => {
-    const antes = await gabriel();
-    await sim.db.query("update pessoa set email = 'Gabriel.Leonardo@exemplo.com' where apelido = 'Gabriel'");
-    const depois = await gabriel();
-    expect(depois?.auth_id).toBe(antes?.auth_id);
-    expect(contaQueSobrou(antes, depois!)).toBeNull();
+  it("salvar sem trocar o e-mail, ou trocando só maiúsculas e minúsculas, não mexe na conta", async () => {
+    const { auth_id } = await ligacao();
+    expect(auth_id).not.toBeNull();
+    expect((await atualizarPessoa(gabriel.id, gabriel)).ok).toBe(true);
+    await sim.db.query("update pessoa set email = 'Gabriel.Leonardo@exemplo.com' where id = $1", [gabriel.id]);
+    expect((await atualizarPessoa(gabriel.id, gabriel)).ok).toBe(true); // salva em minúsculas
+    expect(await ligacao()).toEqual({ email: "gabriel.leonardo@exemplo.com", auth_id });
+    expect(sim.deleteUser).not.toHaveBeenCalled();
   });
 
-  it("e-mail novo desliga a conta, que é apagada; voltar ao e-mail antigo cai no primeiro acesso, que funciona", async () => {
-    const antes = await gabriel();
-    await sim.db.query("update pessoa set email = 'gabriel.novo@exemplo.com' where apelido = 'Gabriel'");
-    const depois = await gabriel();
-    expect(depois?.auth_id).toBeNull();
-    expect(contaQueSobrou(antes, depois!)).toBe(antes?.auth_id);
-    // o que atualizarPessoa faz em seguida no Supabase: apagar a conta antiga
-    await sim.db.query("delete from auth.users where id = $1", [antes?.auth_id]);
-    await sim.db.query("update pessoa set email = 'gabriel.leonardo@exemplo.com' where apelido = 'Gabriel'");
+  it("e-mail novo apaga a conta antiga; de volta ao e-mail antigo, o primeiro acesso funciona", async () => {
+    const antiga = (await ligacao()).auth_id;
+    expect((await atualizarPessoa(gabriel.id, { ...gabriel, email: "gabriel.novo@exemplo.com" })).ok).toBe(true);
+    expect(sim.deleteUser.mock.calls).toEqual([[antiga]]);
+    expect((await ligacao()).auth_id).toBeNull();
+    expect((await atualizarPessoa(gabriel.id, gabriel)).ok).toBe(true);
+    expect(sim.deleteUser).toHaveBeenCalledTimes(1);
+    // sem a conta antiga solta, o createUser não esbarra nela
     await expect(criarSenha("gabriel.leonardo@exemplo.com", "outra-senha-123", "/painel")).rejects.toThrow("REDIRECT:/painel");
-    expect((await gabriel())?.auth_id).not.toBeNull();
+    expect((await ligacao()).auth_id).not.toBeNull();
+  });
+
+  it("se o salvar falhar no meio, nada muda e a conta antiga fica", async () => {
+    const antes = await ligacao();
+    await sim.db.exec(`
+      create function falhar() returns trigger language plpgsql as $$ begin raise exception 'falhou'; end $$;
+      create trigger falhar before insert or update on perfil_publico for each row execute function falhar();`);
+    expect((await atualizarPessoa(gabriel.id, { ...gabriel, email: "gabriel.novo@exemplo.com" })).ok).toBe(false);
+    expect(sim.deleteUser).not.toHaveBeenCalled();
+    expect(await ligacao()).toEqual(antes);
   });
 });

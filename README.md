@@ -43,7 +43,7 @@ Outros comandos:
 | `DATABASE_URL` | Supabase › Connect › Transaction pooler (porta 6543) | **Só no servidor.** Sem ela, modo local (só em desenvolvimento) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase › Project Settings › API | Login e atualizações ao vivo |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | idem | Pública. O RLS bloqueia tudo para o usuário anônimo |
-| `SUPABASE_SERVICE_ROLE_KEY` | idem | **Secreta, só no servidor.** Cria a conta no primeiro acesso |
+| `SUPABASE_SERVICE_ROLE_KEY` | idem | **Secreta, só no servidor.** Cria a conta no primeiro acesso e apaga a antiga quando o admin troca o e-mail de alguém |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare › Turnstile | Em desenvolvimento: `1x00000000000000000000AA` |
 | `TURNSTILE_SECRET_KEY` | idem | Em desenvolvimento: `1x0000000000000000000000000000000AA` |
 | `GMAIL_APP_PASSWORD` | Conta Google do MoCCa (ver "E-mails automáticos") | **Secreta, só no servidor.** Sem ela, nenhum e-mail sai |
@@ -52,7 +52,7 @@ Outros comandos:
 | `CRON_SECRET` | Gere uma sequência aleatória longa (por exemplo, `openssl rand -hex 32`) | **Secreta, só no servidor.** Protege o lembrete da véspera do prazo; a Vercel envia sozinha nas chamadas agendadas. Sem ela, nenhum lembrete sai |
 | `NEXT_PUBLIC_SITE_URL` | | URL pública, sem barra no fim. Usada no sitemap, nas imagens de compartilhamento e nos links que a API devolve |
 
-O servidor fala com o Postgres direto (`DATABASE_URL`), e não pela API REST do Supabase. Cada consulta roda numa transação com o papel `authenticated` e o id da pessoa logada (ou com o `service_role`, no formulário e na API do Claude), então o RLS vale do mesmo jeito. A `SUPABASE_SERVICE_ROLE_KEY` só é usada para criar a conta no primeiro acesso.
+O servidor fala com o Postgres direto (`DATABASE_URL`), e não pela API REST do Supabase. Cada consulta roda numa transação com o papel `authenticated` e o id da pessoa logada (ou com o `service_role`, no formulário e na API do Claude), então o RLS vale do mesmo jeito. A `SUPABASE_SERVICE_ROLE_KEY` só é usada no login: cria a conta no primeiro acesso e, quando o admin troca o e-mail de alguém na Equipe, apaga a conta antiga (DUVIDAS 27).
 
 ## Banco de dados (Supabase)
 
