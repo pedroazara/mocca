@@ -152,6 +152,18 @@ export type TarefaCompleta = TarefaResumo & {
   lista_documentos: Documento[];
   lista_comentarios: Comentario[];
   historico: Historico[];
+  // e-mails que levaram esta tarefa: o aviso dela ou o pacote da entrega (o último de cada pessoa)
+  emails: { pessoa_id: string; tipo: "tarefa" | "entrega"; enviado_em: string }[];
+};
+
+// Pacote da entrega por e-mail, por pessoa com tarefa aberta nele (tela Semana).
+// "falta": alguma tarefa dela ainda não foi em nenhum pacote.
+export type SituacaoPacote = {
+  pessoa_id: string;
+  nome: string;
+  tem_email: boolean;
+  enviado_em: string | null;
+  falta: boolean;
 };
 
 export type Reuniao = {

@@ -6,7 +6,14 @@ import { PGlite } from "@electric-sql/pglite";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { SQL_ATRIBUICAO, SQL_LEMBRETES } from "@/lib/email/mensagens";
+import {
+  SQL_ATRIBUICAO,
+  SQL_AVISOS_PENDENTES,
+  SQL_LEMBRETES,
+  SQL_PACOTE,
+  SQL_SEMANA_PACOTE,
+  SQL_SITUACAO_PACOTE,
+} from "@/lib/email/mensagens";
 import { SQL_LIGAR_CONTA } from "@/lib/login";
 import { SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
 
@@ -470,6 +477,88 @@ describe("lembrete da véspera", () => {
       await nova("Depois", "2026-11-11T00:30:00-03:00");
       const linhas = (await db.query<{ titulo: string; itens: string[]; nome: string }>(SQL_LEMBRETES, ["2026-11-10"])).rows;
       expect(linhas.map((l) => [l.nome, l.titulo, l.itens])).toEqual([["Gabriel", "Vence amanhã", ["Aberto"]]]);
+    });
+  });
+});
+
+describe("e-mails enviados", () => {
+  it("o pacote da entrega: quem entra, os itens abertos e quem ainda falta receber", async () => {
+    await como("service_role", async () => {
+      const id = async (apelido: string) => (await um<{ id: string }>("select id from pessoa where apelido = $1", [apelido]))!.id;
+      const [gab, marcos, henrique] = [await id("Gabriel"), await id("Marcos"), await id("Henrique")];
+      const s5 = (await um<{ id: string }>("select id from semana where numero = 5"))!.id;
+      const nova = async (titulo: string, ligada: boolean, status = "a_fazer") =>
+        (await um<{ id: string }>(
+          "insert into tarefa (titulo, semana_id, ligada_entrega, status, prazo) values ($1, $2, $3, $4::status_tarefa, '2026-11-20T23:59:00-03:00') returning id",
+          [titulo, s5, ligada, status],
+        ))!.id;
+      const atribuir = async (tarefa: string, pessoa: string, papel = "apoio") =>
+        (await um<{ id: string }>("insert into atribuicao (tarefa_id, pessoa_id, papel) values ($1, $2, $3::papel_atrib) returning id", [
+          tarefa,
+          pessoa,
+          papel,
+        ]))!.id;
+      // os e-mails do seed são de exemplo: o do Gabriel vira real só aqui
+      await db.query("update pessoa set email = 'gabriel@ufla.test' where id = $1", [gab]);
+      try {
+        const pitch = await nova("Pitch", true);
+        const a = await atribuir(pitch, gab, "responsavel");
+        await atribuir(pitch, marcos);
+        await atribuir(pitch, henrique);
+        await db.query("insert into item (atribuicao_id, texto, feito, posicao) values ($1, 'Feito', true, 1), ($1, 'Aberto', false, 2)", [a]);
+        // ficam de fora do pacote: a feita e a que não é da entrega
+        await atribuir(await nova("Já feita", true, "feito"), gab);
+        const avulsa = await nova("Post no Instagram", false);
+        await atribuir(avulsa, gab);
+
+        const linhas = (await db.query<{ nome: string; titulo: string; itens: string[]; outros: { apelido: string }[] }>(SQL_PACOTE, [s5])).rows;
+        expect(linhas.map((l) => [l.nome, l.titulo])).toEqual([
+          ["Gabriel", "Pitch"],
+          ["Henrique", "Pitch"],
+          ["Marcos", "Pitch"],
+        ]);
+        expect(linhas[0].itens).toEqual(["Aberto"]);
+        expect(linhas[0].outros.map((o) => o.apelido)).toEqual(["Henrique", "Marcos"]);
+        expect(await um(SQL_SEMANA_PACOTE, [s5])).toMatchObject({ numero: 5, total: 12 });
+
+        const situacao = async () =>
+          Object.fromEntries(
+            (await db.query<{ nome: string; tem_email: boolean; falta: boolean; enviado_em: string | null }>(SQL_SITUACAO_PACOTE, [s5])).rows.map(
+              (r) => [r.nome, [r.tem_email, r.falta, Boolean(r.enviado_em)]],
+            ),
+          );
+        expect(await situacao()).toEqual({ Gabriel: [true, true, false], Henrique: [false, true, false], Marcos: [false, true, false] });
+
+        // depois do pacote, só volta a faltar quando entra uma tarefa nova
+        await db.query("insert into email_enviado (tipo, pessoa_id, semana_id, tarefas) values ('entrega', $1, $2, array[$3::uuid])", [gab, s5, pitch]);
+        expect((await situacao()).Gabriel).toEqual([true, false, true]);
+        await atribuir(await nova("Roadmap", true), gab);
+        expect((await situacao()).Gabriel).toEqual([true, true, true]);
+
+        // o aviso da tarefa avulsa: falta até ser registrado; a da entrega diz que é
+        expect((await db.query(SQL_AVISOS_PENDENTES, [avulsa])).rows).toEqual([{ pessoa_id: gab, nome: "Gabriel" }]);
+        await db.query("insert into email_enviado (tipo, pessoa_id, tarefa_id) values ('tarefa', $1, $2)", [gab, avulsa]);
+        expect((await db.query(SQL_AVISOS_PENDENTES, [avulsa])).rows).toEqual([]);
+        expect(await um(SQL_ATRIBUICAO, [pitch, gab])).toMatchObject({ ligada_entrega: true });
+        expect(await um(SQL_ATRIBUICAO, [avulsa, gab])).toMatchObject({ ligada_entrega: false });
+      } finally {
+        await db.query("update pessoa set email = 'gabriel.leonardo@exemplo.com' where id = $1", [gab]);
+      }
+    });
+  });
+
+  it("a equipe lê o registro, mas só o servidor grava", async () => {
+    const login = (await um<{ auth_id: string; id: string }>(
+      "select auth_id, id from pessoa where auth_id is not null and ativo and papel <> 'orientador' limit 1",
+    ))!;
+    await como({ usuario: login.auth_id }, async () => {
+      expect((await um<{ n: number }>("select count(*)::int n from email_enviado"))!.n).toBeGreaterThan(0);
+      await expect(
+        db.query("insert into email_enviado (tipo, pessoa_id, tarefa_id) select 'tarefa', $1, id from tarefa limit 1", [login.id]),
+      ).rejects.toThrow();
+    });
+    await como("anon", async () => {
+      await expect(db.query("select * from email_enviado")).rejects.toThrow();
     });
   });
 });

@@ -7,7 +7,7 @@ import { pessoaLogada, type PessoaLogada } from "@/lib/auth";
 import { comoServico, comoUsuario, mensagemDeErro, modoLocal, type Consulta } from "@/lib/banco";
 import { esquecerArvore } from "@/lib/drive";
 import { contaQueSobrou } from "@/lib/login";
-import { avisarAtribuicao } from "@/lib/email";
+import { avisarAtribuicao, enviarAvisosPendentes, enviarPacote, envioConfigurado } from "@/lib/email";
 import { buscar, configuracao, semanas as listarSemanas } from "@/lib/painel/dados";
 import { fimDaSemanaIso, proximaReuniao } from "@/lib/painel/datas";
 import { SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
@@ -376,6 +376,36 @@ export async function recalcularSemanas(inicioSemana1: string) {
       "Só o admin altera as semanas.",
     );
   });
+}
+
+// ---------------------------------------------------------------- e-mails
+
+// Os botões "Enviar" da janela da tarefa e do pacote da entrega, para quem ainda
+// não recebeu. O envio roda aqui mesmo, e não depois da resposta, para a tela já
+// mostrar para quem foi. Quem pode editar o painel pode enviar.
+type Envio = { enviados: string[]; falharam: string[] };
+
+async function enviarPeloPainel(fn: () => Promise<Envio>): Promise<Resultado<Envio>> {
+  const eu = await pessoaLogada();
+  if (!eu) return { ok: false, erro: "Sua sessão expirou. Entre de novo." };
+  if (eu.papel === "orientador") return { ok: false, erro: "Você não tem permissão para fazer isso." };
+  if (!envioConfigurado()) return { ok: false, erro: "O envio de e-mail não está configurado: falta a GMAIL_APP_PASSWORD." };
+  try {
+    const r = await fn();
+    revalidatePath("/painel", "layout");
+    if (!r.enviados.length && r.falharam.length) return { ok: false, erro: "O Gmail não aceitou o envio. Tente de novo daqui a pouco." };
+    return { ok: true, dado: r };
+  } catch (e) {
+    return { ok: false, erro: mensagemDeErro(e) };
+  }
+}
+
+export async function enviarEmailDaTarefa(tarefaId: string) {
+  return enviarPeloPainel(() => enviarAvisosPendentes(String(tarefaId)));
+}
+
+export async function enviarPacoteDaSemana(semanaId: string) {
+  return enviarPeloPainel(() => enviarPacote(String(semanaId)));
 }
 
 // ---------------------------------------------------------------- reuniões

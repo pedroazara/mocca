@@ -15,3 +15,8 @@ export function iniciais(nome: string) {
   const partes = nome.replace(/^Prof\.\s*/, "").split(/\s+/).filter(Boolean);
   return ((partes[0]?.[0] ?? "") + (partes.length > 1 ? partes[partes.length - 1][0] : "")).toUpperCase();
 }
+
+// "Gabriel, Marcos e Pedro"
+export function listaNomes(nomes: string[]) {
+  return new Intl.ListFormat("pt-BR", { style: "long", type: "conjunction" }).format(nomes);
+}

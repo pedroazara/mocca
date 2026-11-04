@@ -7,6 +7,7 @@ import * as Popover from "@radix-ui/react-popover";
 import {
   AlertTriangle,
   Archive,
+  Check,
   ArchiveRestore,
   Copy,
   FileSpreadsheet,
@@ -14,8 +15,10 @@ import {
   Folder,
   GripVertical,
   Link2,
+  Mail,
   Plus,
   Presentation,
+  Send,
   Trash2,
   UserPlus,
   X,
@@ -25,6 +28,7 @@ import { createContext, useContext, useEffect, useId, useOptimistic, useRef, use
 import * as acoes from "@/app/painel/acoes";
 import { Botao } from "@/components/ui/botao";
 import { estiloControle } from "@/components/ui/campo";
+import { enderecoDeExemplo } from "@/lib/email/exemplo";
 import { dataHora, deCampoData, paraCampoData, textoPrazo } from "@/lib/painel/datas";
 import {
   ORIGENS,
@@ -34,11 +38,12 @@ import {
   type Atribuicao,
   type Historico,
   type Item,
+  type Pessoa,
   type Status,
   type TarefaCompleta,
   type TipoDocumento,
 } from "@/lib/painel/tipos";
-import { cn } from "@/lib/utils";
+import { cn, listaNomes } from "@/lib/utils";
 import { usePainel } from "./contexto";
 import { Avatar, ChipEtiqueta, corPrazo } from "./elementos";
 import { Markdown } from "./markdown";
@@ -452,12 +457,70 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
         />
         Ligada à entrega do programa
       </label>
+      <EmailDaTarefa t={t} />
       <p className="mt-1.5 border-t border-linha pt-3 text-[0.8125rem] leading-snug text-texto-2">
         {ORIGENS[t.origem]}
         {criador && ` · criada por ${criador.apelido ?? criador.nome}`}
         {` · ${dataHora(t.criado_em)}`}
       </p>
     </section>
+  );
+}
+
+// Para quem o e-mail desta tarefa já foi e o botão para quem falta. A tarefa
+// ligada à entrega não tem e-mail próprio: vai no pacote da semana, e o botão
+// manda o pacote para todos da semana que ainda não receberam.
+function EmailDaTarefa({ t }: { t: TarefaCompleta }) {
+  const { pessoa, podeEditar, avisar } = usePainel();
+  const [enviando, rodar] = useRodar();
+  const doPacote = t.ligada_entrega;
+  const envios = t.emails.filter((e) => e.tipo === (doPacote ? "entrega" : "tarefa"));
+  const recebeu = new Set(envios.map((e) => e.pessoa_id));
+  const pessoas = t.atribuicoes.map((a) => pessoa(a.pessoa_id)).filter((p): p is Pessoa => Boolean(p?.ativo));
+  const enviados = pessoas.filter((p) => recebeu.has(p.id));
+  const faltam = pessoas.filter((p) => !recebeu.has(p.id) && !enderecoDeExemplo(p.email));
+  const semEmail = pessoas.filter((p) => !recebeu.has(p.id) && enderecoDeExemplo(p.email));
+  const ultimo = envios.map((e) => e.enviado_em).sort().at(-1);
+  const nomes = (ps: Pessoa[]) => listaNomes(ps.map((p) => p.apelido ?? p.nome));
+  const podeEnviar = podeEditar && faltam.length > 0 && t.status !== "feito" && !t.arquivada && (!doPacote || t.semana_id);
+
+  const enviar = async () => {
+    const r = await rodar(() => (doPacote ? acoes.enviarPacoteDaSemana(t.semana_id!) : acoes.enviarEmailDaTarefa(t.id)));
+    if (r)
+      avisar(
+        `${doPacote ? "Pacote enviado" : "E-mail enviado"} para ${listaNomes(r.enviados)}.${r.falharam.length ? ` Não saiu para ${listaNomes(r.falharam)}.` : ""}`,
+      );
+  };
+
+  return (
+    <div className="mt-1.5 flex flex-col gap-1.5 border-t border-linha pt-3 text-[0.875rem]">
+      <p className="flex items-center gap-1.5 text-texto-2">
+        <Mail aria-hidden strokeWidth={1.75} className="size-4" />
+        {doPacote ? `E-mail: vai no pacote da entrega${t.semana ? ` da semana ${t.semana}` : ""}` : "E-mail"}
+      </p>
+      {pessoas.length === 0 ? (
+        <p className="text-texto-2">Ninguém atribuído para receber.</p>
+      ) : (
+        <>
+          {enviados.length > 0 ? (
+            <p className="text-texto">
+              <Check aria-hidden strokeWidth={2} className="mr-1 inline size-3.5 align-[-2px] text-ok" />
+              {doPacote ? "Foi no pacote para" : "Enviado para"} {nomes(enviados)}
+              {ultimo && <span className="t-dado block text-[0.8125rem] text-texto-2">{dataHora(ultimo)}</span>}
+            </p>
+          ) : (
+            <p className="text-texto-2">{doPacote ? "Ainda não foi em nenhum pacote." : "Ainda não enviado."}</p>
+          )}
+          {semEmail.length > 0 && <p className="text-[0.8125rem] text-texto-2">Sem e-mail cadastrado: {nomes(semEmail)}.</p>}
+          {podeEnviar && (
+            <Botao variante="secundario" tamanho="painel" className="mt-1 h-auto min-h-9 justify-start py-1.5 text-left" disabled={enviando} onClick={enviar}>
+              <Send aria-hidden />
+              {enviando ? "Enviando…" : doPacote ? "Enviar o pacote da semana" : `Enviar para ${nomes(faltam)}`}
+            </Botao>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 

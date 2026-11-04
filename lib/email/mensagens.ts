@@ -7,32 +7,90 @@ import { iniciais } from "@/lib/utils";
 
 // Textos dos e-mails automáticos, sem nada de servidor: quem envia é lib/email.
 
-export type Mensagem = { para: string; assunto: string; texto: string; html: string };
+// O que fica gravado em email_enviado quando o Gmail aceita a mensagem: o aviso
+// de uma tarefa ou o pacote da entrega de uma semana, com as tarefas que foram nele.
+export type Registro =
+  | { tipo: "tarefa"; pessoa_id: string; tarefa_id: string }
+  | { tipo: "entrega"; pessoa_id: string; semana_id: string; tarefas: string[] };
+
+export type Mensagem = { para: string; assunto: string; texto: string; html: string; registro?: Registro };
 
 // Quem mais está numa tarefa, para o "junto com você" dos e-mails.
 export type Envolvido = { nome: string; apelido: string | null; cor: string; papel: PapelAtribuicao };
 
-// Os e-mails do seed são @exemplo.com, um domínio que pode ter dono de verdade.
-// Enquanto a equipe não preencher os reais, nada sai para lá.
-export const enderecoDeExemplo = (para: string) => /@exemplo\.com$/i.test(para.trim());
+export { enderecoDeExemplo } from "./exemplo";
+
+// As demais pessoas ativas da tarefa t, fora a pessoa p, responsáveis primeiro.
+const SQL_OUTROS = `
+  coalesce((select json_agg(json_build_object('nome', o.nome, 'apelido', o.apelido, 'cor', o.cor, 'papel', x.papel) order by x.papel, o.nome)
+              from atribuicao x join pessoa o on o.id = x.pessoa_id
+             where x.tarefa_id = t.id and x.pessoa_id <> p.id and o.ativo), '[]'::json)`;
 
 // Dados do aviso de uma atribuição ($1 = tarefa, $2 = pessoa). Pessoa inativa não recebe.
-// "outros" são as demais pessoas ativas da tarefa, responsáveis primeiro.
 export const SQL_ATRIBUICAO = `
-  select p.email as para, coalesce(p.apelido, p.nome) as nome, a.papel::text as papel, t.titulo, t.prazo,
+  select p.email as para, coalesce(p.apelido, p.nome) as nome, a.papel::text as papel, t.titulo, t.prazo, t.ligada_entrega,
          coalesce((select json_agg(i.texto order by i.posicao, i.id) from item i where i.atribuicao_id = a.id), '[]'::json) as itens,
          case when s.id is not null then json_build_object('numero', s.numero, 'total', (select count(*)::int from semana)) end as semana,
          coalesce((select json_agg(json_build_object('nome', e.nome, 'token', e.token) order by e.nome)
                      from tarefa_etiqueta te join etiqueta e on e.id = te.etiqueta_id
                     where te.tarefa_id = t.id), '[]'::json) as etiquetas,
-         coalesce((select json_agg(json_build_object('nome', o.nome, 'apelido', o.apelido, 'cor', o.cor, 'papel', x.papel) order by x.papel, o.nome)
-                     from atribuicao x join pessoa o on o.id = x.pessoa_id
-                    where x.tarefa_id = t.id and x.pessoa_id <> p.id and o.ativo), '[]'::json) as outros
+         ${SQL_OUTROS} as outros
     from atribuicao a
     join pessoa p on p.id = a.pessoa_id
     join tarefa t on t.id = a.tarefa_id
     left join semana s on s.id = t.semana_id
    where a.tarefa_id = $1 and a.pessoa_id = $2 and p.ativo`;
+
+// Quem da tarefa $1 ainda não recebeu o aviso dela (e tem e-mail de verdade).
+export const SQL_AVISOS_PENDENTES = `
+  select a.pessoa_id, coalesce(p.apelido, p.nome) as nome
+    from atribuicao a join pessoa p on p.id = a.pessoa_id
+   where a.tarefa_id = $1 and p.ativo and p.email !~* '@exemplo\\.com$'
+     and not exists (select 1 from email_enviado e
+                      where e.tipo = 'tarefa' and e.tarefa_id = a.tarefa_id and e.pessoa_id = a.pessoa_id)
+   order by a.papel, p.nome`;
+
+// As tarefas do pacote da entrega: abertas, ligadas à entrega da semana $1.
+const TAREFAS_DO_PACOTE = `
+    from tarefa t
+    join atribuicao a on a.tarefa_id = t.id
+    join pessoa p on p.id = a.pessoa_id
+   where t.semana_id = $1 and t.ligada_entrega and not t.arquivada and t.status <> 'feito' and p.ativo`;
+
+// Uma linha por pessoa e tarefa do pacote ($1 = semana), com os itens dela ainda abertos.
+export const SQL_PACOTE = `
+  select p.id as pessoa_id, p.email as para, coalesce(p.apelido, p.nome) as nome,
+         t.id as tarefa_id, t.titulo, t.prazo, a.papel::text as papel,
+         coalesce((select json_agg(i.texto order by i.posicao, i.id) from item i
+                    where i.atribuicao_id = a.id and not i.feito), '[]'::json) as itens,
+         ${SQL_OUTROS} as outros
+  ${TAREFAS_DO_PACOTE}
+   order by p.email, t.prazo nulls last, t.titulo`;
+
+// A semana do pacote ($1), com o link da entrega: o da semana ou, sem ele, o
+// documento "entregável" da semana ou de uma tarefa dela.
+export const SQL_SEMANA_PACOTE = `
+  select s.id, s.numero, (select count(*)::int from semana) as total, s.entrega_titulo, s.entrega_prazo,
+         coalesce(s.entrega_url,
+                  (select d.url from documento d
+                    where d.tipo = 'entregavel'
+                      and (d.semana_id = s.id or d.tarefa_id in (select id from tarefa where semana_id = s.id and not arquivada))
+                    order by d.criado_em limit 1)) as entrega_url
+    from semana s where s.id = $1`;
+
+// Situação do pacote ($1 = semana), por pessoa com tarefa no pacote: quando
+// recebeu o último e se alguma tarefa dela ainda não foi em nenhum pacote.
+export const SQL_SITUACAO_PACOTE = `
+  select p.id as pessoa_id, coalesce(p.apelido, p.nome) as nome, p.email !~* '@exemplo\\.com$' as tem_email,
+         (select max(e.enviado_em) from email_enviado e
+           where e.tipo = 'entrega' and e.semana_id = $1 and e.pessoa_id = p.id) as enviado_em,
+         exists (select 1 from unnest(array_agg(t.id)) as atual(id)
+                  where not exists (select 1 from email_enviado e
+                                     where e.tipo = 'entrega' and e.semana_id = $1 and e.pessoa_id = p.id
+                                       and atual.id = any(e.tarefas))) as falta
+  ${TAREFAS_DO_PACOTE}
+   group by p.id
+   order by coalesce(p.apelido, p.nome)`;
 
 const ENTIDADES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 const escapar = (s: string) => s.replace(/[&<>"']/g, (c) => ENTIDADES[c]);
@@ -207,7 +265,7 @@ export function tarefaAtribuida(d: {
       titulo: d.titulo,
       previa: [abertura, prazo ? `Prazo: ${prazo}.` : ""].join(" ").trim(),
       miolo,
-      nota: NOTA,
+      nota: `${NOTA} As tarefas da entrega da semana chegam juntas, num e-mail só.`,
     }),
   };
 }
@@ -331,6 +389,47 @@ export function entregaDaSemana(d: {
       nota: `${NOTA} As outras tarefas, fora da entrega, continuam chegando uma a uma.`,
     }),
   };
+}
+
+export type SemanaPacote = {
+  id: string;
+  numero: number;
+  total: number;
+  entrega_titulo: string | null;
+  entrega_prazo: string | null;
+  entrega_url: string | null;
+};
+
+export type LinhaPacote = {
+  pessoa_id: string;
+  para: string;
+  nome: string;
+  tarefa_id: string;
+  titulo: string;
+  prazo: string | null;
+  papel: PapelAtribuicao;
+  itens: string[];
+  outros: Envolvido[];
+};
+
+// Um pacote por pessoa, com as tarefas dela (linhas de SQL_PACOTE).
+export function pacotesDaSemana(
+  semana: SemanaPacote,
+  linhas: LinhaPacote[],
+  links: { tarefa: (id: string) => string; painel: string },
+): Mensagem[] {
+  const porPessoa = new Map<string, LinhaPacote[]>();
+  for (const l of linhas) porPessoa.set(l.pessoa_id, [...(porPessoa.get(l.pessoa_id) ?? []), l]);
+  return [...porPessoa.values()].map((ls) => ({
+    ...entregaDaSemana({
+      para: ls[0].para,
+      nome: ls[0].nome,
+      semana,
+      tarefas: ls.map((l) => ({ titulo: l.titulo, papel: l.papel, prazo: l.prazo, itens: l.itens, outros: l.outros, link: links.tarefa(l.tarefa_id) })),
+      linkPainel: links.painel,
+    }),
+    registro: { tipo: "entrega", pessoa_id: ls[0].pessoa_id, semana_id: semana.id, tarefas: ls.map((l) => l.tarefa_id) },
+  }));
 }
 
 // O endereço vem de um formulário público, e qualquer um pode digitar o de outra

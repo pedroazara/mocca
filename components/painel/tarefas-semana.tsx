@@ -161,14 +161,25 @@ export function animarSaida(el: HTMLElement | null | undefined, tipo: "direita" 
   );
 }
 
+// Com `entrega`, as tarefas ligadas à entrega saem desta lista e vão para o
+// bloco da entrega, que a tela desenha: elas ficam juntas, num lugar só, e
+// continuam com os passos, o arrasto e a passagem de semana. `entre` é o que fica
+// entre os dois blocos na tela (a coluna lateral), para a ordem do teclado seguir
+// a da tela. Tudo sai num fragmento, direto na grade de quem chama.
 export function TarefasDaSemana({
   tarefas,
   semana,
   todas,
+  entrega,
+  entre,
+  className,
 }: {
   tarefas: TarefaResumo[];
   semana: Semana;
   todas: TarefaResumo[];
+  entrega?: (lista: React.ReactNode | null) => React.ReactNode;
+  entre?: React.ReactNode;
+  className?: string;
 }) {
   const { podeEditar, avisar } = usePainel();
   const [abertas, setAbertas] = useState<Set<string>>(() => new Set());
@@ -190,6 +201,8 @@ export function TarefasDaSemana({
   const idDnd = useId();
 
   const visiveis = tarefas.filter((t) => !ocultas.includes(t.id));
+  const doPacote = entrega ? visiveis.filter((t) => t.ligada_entrega) : [];
+  const outras = entrega ? visiveis.filter((t) => !t.ligada_entrega) : visiveis;
   // "mostrar todos" abre as que ainda têm o que fazer; as feitas ficam fechadas
   const comPassos = visiveis.filter((t) => t.status !== "feito" && passosDa(t).length > 0).map((t) => t.id);
   const todasAbertas = comPassos.length > 0 && comPassos.every((id) => abertas.has(id));
@@ -234,7 +247,7 @@ export function TarefasDaSemana({
   async function passar(t: TarefaResumo, numero: number, saida: "direita" | "encolher") {
     const linha = linhas.current.get(t.id);
     await animarSaida(linha, saida);
-    focarVizinha(linha, "tarefas-semana");
+    focarVizinha(linha, entrega && t.ligada_entrega ? "entrega" : "tarefas-semana");
     lembrarChegada(t.id);
     iniciar(async () => {
       ocultar(t.id);
@@ -310,7 +323,7 @@ export function TarefasDaSemana({
     onDragCancel: () => "Nada mudou.",
   };
 
-  const lista = (
+  const lista = (linhasLista: TarefaResumo[]) => (
     <ul
       className="flex flex-col divide-y divide-linha overflow-hidden rounded-g border border-linha bg-superficie"
       onClickCapture={(e) => {
@@ -320,7 +333,7 @@ export function TarefasDaSemana({
         e.stopPropagation();
       }}
     >
-      {visiveis.map((t) => (
+      {linhasLista.map((t) => (
         <LinhaTarefaSemana
           key={t.id}
           tarefa={t}
@@ -340,11 +353,11 @@ export function TarefasDaSemana({
     </ul>
   );
 
-  const corpo = visiveis.length ? (
-    lista
+  const corpo = outras.length ? (
+    lista(outras)
   ) : (
     <div className="flex flex-col items-center gap-3 rounded-m border border-dashed border-linha px-6 py-10 text-center">
-      <p className="max-w-[40ch] text-texto-2">Nenhuma tarefa nesta semana.</p>
+      <p className="max-w-[40ch] text-texto-2">{doPacote.length ? "Nenhuma tarefa fora da entrega." : "Nenhuma tarefa nesta semana."}</p>
       {podeEditar && (
         <Botao variante="secundario" tamanho="painel" onClick={() => window.dispatchEvent(new Event(EVENTO_NOVA_TAREFA))}>
           <Plus aria-hidden />
@@ -354,59 +367,66 @@ export function TarefasDaSemana({
     </div>
   );
 
-  return (
-    <section aria-labelledby="tarefas-semana">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="tarefas-semana" tabIndex={-1} className="t-rotulo text-texto-2">
-          Tarefas da semana {visiveis.length > 0 && <span className="t-dado">({visiveis.length})</span>}
-        </h2>
-        {comPassos.length > 1 && (
-          <button
-            type="button"
-            onClick={() => setAbertas(todasAbertas ? new Set() : new Set(comPassos))}
-            className="link text-[0.875rem]"
-          >
-            {todasAbertas ? "Recolher os passos" : "Mostrar todos os passos"}
-          </button>
-        )}
-      </div>
-      {podeEditar ? (
-        // montado mesmo sem tarefas: quando a última sai, a barra ainda recebe o voo
-        <DndContext
-          id={idDnd}
-          sensors={sensores}
-          collisionDetection={pointerWithin}
-          measuring={medicao}
-          onDragStart={inicio}
-          onDragEnd={fim}
-          onDragCancel={cancelar}
-          accessibility={{
-            announcements: anuncios,
-            screenReaderInstructions: {
-              draggable: "Para passar a tarefa de semana pelo teclado, use o botão do calendário na linha da tarefa.",
-            },
-          }}
-        >
-          {corpo}
-          <FimSemAviso ativa={ativa !== null} encerrar={cancelar} />
-          {noNavegador &&
-            createPortal(
-              <div className="text-[0.9375rem] leading-[1.5]">
-                <DragOverlay dropAnimation={null} modifiers={[cartaoNoPonteiro]} style={{ width: "auto", height: "auto" }}>
-                  {ativa && <CartaoVoando ref={cartao} tarefa={ativa} />}
-                </DragOverlay>
-                {barra !== "fechada" && (
-                  <BarraSemanas semana={semana} todas={todas} fechando={barra === "fechando"} recebeu={recebeu} />
-                )}
-                {voo && <Voo {...voo} aoChegar={() => pousou(voo.numero)} />}
-              </div>,
-              document.body,
+  const secoes = (
+    <>
+      {entrega?.(doPacote.length ? lista(doPacote) : null)}
+      {entre}
+      <section aria-labelledby="tarefas-semana" className={className}>
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h2 id="tarefas-semana" tabIndex={-1} className="t-rotulo text-texto-2">
+            {doPacote.length ? "Outras tarefas da semana" : "Tarefas da semana"}{" "}
+            {outras.length > 0 && <span className="t-dado">({outras.length})</span>}
+          </h2>
+          {comPassos.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setAbertas(todasAbertas ? new Set() : new Set(comPassos))}
+              className="link text-[0.875rem]"
+            >
+              {todasAbertas ? "Recolher os passos" : "Mostrar todos os passos"}
+            </button>
+          )}
+        </div>
+        {corpo}
+      </section>
+    </>
+  );
+
+  return podeEditar ? (
+    // montado mesmo sem tarefas: quando a última sai, a barra ainda recebe o voo
+    <DndContext
+      id={idDnd}
+      sensors={sensores}
+      collisionDetection={pointerWithin}
+      measuring={medicao}
+      onDragStart={inicio}
+      onDragEnd={fim}
+      onDragCancel={cancelar}
+      accessibility={{
+        announcements: anuncios,
+        screenReaderInstructions: {
+          draggable: "Para passar a tarefa de semana pelo teclado, use o botão do calendário na linha da tarefa.",
+        },
+      }}
+    >
+      {secoes}
+      <FimSemAviso ativa={ativa !== null} encerrar={cancelar} />
+      {noNavegador &&
+        createPortal(
+          <div className="text-[0.9375rem] leading-[1.5]">
+            <DragOverlay dropAnimation={null} modifiers={[cartaoNoPonteiro]} style={{ width: "auto", height: "auto" }}>
+              {ativa && <CartaoVoando ref={cartao} tarefa={ativa} />}
+            </DragOverlay>
+            {barra !== "fechada" && (
+              <BarraSemanas semana={semana} todas={todas} fechando={barra === "fechando"} recebeu={recebeu} />
             )}
-        </DndContext>
-      ) : (
-        corpo
-      )}
-    </section>
+            {voo && <Voo {...voo} aoChegar={() => pousou(voo.numero)} />}
+          </div>,
+          document.body,
+        )}
+    </DndContext>
+  ) : (
+    secoes
   );
 }
 

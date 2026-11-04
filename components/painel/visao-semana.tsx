@@ -1,17 +1,15 @@
 "use client";
 
-import { AlertTriangle, ArrowLeft, ArrowRight, CalendarArrowRight, CalendarClock, ExternalLink, Inbox, UserX } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, CalendarArrowRight, CalendarClock, Check, ExternalLink, Inbox, Mail, Send, UserX } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
-import { atualizarTarefa, criarReuniao, moverParaSemana } from "@/app/painel/acoes";
+import { atualizarTarefa, criarReuniao, enviarPacoteDaSemana, moverParaSemana } from "@/app/painel/acoes";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { Botao } from "@/components/ui/botao";
-import { Chip } from "@/components/ui/chip";
-import { dataCurta, dataLonga, diaCurto, diasAtePrazo, estaAtrasada, textoPrazo } from "@/lib/painel/datas";
-import type { Contato, Semana, TarefaResumo } from "@/lib/painel/tipos";
-import { rotuloStatus } from "@/lib/painel/tipos";
-import { cn } from "@/lib/utils";
+import { dataCurta, dataHora, dataLonga, diaCurto, diasAtePrazo, estaAtrasada, textoPrazo } from "@/lib/painel/datas";
+import type { Contato, Semana, SituacaoPacote, TarefaResumo } from "@/lib/painel/tipos";
+import { cn, listaNomes } from "@/lib/utils";
 import { usePainel } from "./contexto";
 import { EstadoVazio } from "./elementos";
 import {
@@ -28,8 +26,6 @@ import {
 // coluna principal; a atenção e a próxima reunião, na lateral, à vista sem rolar.
 // O trabalho é da equipe toda: a tela não divide as tarefas por pessoa (DUVIDAS 4j).
 
-const estadoStatus = { a_fazer: "neutro", fazendo: "info", em_revisao: "alerta", feito: "ok" } as const;
-
 const LIMITE_ATENCAO = 5;
 
 const semResponsavel = (t: TarefaResumo) => t.status !== "feito" && !t.atribuicoes.some((a) => a.papel === "responsavel");
@@ -39,6 +35,7 @@ export function VisaoSemana({
   tarefas,
   contatosNovos,
   documentosSemana,
+  pacote,
   proxima,
   base = "/painel",
 }: {
@@ -46,6 +43,7 @@ export function VisaoSemana({
   tarefas: TarefaResumo[];
   contatosNovos: Contato[];
   documentosSemana: { id: string; titulo: string; url: string; tipo: string }[];
+  pacote: SituacaoPacote[];
   proxima: { id: string | null; data: string | null; atrasadas: number; concluidas: number; contatos: number };
   base?: string;
 }) {
@@ -60,7 +58,6 @@ export function VisaoSemana({
   const daSemana = tarefas.filter((t) => t.semana === semana.numero);
   const feitas = daSemana.filter((t) => t.status === "feito").length;
   const pct = daSemana.length ? Math.round((feitas / daSemana.length) * 100) : 0;
-  const entrega = daSemana.filter((t) => t.ligada_entrega);
   const contatosParados = contatosNovos.filter((c) => Date.now() - new Date(c.criado_em).getTime() > 3 * 86400000);
   // cada tarefa aparece uma vez só, com tudo o que há de errado com ela
   const atencao = [
@@ -166,195 +163,191 @@ export function VisaoSemana({
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:grid-rows-[auto_1fr] xl:items-start">
-        {/* 1. entrega do programa */}
-        <section aria-labelledby="entrega" className="relative isolate overflow-hidden rounded-g bg-superficie-2 p-5 md:p-6 xl:col-start-1">
-          <CurvasDeNivel
-            conjunto="rodape"
-            className="absolute inset-y-0 right-0 -z-10 hidden h-full w-2/3 text-caramelo/20 [mask-image:linear-gradient(to_left,black,transparent)] md:block"
-          />
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="t-rotulo text-link">Entrega do Avança Café</p>
-              <h2 id="entrega" className="mt-1.5 font-titulo text-[1.25rem] font-semibold text-texto">
-                {semana.entrega_titulo ?? "Sem entrega definida"}
-              </h2>
-              {semana.entrega_prazo && (
-                <p
-                  className={cn(
-                    "t-dado mt-1 text-[0.875rem]",
-                    semana.status === "entregue"
-                      ? "text-ok"
-                      : diasAtePrazo(semana.entrega_prazo) < 0
-                        ? "text-erro"
-                        : diasAtePrazo(semana.entrega_prazo) <= 2
-                          ? "text-alerta"
-                          : "text-texto-2",
-                  )}
-                >
-                  prazo {dataCurta(semana.entrega_prazo)} ·{" "}
-                  {semana.status === "entregue" ? "entregue" : textoPrazo(semana.entrega_prazo)}
-                </p>
-              )}
-            </div>
-            {linkEntrega && (
-              <Botao asChild variante="secundario" tamanho="painel" className="bg-superficie">
-                <a href={linkEntrega} target="_blank" rel="noreferrer">
-                  <ExternalLink aria-hidden />
-                  Abrir no Drive
-                </a>
-              </Botao>
-            )}
-          </div>
-          {entrega.length > 0 ? (
-            <ul className="mt-4 flex flex-col gap-2">
-              {entrega.map((t) => (
-                <li key={t.id} className="flex items-center gap-3 rounded-m bg-superficie px-3 py-2.5">
-                  <Chip estado={estadoStatus[t.status]}>{rotuloStatus(t.status).toLowerCase()}</Chip>
-                  <Link href={`/painel/tarefas/${t.id}`} scroll={false} className="min-w-0 flex-1 truncate text-texto hover:underline">
-                    {t.titulo}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-[0.875rem] text-texto-2">
-              Nenhuma tarefa ligada à entrega ainda. Marque “Ligada à entrega do programa” numa tarefa da semana.
-            </p>
-          )}
-        </section>
-
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:grid-cols-1">
-          {/* 2. atenção */}
-          <section aria-labelledby="atencao" className="rounded-g border border-linha bg-superficie p-5">
-            <h2 id="atencao" tabIndex={-1} className="t-rotulo text-texto-2">
-              Atenção {atencao.length > 0 && <span className="t-dado">({atencao.length})</span>}
-            </h2>
-            {atencao.length === 0 ? (
-              <p className="mt-3 text-texto-2">Nada atrasado, tudo com responsável e nenhum contato esperando.</p>
-            ) : (
-              <>
-                <ul
-                  className="mt-2 flex flex-col divide-y divide-linha"
-                  onClickCapture={(e) => {
-                    // o segundo clique de um duplo clique no "Trazer" cairia na de baixo, que sobe
-                    if (e.detail < 2) return;
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                >
-                  {(verTudo ? atencao : atencao.slice(0, LIMITE_ATENCAO)).map(({ id, tarefa, href, manterRolagem, titulo, Icone, cor, detalhe }) => (
-                    <li
-                      key={id}
-                      ref={(el) => {
-                        if (!tarefa) return;
-                        if (el) itensAtencao.current.set(tarefa.id, el);
-                        else itensAtencao.current.delete(tarefa.id);
-                      }}
-                      className="group flex gap-3 py-2.5"
-                    >
-                      <Icone aria-hidden strokeWidth={1.75} className={cn("mt-0.5 size-4 shrink-0", cor)} />
-                      <div className="min-w-0 flex-1">
-                        <Link href={href} scroll={!manterRolagem} className="block truncate text-texto hover:underline">
-                          {titulo}
-                        </Link>
-                        <p className={cn("t-dado text-[0.8125rem]", cor)}>
-                          {detalhe}
-                          {tarefa?.semana && tarefa.semana !== semana.numero && (
-                            <span className="text-texto-2"> · S{tarefa.semana}</span>
-                          )}
-                        </p>
-                      </div>
-                      {podeEditar && tarefa && tarefa.semana !== semana.numero && estaAtrasada(tarefa) && (
-                        <button
-                          type="button"
-                          onClick={() => void trazerParaEsta(tarefa)}
-                          aria-label={`Trazer “${tarefa.titulo}” para a semana ${semana.numero}`}
-                          title={`Trazer para a semana ${semana.numero}`}
-                          className="relative -mr-1 self-center rounded-p p-1.5 text-texto-2 transition-[opacity,color,background-color] duration-150 after:absolute after:-inset-1.5 after:content-[''] hover:bg-superficie-2 hover:text-texto focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:opacity-0"
-                        >
-                          <CalendarArrowRight aria-hidden strokeWidth={1.75} className="size-4" />
-                        </button>
+        {/* 1. a entrega, com as tarefas dela; 2 e 3 na lateral; 4. as outras tarefas */}
+        <TarefasDaSemana
+          tarefas={tarefasSemana}
+          semana={semana}
+          todas={tarefas}
+          className="xl:col-start-1 xl:row-start-2"
+          entrega={(lista) => (
+            <section aria-labelledby="entrega" className="relative isolate overflow-hidden rounded-g bg-superficie-2 p-5 md:p-6 xl:col-start-1">
+              <CurvasDeNivel
+                conjunto="rodape"
+                className="absolute inset-y-0 right-0 -z-10 hidden h-full w-2/3 text-caramelo/20 [mask-image:linear-gradient(to_left,black,transparent)] md:block"
+              />
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="t-rotulo text-link">Entrega do Avança Café</p>
+                  <h2 id="entrega" tabIndex={-1} className="mt-1.5 font-titulo text-[1.25rem] font-semibold text-texto">
+                    {semana.entrega_titulo ?? "Sem entrega definida"}
+                  </h2>
+                  {semana.entrega_prazo && (
+                    <p
+                      className={cn(
+                        "t-dado mt-1 text-[0.875rem]",
+                        semana.status === "entregue"
+                          ? "text-ok"
+                          : diasAtePrazo(semana.entrega_prazo) < 0
+                            ? "text-erro"
+                            : diasAtePrazo(semana.entrega_prazo) <= 2
+                              ? "text-alerta"
+                              : "text-texto-2",
                       )}
-                    </li>
-                  ))}
-                </ul>
-                {atencao.length > LIMITE_ATENCAO && (
-                  <button type="button" onClick={() => setVerTudo(!verTudo)} className="link mt-1 text-[0.875rem]">
-                    {verTudo ? "Ver menos" : `Ver todos (${atencao.length})`}
-                  </button>
-                )}
-              </>
-            )}
-          </section>
-
-          {/* 3. próxima reunião */}
-          <section aria-labelledby="reuniao" className="rounded-g border border-linha bg-superficie p-5">
-            <h2 id="reuniao" className="t-rotulo text-texto-2">
-              Próxima reunião
-            </h2>
-            {proxima.data ? (
-              <>
-                <p className="mt-3 flex items-center gap-2 font-titulo text-[1.0625rem] font-semibold text-texto first-letter:uppercase">
-                  <CalendarClock aria-hidden strokeWidth={1.75} className="size-[18px] shrink-0 text-caramelo" />
-                  {dataLonga(proxima.data)}
-                </p>
-                <ul className="mt-3 space-y-1 text-[0.875rem] text-texto-2">
-                  <li>Entrega da semana: {semana.entrega_titulo ?? "não definida"}</li>
-                  <li>
-                    <span className="t-dado">{proxima.atrasadas}</span>{" "}
-                    {proxima.atrasadas === 1 ? "tarefa atrasada" : "tarefas atrasadas"}
-                  </li>
-                  <li>
-                    <span className="t-dado">{proxima.concluidas}</span>{" "}
-                    {proxima.concluidas === 1 ? "concluída" : "concluídas"} desde a última reunião
-                  </li>
-                  <li>
-                    <span className="t-dado">{proxima.contatos}</span>{" "}
-                    {proxima.contatos === 1 ? "contato novo" : "contatos novos"}
-                  </li>
-                </ul>
-                <div className="mt-4">
-                  {proxima.id ? (
-                    <Botao asChild variante="secundario" tamanho="painel">
-                      <Link href={`/painel/reunioes/${proxima.id}`}>Abrir pauta</Link>
-                    </Botao>
-                  ) : (
-                    podeEditar && (
-                      <Botao
-                        variante="secundario"
-                        tamanho="painel"
-                        disabled={criando}
-                        onClick={() =>
-                          iniciar(async () => {
-                            const r = await criarReuniao(proxima.data!);
-                            if (r.ok && r.dado) router.push(`/painel/reunioes/${r.dado}`);
-                            else if (!r.ok) avisar(r.erro, { erro: true });
-                          })
-                        }
-                      >
-                        Abrir pauta
-                      </Botao>
-                    )
+                    >
+                      prazo {dataCurta(semana.entrega_prazo)} ·{" "}
+                      {semana.status === "entregue" ? "entregue" : textoPrazo(semana.entrega_prazo)}
+                    </p>
                   )}
                 </div>
-              </>
-            ) : (
-              <EstadoVazio
-                texto="Defina o dia e o horário da reunião semanal em Configurações para ver a pauta aqui."
-                acao={
-                  <Botao asChild variante="secundario" tamanho="painel">
-                    <Link href="/painel/reunioes">Ver reuniões</Link>
+                {linkEntrega && (
+                  <Botao asChild variante="secundario" tamanho="painel" className="bg-superficie">
+                    <a href={linkEntrega} target="_blank" rel="noreferrer">
+                      <ExternalLink aria-hidden />
+                      Abrir no Drive
+                    </a>
                   </Botao>
-                }
-              />
-            )}
-          </section>
-        </div>
+                )}
+              </div>
+              {lista ? (
+                <div className="mt-4">{lista}</div>
+              ) : (
+                <p className="mt-3 text-[0.875rem] text-texto-2">
+                  Nenhuma tarefa ligada à entrega ainda. Marque “Ligada à entrega do programa” numa tarefa da semana.
+                </p>
+              )}
+              <PacotePorEmail semana={semana} pacote={pacote} />
+            </section>
+          )}
+          entre={
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:grid-cols-1">
+              {/* 2. atenção */}
+              <section aria-labelledby="atencao" className="rounded-g border border-linha bg-superficie p-5">
+                <h2 id="atencao" tabIndex={-1} className="t-rotulo text-texto-2">
+                  Atenção {atencao.length > 0 && <span className="t-dado">({atencao.length})</span>}
+                </h2>
+                {atencao.length === 0 ? (
+                  <p className="mt-3 text-texto-2">Nada atrasado, tudo com responsável e nenhum contato esperando.</p>
+                ) : (
+                  <>
+                    <ul
+                      className="mt-2 flex flex-col divide-y divide-linha"
+                      onClickCapture={(e) => {
+                        // o segundo clique de um duplo clique no "Trazer" cairia na de baixo, que sobe
+                        if (e.detail < 2) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    >
+                      {(verTudo ? atencao : atencao.slice(0, LIMITE_ATENCAO)).map(({ id, tarefa, href, manterRolagem, titulo, Icone, cor, detalhe }) => (
+                        <li
+                          key={id}
+                          ref={(el) => {
+                            if (!tarefa) return;
+                            if (el) itensAtencao.current.set(tarefa.id, el);
+                            else itensAtencao.current.delete(tarefa.id);
+                          }}
+                          className="group flex gap-3 py-2.5"
+                        >
+                          <Icone aria-hidden strokeWidth={1.75} className={cn("mt-0.5 size-4 shrink-0", cor)} />
+                          <div className="min-w-0 flex-1">
+                            <Link href={href} scroll={!manterRolagem} className="block truncate text-texto hover:underline">
+                              {titulo}
+                            </Link>
+                            <p className={cn("t-dado text-[0.8125rem]", cor)}>
+                              {detalhe}
+                              {tarefa?.semana && tarefa.semana !== semana.numero && (
+                                <span className="text-texto-2"> · S{tarefa.semana}</span>
+                              )}
+                            </p>
+                          </div>
+                          {podeEditar && tarefa && tarefa.semana !== semana.numero && estaAtrasada(tarefa) && (
+                            <button
+                              type="button"
+                              onClick={() => void trazerParaEsta(tarefa)}
+                              aria-label={`Trazer “${tarefa.titulo}” para a semana ${semana.numero}`}
+                              title={`Trazer para a semana ${semana.numero}`}
+                              className="relative -mr-1 self-center rounded-p p-1.5 text-texto-2 transition-[opacity,color,background-color] duration-150 after:absolute after:-inset-1.5 after:content-[''] hover:bg-superficie-2 hover:text-texto focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:opacity-0"
+                            >
+                              <CalendarArrowRight aria-hidden strokeWidth={1.75} className="size-4" />
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    {atencao.length > LIMITE_ATENCAO && (
+                      <button type="button" onClick={() => setVerTudo(!verTudo)} className="link mt-1 text-[0.875rem]">
+                        {verTudo ? "Ver menos" : `Ver todos (${atencao.length})`}
+                      </button>
+                    )}
+                  </>
+                )}
+              </section>
 
-        {/* 4. tarefas da semana */}
-        <div className="xl:col-start-1 xl:row-start-2">
-          <TarefasDaSemana tarefas={tarefasSemana} semana={semana} todas={tarefas} />
-        </div>
+              {/* 3. próxima reunião */}
+              <section aria-labelledby="reuniao" className="rounded-g border border-linha bg-superficie p-5">
+                <h2 id="reuniao" className="t-rotulo text-texto-2">
+                  Próxima reunião
+                </h2>
+                {proxima.data ? (
+                  <>
+                    <p className="mt-3 flex items-center gap-2 font-titulo text-[1.0625rem] font-semibold text-texto first-letter:uppercase">
+                      <CalendarClock aria-hidden strokeWidth={1.75} className="size-[18px] shrink-0 text-caramelo" />
+                      {dataLonga(proxima.data)}
+                    </p>
+                    <ul className="mt-3 space-y-1 text-[0.875rem] text-texto-2">
+                      <li>Entrega da semana: {semana.entrega_titulo ?? "não definida"}</li>
+                      <li>
+                        <span className="t-dado">{proxima.atrasadas}</span>{" "}
+                        {proxima.atrasadas === 1 ? "tarefa atrasada" : "tarefas atrasadas"}
+                      </li>
+                      <li>
+                        <span className="t-dado">{proxima.concluidas}</span>{" "}
+                        {proxima.concluidas === 1 ? "concluída" : "concluídas"} desde a última reunião
+                      </li>
+                      <li>
+                        <span className="t-dado">{proxima.contatos}</span>{" "}
+                        {proxima.contatos === 1 ? "contato novo" : "contatos novos"}
+                      </li>
+                    </ul>
+                    <div className="mt-4">
+                      {proxima.id ? (
+                        <Botao asChild variante="secundario" tamanho="painel">
+                          <Link href={`/painel/reunioes/${proxima.id}`}>Abrir pauta</Link>
+                        </Botao>
+                      ) : (
+                        podeEditar && (
+                          <Botao
+                            variante="secundario"
+                            tamanho="painel"
+                            disabled={criando}
+                            onClick={() =>
+                              iniciar(async () => {
+                                const r = await criarReuniao(proxima.data!);
+                                if (r.ok && r.dado) router.push(`/painel/reunioes/${r.dado}`);
+                                else if (!r.ok) avisar(r.erro, { erro: true });
+                              })
+                            }
+                          >
+                            Abrir pauta
+                          </Botao>
+                        )
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <EstadoVazio
+                    texto="Defina o dia e o horário da reunião semanal em Configurações para ver a pauta aqui."
+                    acao={
+                      <Botao asChild variante="secundario" tamanho="painel">
+                        <Link href="/painel/reunioes">Ver reuniões</Link>
+                      </Botao>
+                    }
+                  />
+                )}
+              </section>
+            </div>
+          }
+        />
       </div>
     </div>
   );
@@ -403,5 +396,60 @@ function SetaProxima({ numero, href }: { numero: number; href: string | null }) 
         </span>
       )}
     </span>
+  );
+}
+
+// E-mail do pacote: para quem já foi, quando, e o botão para quem falta. "Falta"
+// quem tem alguma tarefa da entrega que ainda não foi em nenhum pacote; quem
+// recebe de novo ganha o pacote inteiro, com as tarefas novas junto.
+function PacotePorEmail({ semana, pacote }: { semana: Semana; pacote: SituacaoPacote[] }) {
+  const { podeEditar, avisar } = usePainel();
+  const [enviando, iniciar] = useTransition();
+  if (!pacote.length) return null;
+  const recebeu = pacote.filter((p) => p.enviado_em && !p.falta);
+  const faltam = pacote.filter((p) => p.falta && p.tem_email);
+  const semEmail = pacote.filter((p) => p.falta && !p.tem_email);
+  const ultimo = recebeu.map((p) => p.enviado_em!).sort().at(-1);
+  const nomes = (ps: SituacaoPacote[]) => listaNomes(ps.map((p) => p.nome));
+
+  const enviar = () =>
+    iniciar(async () => {
+      const r = await enviarPacoteDaSemana(semana.id);
+      if (!r.ok) avisar(r.erro, { erro: true });
+      else if (r.dado)
+        avisar(
+          `Pacote enviado para ${listaNomes(r.dado.enviados)}.${r.dado.falharam.length ? ` Não saiu para ${listaNomes(r.dado.falharam)}.` : ""}`,
+        );
+    });
+
+  return (
+    <div className="mt-4 flex flex-col gap-3 border-t border-linha pt-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex min-w-0 gap-2.5 text-[0.875rem]">
+        <Mail aria-hidden strokeWidth={1.75} className="mt-0.5 size-4 shrink-0 text-caramelo" />
+        <div className="min-w-0">
+          <p className="text-texto">
+            {recebeu.length ? (
+              <>
+                <Check aria-hidden strokeWidth={2} className="mr-1 inline size-3.5 align-[-2px] text-ok" />
+                Pacote enviado para {nomes(recebeu)}
+                <span className="t-dado text-texto-2"> · {dataHora(ultimo!)}</span>
+              </>
+            ) : (
+              "O pacote ainda não foi enviado por e-mail."
+            )}
+          </p>
+          {faltam.length > 0 && (
+            <p className="text-texto-2">{recebeu.length ? `Falta enviar para ${nomes(faltam)}.` : `Vai para ${nomes(faltam)}.`}</p>
+          )}
+          {semEmail.length > 0 && <p className="text-texto-2">Sem e-mail cadastrado: {nomes(semEmail)}.</p>}
+        </div>
+      </div>
+      {podeEditar && faltam.length > 0 && (
+        <Botao tamanho="painel" className="shrink-0 self-start md:self-auto" disabled={enviando} onClick={enviar}>
+          <Send aria-hidden />
+          {enviando ? "Enviando…" : recebeu.length ? `Enviar para ${nomes(faltam)}` : "Enviar o pacote por e-mail"}
+        </Botao>
+      )}
+    </div>
   );
 }

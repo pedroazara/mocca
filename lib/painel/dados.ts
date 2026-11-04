@@ -1,5 +1,6 @@
 import "server-only";
 import type { Consulta } from "@/lib/banco";
+import { SQL_SITUACAO_PACOTE } from "@/lib/email/mensagens";
 import type {
   Configuracao,
   Contato,
@@ -9,6 +10,7 @@ import type {
   Proposta,
   Reuniao,
   Semana,
+  SituacaoPacote,
   Status,
   TarefaCompleta,
   TarefaResumo,
@@ -100,7 +102,11 @@ export async function tarefa(q: Consulta, id: string): Promise<TarefaCompleta | 
        coalesce((select json_agg(json_build_object('id', c.id, 'autor_id', c.autor_id, 'via_api', c.via_api, 'texto', c.texto, 'criado_em', c.criado_em) order by c.criado_em)
                    from comentario c where c.tarefa_id = t.id), '[]'::json) as lista_comentarios,
        coalesce((select json_agg(json_build_object('id', h.id, 'autor_id', h.autor_id, 'via_api', h.via_api, 'acao', h.acao, 'detalhe', h.detalhe, 'criado_em', h.criado_em) order by h.criado_em desc, h.id desc)
-                   from historico h where h.tarefa_id = t.id), '[]'::json) as historico
+                   from historico h where h.tarefa_id = t.id), '[]'::json) as historico,
+       coalesce((select json_agg(json_build_object('pessoa_id', e.pessoa_id, 'tipo', e.tipo, 'enviado_em', e.enviado_em))
+                   from (select pessoa_id, tipo, max(enviado_em) as enviado_em from email_enviado
+                          where (tipo = 'tarefa' and tarefa_id = t.id) or (tipo = 'entrega' and t.id = any(tarefas))
+                          group by pessoa_id, tipo) e), '[]'::json) as emails
        from tarefa t left join semana s on s.id = t.semana_id
       where t.id = $1`,
     [id],
@@ -198,6 +204,10 @@ export async function propostasPendentes(q: Consulta) {
 
 export async function propostasDecididas(q: Consulta) {
   return q<Proposta>(`${CONSULTA_PROPOSTA} where p.status <> 'pendente' order by p.decidido_em desc limit 30`);
+}
+
+export async function situacaoPacote(q: Consulta, semanaId: string) {
+  return q<SituacaoPacote>(SQL_SITUACAO_PACOTE, [semanaId]);
 }
 
 export async function documentosDaSemana(q: Consulta, semanaId: string) {
