@@ -14,7 +14,14 @@ import { rotuloStatus } from "@/lib/painel/tipos";
 import { cn } from "@/lib/utils";
 import { usePainel } from "./contexto";
 import { EstadoVazio } from "./elementos";
-import { animarSaida, EVENTO_PASSOU_SEMANA, lembrarChegada, TarefasDaSemana } from "./tarefas-semana";
+import {
+  animarSaida,
+  EVENTO_PASSOU_SEMANA,
+  focarVizinha,
+  lembrarChegada,
+  TarefasDaSemana,
+  useUmDeCadaVez,
+} from "./tarefas-semana";
 
 // Tela "Semana" (seção 9.1): em 10 segundos, o que a equipe precisa entregar
 // nesta semana e o que está atrasado. A entrega e as tarefas da semana ficam na
@@ -49,6 +56,7 @@ export function VisaoSemana({
   const [verTudo, setVerTudo] = useState(false);
   const [trazidas, trazer] = useOptimistic<string[], string>([], (lista, id) => [...lista, id]);
   const itensAtencao = useRef(new Map<string, HTMLLIElement>());
+  const umDeCadaVez = useUmDeCadaVez();
   const daSemana = tarefas.filter((t) => t.semana === semana.numero);
   const feitas = daSemana.filter((t) => t.status === "feito").length;
   const pct = daSemana.length ? Math.round((feitas / daSemana.length) * 100) : 0;
@@ -90,7 +98,10 @@ export function VisaoSemana({
   // Atenção: a tarefa atrasada de outra semana vem para esta, com o prazo junto
   // (DUVIDAS 4m). Sai da lista deslizando e chega destacada nas tarefas da semana.
   async function trazerParaEsta(t: TarefaResumo) {
-    await animarSaida(itensAtencao.current.get(t.id), "esquerda");
+    if (!umDeCadaVez()) return;
+    const item = itensAtencao.current.get(t.id);
+    await animarSaida(item, "esquerda");
+    focarVizinha(item, "atencao");
     lembrarChegada(t.id);
     iniciarTrazer(async () => {
       trazer(t.id);
@@ -215,7 +226,7 @@ export function VisaoSemana({
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:grid-cols-1">
           {/* 2. atenção */}
           <section aria-labelledby="atencao" className="rounded-g border border-linha bg-superficie p-5">
-            <h2 id="atencao" className="t-rotulo text-texto-2">
+            <h2 id="atencao" tabIndex={-1} className="t-rotulo text-texto-2">
               Atenção {atencao.length > 0 && <span className="t-dado">({atencao.length})</span>}
             </h2>
             {atencao.length === 0 ? (
@@ -248,7 +259,9 @@ export function VisaoSemana({
                       {podeEditar && tarefa && tarefa.semana !== semana.numero && estaAtrasada(tarefa) && (
                         <button
                           type="button"
-                          onClick={() => void trazerParaEsta(tarefa)}
+                          onClick={(e) => {
+                            if (e.detail < 2) void trazerParaEsta(tarefa);
+                          }}
                           aria-label={`Trazer “${tarefa.titulo}” para a semana ${semana.numero}`}
                           title={`Trazer para a semana ${semana.numero}`}
                           className="relative -mr-1 self-center rounded-p p-1.5 text-texto-2 transition-[opacity,color,background-color] duration-150 after:absolute after:-inset-1.5 after:content-[''] hover:bg-superficie-2 hover:text-texto focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:opacity-0"

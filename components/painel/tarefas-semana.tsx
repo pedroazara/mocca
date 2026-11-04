@@ -20,7 +20,8 @@ import {
 import { getEventCoordinates } from "@dnd-kit/utilities";
 import { CalendarArrowRight, Check, ChevronDown, GripVertical, Plus } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useId, useOptimistic, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useOptimistic, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { atualizarTarefa, moverParaSemana } from "@/app/painel/acoes";
 import { Botao } from "@/components/ui/botao";
 import { Chip } from "@/components/ui/chip";
@@ -79,6 +80,40 @@ const cartaoNoPonteiro: Modifier = ({ activatorEvent, activeNodeRect, overlayNod
 // são medidas de novo a cada 100 ms enquanto o ponteiro anda, e quem decide
 // onde a tarefa cai é a posição do ponteiro, não o tamanho do cartão.
 const medicao = { droppable: { strategy: MeasuringStrategy.Always, frequency: 100 } };
+
+// Um clique, uma tarefa: enquanto a linha sai, a de baixo sobe para baixo do
+// ponteiro (com movimento reduzido, na hora), e o segundo clique de um duplo
+// clique passaria a vizinha junto. Os botões também ignoram o clique que já
+// é o segundo (e.detail > 1).
+export function useUmDeCadaVez(ms = 700) {
+  const ate = useRef(0);
+  return () => {
+    const agora = performance.now();
+    if (agora < ate.current) return false;
+    ate.current = agora + ms;
+    return true;
+  };
+}
+
+// Quem passou a tarefa pelo teclado não perde o lugar quando a linha some: o
+// foco vai para a linha vizinha, ou para o título da seção se era a última.
+export function focarVizinha(linha: HTMLElement | null | undefined, idTitulo: string) {
+  if (!linha?.contains(document.activeElement)) return;
+  const vizinha = linha.nextElementSibling ?? linha.previousElementSibling;
+  const alvo = vizinha?.querySelector<HTMLElement>("a[href]") ?? document.getElementById(idTitulo);
+  alvo?.focus({ preventScroll: true });
+}
+
+// A barra, o cartão arrastado e o voo vão direto para o <body>: dentro do
+// painel (que isola as camadas) eles ficariam embaixo dos avisos. No servidor
+// não há <body>, e eles só existem no navegador.
+const semAssinatura = () => () => {};
+const useNoNavegador = () =>
+  useSyncExternalStore(
+    semAssinatura,
+    () => true,
+    () => false,
+  );
 
 export function lembrarChegada(id: string) {
   try {
@@ -146,6 +181,11 @@ export function TarefasDaSemana({
   const linhas = useRef(new Map<string, HTMLLIElement>());
   const cartao = useRef<HTMLDivElement>(null);
   const relogio = useRef<number | undefined>(undefined);
+  // durante o arrasto (e um instante depois, para engolir o clique do soltar)
+  const arrastando = useRef(false);
+  const arrastou = useRef(false);
+  const umDeCadaVez = useUmDeCadaVez();
+  const noNavegador = useNoNavegador();
   const idDnd = useId();
 
   const visiveis = tarefas.filter((t) => !ocultas.includes(t.id));
@@ -191,7 +231,9 @@ export function TarefasDaSemana({
   }
 
   async function passar(t: TarefaResumo, numero: number, saida: "direita" | "encolher") {
-    await animarSaida(linhas.current.get(t.id), saida);
+    const linha = linhas.current.get(t.id);
+    await animarSaida(linha, saida);
+    focarVizinha(linha, "tarefas-semana");
     lembrarChegada(t.id);
     iniciar(async () => {
       ocultar(t.id);
@@ -210,17 +252,28 @@ export function TarefasDaSemana({
   }
 
   function proximaSemana(t: TarefaResumo) {
+    if (!umDeCadaVez()) return;
     window.dispatchEvent(new CustomEvent(EVENTO_PASSOU_SEMANA, { detail: { numero: semana.numero + 1 } }));
     void passar(t, semana.numero + 1, "direita");
   }
 
+  // Depois de um arrasto o navegador ainda manda o clique do soltar; no título,
+  // ele abriria a tarefa numa página inteira em vez da janela.
+  const soltou = () => {
+    arrastando.current = false;
+    window.setTimeout(() => (arrastou.current = false), 50);
+  };
+
   function inicio(e: DragStartEvent) {
+    arrastando.current = true;
+    arrastou.current = true;
     window.clearTimeout(relogio.current);
     setAtiva(tarefas.find((t) => t.id === e.active.id) ?? null);
     setBarra("aberta");
   }
 
   function fim(e: DragEndEvent) {
+    soltou();
     const t = ativa;
     setAtiva(null);
     const numero = e.over?.data.current?.numero as number | undefined;
@@ -237,7 +290,8 @@ export function TarefasDaSemana({
   function pousou(numero: number) {
     setVoo(null);
     setRecebeu({ numero, vez: Date.now() });
-    fecharBarra(700);
+    // se outra tarefa já está sendo arrastada, quem fecha a barra é o fim dela
+    if (!arrastando.current) fecharBarra(700);
   }
 
   const tituloDe = (id: string | number) => tarefas.find((t) => t.id === id)?.titulo ?? "tarefa";
@@ -250,7 +304,14 @@ export function TarefasDaSemana({
   };
 
   const lista = (
-    <ul className="flex flex-col divide-y divide-linha overflow-hidden rounded-g border border-linha bg-superficie">
+    <ul
+      className="flex flex-col divide-y divide-linha overflow-hidden rounded-g border border-linha bg-superficie"
+      onClickCapture={(e) => {
+        if (!arrastou.current) return;
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
       {visiveis.map((t) => (
         <LinhaTarefaSemana
           key={t.id}
@@ -271,10 +332,24 @@ export function TarefasDaSemana({
     </ul>
   );
 
+  const corpo = visiveis.length ? (
+    lista
+  ) : (
+    <div className="flex flex-col items-center gap-3 rounded-m border border-dashed border-linha px-6 py-10 text-center">
+      <p className="max-w-[40ch] text-texto-2">Nenhuma tarefa nesta semana.</p>
+      {podeEditar && (
+        <Botao variante="secundario" tamanho="painel" onClick={() => window.dispatchEvent(new Event(EVENTO_NOVA_TAREFA))}>
+          <Plus aria-hidden />
+          Nova tarefa
+        </Botao>
+      )}
+    </div>
+  );
+
   return (
     <section aria-labelledby="tarefas-semana">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="tarefas-semana" className="t-rotulo text-texto-2">
+        <h2 id="tarefas-semana" tabIndex={-1} className="t-rotulo text-texto-2">
           Tarefas da semana {visiveis.length > 0 && <span className="t-dado">({visiveis.length})</span>}
         </h2>
         {comPassos.length > 1 && (
@@ -287,49 +362,45 @@ export function TarefasDaSemana({
           </button>
         )}
       </div>
-      {visiveis.length ? (
-        podeEditar ? (
-          <DndContext
-            id={idDnd}
-            sensors={sensores}
-            collisionDetection={pointerWithin}
-            measuring={medicao}
-            onDragStart={inicio}
-            onDragEnd={fim}
-            onDragCancel={() => {
-              setAtiva(null);
-              fecharBarra();
-            }}
-            accessibility={{
-              announcements: anuncios,
-              screenReaderInstructions: {
-                draggable: "Para passar a tarefa de semana pelo teclado, use o botão do calendário na linha da tarefa.",
-              },
-            }}
-          >
-            {lista}
-            <DragOverlay dropAnimation={null} modifiers={[cartaoNoPonteiro]} style={{ width: "auto", height: "auto" }}>
-              {ativa && <CartaoVoando ref={cartao} tarefa={ativa} />}
-            </DragOverlay>
-            {barra !== "fechada" && (
-              <BarraSemanas semana={semana} todas={todas} fechando={barra === "fechando"} recebeu={recebeu} />
+      {podeEditar ? (
+        // montado mesmo sem tarefas: quando a última sai, a barra ainda recebe o voo
+        <DndContext
+          id={idDnd}
+          sensors={sensores}
+          collisionDetection={pointerWithin}
+          measuring={medicao}
+          onDragStart={inicio}
+          onDragEnd={fim}
+          onDragCancel={() => {
+            soltou();
+            setAtiva(null);
+            fecharBarra();
+          }}
+          accessibility={{
+            announcements: anuncios,
+            screenReaderInstructions: {
+              draggable: "Para passar a tarefa de semana pelo teclado, use o botão do calendário na linha da tarefa.",
+            },
+          }}
+        >
+          {corpo}
+          {noNavegador &&
+            createPortal(
+              <div className="text-[0.9375rem] leading-[1.5]">
+                <DragOverlay dropAnimation={null} modifiers={[cartaoNoPonteiro]} style={{ width: "auto", height: "auto" }}>
+                  {ativa && <CartaoVoando ref={cartao} tarefa={ativa} />}
+                </DragOverlay>
+                {barra !== "fechada" && (
+                  <BarraSemanas semana={semana} todas={todas} fechando={barra === "fechando"} recebeu={recebeu} />
+                )}
+                {voo && <Voo {...voo} aoChegar={() => pousou(voo.numero)} />}
+              </div>,
+              document.body,
             )}
-          </DndContext>
-        ) : (
-          lista
-        )
+        </DndContext>
       ) : (
-        <div className="flex flex-col items-center gap-3 rounded-m border border-dashed border-linha px-6 py-10 text-center">
-          <p className="max-w-[40ch] text-texto-2">Nenhuma tarefa nesta semana.</p>
-          {podeEditar && (
-            <Botao variante="secundario" tamanho="painel" onClick={() => window.dispatchEvent(new Event(EVENTO_NOVA_TAREFA))}>
-              <Plus aria-hidden />
-              Nova tarefa
-            </Botao>
-          )}
-        </div>
+        corpo
       )}
-      {voo && <Voo {...voo} aoChegar={() => pousou(voo.numero)} />}
     </section>
   );
 }
@@ -454,7 +525,9 @@ function LinhaTarefaSemana({
             {proxima && (
               <button
                 type="button"
-                onClick={proxima}
+                onClick={(e) => {
+                  if (e.detail < 2) proxima();
+                }}
                 aria-label={`Passar “${t.titulo}” para a semana ${numeroProxima}`}
                 title={`Passar para a semana ${numeroProxima}`}
                 className="relative -my-1 rounded-p p-1 text-texto-2 transition-[opacity,color,background-color] duration-150 after:absolute after:-inset-2 after:content-[''] hover:bg-superficie-2 hover:text-texto focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:opacity-0"
@@ -581,7 +654,8 @@ function BarraSemanas({
   const { semanas, semanaAtual } = usePainel();
   const abertas = (n: number) => todas.filter((t) => t.semana === n && t.status !== "feito").length;
   return (
-    // acima dos avisos (z-60), que também ficam embaixo, à direita
+    // acima dos avisos (z-60), que também ficam embaixo, à direita: por isso
+    // ela é desenhada direto no <body> (useNoNavegador, lá em cima)
     <div className="pointer-events-none fixed inset-x-0 bottom-20 z-[65] flex justify-center px-3 lg:bottom-6">
       <div
         className={cn(
