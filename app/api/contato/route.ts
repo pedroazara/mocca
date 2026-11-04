@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import { BancoIndisponivel, comoServico } from "@/lib/banco";
 import { avisarContatoRecebido } from "@/lib/email";
+import { chaveDoIp, ipDaRequisicao } from "@/lib/rede/ip";
 import { esquemaContato, paraRegistro } from "@/lib/validacao/contato";
 
 // POST /api/contato (seção 6.6): valida, confere o Turnstile, limita a 5 envios
@@ -14,15 +15,6 @@ export const runtime = "nodejs";
 
 function erro(status: number, codigo: string, mensagem: string, campos?: Record<string, string>) {
   return NextResponse.json({ erro: { codigo, mensagem, ...(campos ? { campos } : {}) } }, { status });
-}
-
-function ipDe(req: Request) {
-  return (
-    req.headers.get("cf-connecting-ip") ||
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") ||
-    ""
-  );
 }
 
 async function conferirTurnstile(token: string, ip: string) {
@@ -66,14 +58,15 @@ export async function POST(req: Request) {
   if (typeof token !== "string" || !token) {
     return erro(400, "sem_verificacao", "Conclua a verificação anti-spam e envie de novo.");
   }
-  const ip = ipDe(req);
+  const ip = ipDaRequisicao(req.headers);
   if (!(await conferirTurnstile(token, ip))) {
     return erro(400, "verificacao_falhou", "A verificação anti-spam não passou. Tente enviar de novo.");
   }
 
-  // O IP nunca é guardado: só um HMAC dele, para o limite de envios por hora.
+  // O IP nunca é guardado: só um HMAC dele (do /64, no IPv6), para o limite de
+  // envios por hora.
   const ipHash = createHmac("sha256", process.env.TURNSTILE_SECRET_KEY ?? "desenvolvimento")
-    .update(ip || "sem-ip")
+    .update(ip ? chaveDoIp(ip) : "sem-ip")
     .digest("hex");
 
   let id: string;

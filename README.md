@@ -69,7 +69,9 @@ Depois rode o `supabase/seed.sql` uma vez no SQL Editor do Supabase (ele pode ro
 
 Antes do seed, troque os e-mails de exemplo (`nome.sobrenome@exemplo.com`) pelos e-mails reais. O login só deixa entrar quem está na tabela `pessoa` com `ativo = true`.
 
-Login por e-mail e senha: em `/entrar`, a pessoa digita o e-mail cadastrado. No primeiro acesso, ela cria a senha ali mesmo, sem confirmação por e-mail; depois, entra com ela. **Até criar a senha, a conta pode ser tomada por quem souber o e-mail**, então cada pessoa deve fazer o primeiro acesso logo depois do cadastro, e o admin antes de todos. Em Authentication › Sign In / Providers, desligue "Allow new users to sign up": a conta é criada pelo servidor, e o cadastro direto no Supabase não deve ficar aberto.
+Login por e-mail e senha: em `/entrar`, a pessoa digita o e-mail cadastrado. No primeiro acesso, ela cria a senha ali mesmo, sem confirmação por e-mail; depois, entra com ela. **Até criar a senha, a conta pode ser tomada por quem souber o e-mail**, então cada pessoa deve fazer o primeiro acesso logo depois do cadastro, e o admin antes de todos. Em Authentication › Sign In / Providers, desligue "Allow new users to sign up": a conta é criada pelo servidor, e o cadastro direto no Supabase não deve ficar aberto. Mesmo que ele fique aberto por engano, uma conta criada por fora não entra no painel: só o primeiro acesso pela tela `/entrar` liga a conta à pessoa da equipe. Em Project Settings › Data API, tire o esquema `public` dos esquemas expostos: o painel fala com o Postgres direto e não usa essa API (o Realtime não depende dela).
+
+Senhas erradas: depois de 8 tentativas erradas do mesmo e-mail (ou 30 do mesmo IP) em 15 minutos, o login pede para esperar.
 
 Esqueceu a senha: apague o usuário em Authentication › Users. A pessoa continua na equipe, com as tarefas, e cria uma senha nova no próximo acesso.
 

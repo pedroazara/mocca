@@ -7,6 +7,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { SQL_ATRIBUICAO } from "@/lib/email/mensagens";
+import { SQL_LIGAR_CONTA } from "@/lib/login";
 import { SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
 
 const raiz = join(__dirname, "..");
@@ -30,8 +31,16 @@ async function como<T>(papel: "anon" | "service_role" | { usuario: string }, fn:
   }
 }
 
+// uma conta que aparece em auth.users (por exemplo, um cadastro direto no Supabase)
 const novoLogin = async (email: string) =>
   (await um<{ id: string }>("insert into auth.users (email) values ($1) returning id", [email]))!.id;
+
+// o primeiro acesso pelo painel: cria a conta e liga à pessoa (criarSenha)
+const primeiroAcesso = async (email: string) => {
+  const id = await novoLogin(email);
+  await db.query(SQL_LIGAR_CONTA, [id, email.toLowerCase()]);
+  return id;
+};
 
 const contato = {
   nome: "Maria Teste",
@@ -141,8 +150,39 @@ describe("RLS", () => {
     });
   });
 
-  it("liga o primeiro login à pessoa pelo e-mail e registra o histórico de quem age", async () => {
-    const pedro = await novoLogin("Pedro.Henrique@exemplo.com");
+  it("conta que aparece sozinha em auth.users não ganha acesso; só o primeiro acesso liga", async () => {
+    // alguém se cadastra direto no Supabase com o e-mail do Marcos: nada é ligado
+    const intruso = await novoLogin("marcos.ferreira@exemplo.com");
+    expect((await um<{ auth_id: string | null }>("select auth_id from pessoa where apelido = 'Marcos'"))!.auth_id).toBeNull();
+    await como({ usuario: intruso }, async () => {
+      expect((await um<{ n: number }>("select count(*)::int n from tarefa"))!.n).toBe(0);
+    });
+    // pessoa desativada não é ligada nem no primeiro acesso
+    await db.query("update pessoa set ativo = false where apelido = 'Henrique'");
+    const henrique = await novoLogin("henrique.perez@exemplo.com");
+    expect((await db.query(SQL_LIGAR_CONTA, [henrique, "henrique.perez@exemplo.com"])).rows).toHaveLength(0);
+    await db.query("update pessoa set ativo = true where apelido = 'Henrique'");
+    // cadastrar alguém cujo e-mail já tem conta também não liga
+    await novoLogin("novo.membro@exemplo.com");
+    const [novo] = (
+      await db.query<{ auth_id: string | null }>(
+        "insert into pessoa (nome, email, cor) values ('Novo Membro', 'novo.membro@exemplo.com', '#3F6B4A') returning auth_id",
+      )
+    ).rows;
+    expect(novo.auth_id).toBeNull();
+    await db.query("delete from pessoa where email = 'novo.membro@exemplo.com'");
+  });
+
+  it("trocar o e-mail da pessoa desliga a conta antiga", async () => {
+    const conta = await primeiroAcesso("marcos.ferreira@exemplo.com");
+    expect(conta).toBeTruthy();
+    await db.query("update pessoa set email = 'marcos.novo@exemplo.com' where apelido = 'Marcos'");
+    expect((await um<{ auth_id: string | null }>("select auth_id from pessoa where apelido = 'Marcos'"))!.auth_id).toBeNull();
+    await db.query("update pessoa set email = 'marcos.ferreira@exemplo.com' where apelido = 'Marcos'");
+  });
+
+  it("liga o primeiro acesso à pessoa e registra o histórico de quem age", async () => {
+    const pedro = await primeiroAcesso("Pedro.Henrique@exemplo.com");
     expect((await um<{ auth_id: string }>("select auth_id from pessoa where apelido = 'Pedro'"))!.auth_id).toBe(pedro);
 
     const acoes = await como({ usuario: pedro }, async () => {
@@ -201,7 +241,7 @@ describe("RLS", () => {
   });
 
   it("orientador lê e comenta, mas não edita, e ninguém apaga histórico", async () => {
-    const leomar = await novoLogin("leomar.santos@exemplo.com");
+    const leomar = await primeiroAcesso("leomar.santos@exemplo.com");
     await como({ usuario: leomar }, async () => {
       expect((await um<{ n: number }>("select count(*)::int n from tarefa"))!.n).toBeGreaterThan(0);
       expect((await db.query("update tarefa set titulo = 'mudado'")).affectedRows).toBe(0);
@@ -214,7 +254,7 @@ describe("RLS", () => {
   });
 
   it("membro não altera configuração nem pessoas; desativado perde acesso", async () => {
-    const gabriel = await novoLogin("gabriel.leonardo@exemplo.com");
+    const gabriel = await primeiroAcesso("gabriel.leonardo@exemplo.com");
     await como({ usuario: gabriel }, async () => {
       expect((await db.query("update configuracao set reuniao_hora = '18:00'")).affectedRows).toBe(0);
       await expect(db.query("insert into pessoa (nome, email, cor) values ('X', 'x@x.com', '#000')")).rejects.toThrow();

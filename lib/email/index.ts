@@ -78,6 +78,16 @@ export function avisarContatoRecebido(contatoId: string, contato: { nome: string
       ),
     );
     const avisos = await Promise.all(atribuicoes.map((a) => mensagemDeAtribuicao(a.tarefa_id, a.pessoa_id)));
-    return [confirmacaoContato({ para: contato.email, nome: contato.nome }), ...avisos.flat()];
+    // No máximo uma confirmação por endereço a cada 24 h: qualquer um pode digitar
+    // o e-mail de outra pessoa no formulário (DUVIDAS 28).
+    const [anterior] = await comoServico((q) =>
+      q<{ n: number }>(
+        `select count(*)::int as n from contato
+          where lower(email) = lower($1) and id <> $2 and criado_em > now() - interval '24 hours'`,
+        [contato.email, contatoId],
+      ),
+    );
+    const confirmacao = anterior?.n ? [] : [confirmacaoContato({ para: contato.email, nome: contato.nome })];
+    return [...confirmacao, ...avisos.flat()];
   });
 }

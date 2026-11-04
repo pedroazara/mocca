@@ -32,8 +32,11 @@ async function criar() {
     }
     await db.exec(ler("seed.sql"));
     await db.exec(ler("seed-dev.sql"));
-    // um "login" por pessoa; o gatilho liga auth.users -> pessoa pelo e-mail
-    await db.exec("insert into auth.users (email) select email from pessoa");
+    // um "login" por pessoa, ligado como no primeiro acesso (DUVIDAS 27)
+    await db.exec(`
+      insert into auth.users (email) select email from pessoa;
+      update pessoa p set auth_id = u.id from auth.users u
+       where lower(u.email) = lower(p.email) and p.auth_id is null and p.ativo;`);
     console.log("[banco local] criado em .dados-locais/pg com os dados de exemplo");
   } else {
     const feitas = new Set((await db.query<{ nome: string }>("select nome from local_meta.migracoes")).rows.map((r) => r.nome));
