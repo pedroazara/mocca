@@ -18,10 +18,12 @@ const sim = vi.hoisted(() => ({
   eu: vi.fn(),
   // comoServico em conexões separadas (ver o mock de @/lib/banco)
   conexoes: false,
+  // o IP de cada requisição
+  ip: (): string => "203.0.113.7",
 }));
 
 vi.mock("next/headers", () => ({
-  headers: async () => new Headers({ "x-real-ip": "203.0.113.7" }),
+  headers: async () => new Headers({ "x-real-ip": sim.ip() }),
   cookies: async () => ({ set() {}, delete() {} }),
 }));
 vi.mock("next/navigation", () => ({
@@ -50,14 +52,15 @@ vi.mock("@/lib/banco", () => {
   // Na produção, cada chamada tem a sua conexão (o pooler), e chamadas
   // simultâneas se intercalam. O PGlite tem uma conexão só e faria uma esperar
   // a outra de qualquer jeito, e aí a trava nunca seria posta à prova. Aqui cada
-  // comando vai sozinho, e a trava do Postgres (pg_advisory_xact_lock) vira uma
-  // fila por chave, solta quando a "transação" acaba.
+  // comando vai sozinho, e a trava exclusiva do Postgres (pg_advisory_xact_lock)
+  // vira uma fila por chave, solta quando a "transação" acaba. Outras formas,
+  // como a _shared, rodam no PGlite e não seguram ninguém, como na produção.
   const filas = new Map<string, Promise<void>>();
   const emConexoes = async <T>(fn: (q: Q) => Promise<T>) => {
     const soltar: (() => void)[] = [];
     try {
       return await fn(async (sql, p = []) => {
-        if (!sql.includes("pg_advisory_xact_lock")) return (await sim.db.query(sql, p)).rows;
+        if (!/\bpg_advisory_xact_lock\s*\(/i.test(sql)) return (await sim.db.query(sql, p)).rows;
         const chave = String(p[0]);
         const antes = filas.get(chave) ?? Promise.resolve();
         let solta = () => {};
@@ -111,6 +114,7 @@ beforeEach(() => {
   sim.createUser.mockReset();
   sim.deleteUser.mockReset();
   sim.conexoes = false;
+  sim.ip = () => "203.0.113.7";
   avisos = vi.spyOn(console, "warn").mockImplementation(() => {});
   erros = vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -172,15 +176,39 @@ describe("freio do login (entrarComSenha)", () => {
     expect(sim.signIn).toHaveBeenCalledTimes(8);
   });
 
-  it("tentativas simultâneas também entram na conta", async () => {
-    sim.conexoes = true;
-    // o login de verdade é uma ida e volta pela rede até o Supabase
-    sim.signIn.mockImplementation(() => new Promise((r) => setTimeout(() => r(senhaErrada), 30)));
-    const r = await Promise.all(
-      Array.from({ length: 20 }, () => entrarComSenha("gabriel.leonardo@exemplo.com", "x", "/painel")),
-    );
-    expect(sim.signIn).toHaveBeenCalledTimes(8);
-    expect(r.filter((x) => /Muitas tentativas/.test(x.erro))).toHaveLength(12);
+  describe("tentativas simultâneas também entram na conta", () => {
+    beforeEach(() => {
+      sim.conexoes = true;
+      // o login de verdade é uma ida e volta pela rede até o Supabase
+      sim.signIn.mockImplementation(() => new Promise((r) => setTimeout(() => r(senhaErrada), 30)));
+    });
+    const freadas = (r: { erro: string }[]) => r.filter((x) => /Muitas tentativas/.test(x.erro)).length;
+
+    it("do mesmo e-mail e IP", async () => {
+      const r = await Promise.all(
+        Array.from({ length: 20 }, () => entrarComSenha("gabriel.leonardo@exemplo.com", "x", "/painel")),
+      );
+      expect(sim.signIn).toHaveBeenCalledTimes(8);
+      expect(freadas(r)).toBe(12);
+    });
+
+    it("de muitos e-mails no mesmo IP: vale o limite do IP", async () => {
+      const r = await Promise.all(
+        Array.from({ length: 40 }, (_, i) => entrarComSenha(`pessoa${i}@exemplo.com`, "x", "/painel")),
+      );
+      expect(sim.signIn).toHaveBeenCalledTimes(30);
+      expect(freadas(r)).toBe(10);
+    });
+
+    it("do mesmo e-mail em muitos IPs: vale o limite do e-mail", async () => {
+      let n = 0;
+      sim.ip = () => `198.51.100.${++n}`;
+      const r = await Promise.all(
+        Array.from({ length: 20 }, () => entrarComSenha("gabriel.leonardo@exemplo.com", "x", "/painel")),
+      );
+      expect(sim.signIn).toHaveBeenCalledTimes(8);
+      expect(freadas(r)).toBe(12);
+    });
   });
 
   it("a senha certa não conta como tentativa e devolve as chances do e-mail", async () => {
@@ -250,6 +278,16 @@ describe("troca de e-mail na Equipe (atualizarPessoa)", () => {
     // sem a conta antiga solta, o createUser não esbarra nela
     await expect(criarSenha("gabriel.leonardo@exemplo.com", "outra-senha-123", "/painel")).rejects.toThrow("REDIRECT:/painel");
     expect((await ligacao()).auth_id).not.toBeNull();
+  });
+
+  it("se a conta antiga não puder ser apagada (até sem a chave), o salvar vale e o erro vai para o log", async () => {
+    // sem a chave, o cliente do Supabase lança antes de devolver a promessa
+    sim.deleteUser.mockImplementation(() => {
+      throw new Error("supabaseKey is required.");
+    });
+    expect((await atualizarPessoa(gabriel.id, { ...gabriel, email: "gabriel.novo@exemplo.com" })).ok).toBe(true);
+    expect(await ligacao()).toEqual({ email: "gabriel.novo@exemplo.com", auth_id: null });
+    expect(erros.mock.calls.some((c: unknown[]) => String(c[0]).includes("conta antiga não apagada"))).toBe(true);
   });
 
   it("se o salvar falhar no meio, nada muda e a conta antiga fica", async () => {
