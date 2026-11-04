@@ -7,6 +7,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { SQL_ATRIBUICAO } from "@/lib/email/mensagens";
+import { SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
 
 const raiz = join(__dirname, "..");
 const db = new PGlite();
@@ -291,5 +292,56 @@ describe("RLS", () => {
       "insert into documento (tarefa_id, titulo, url) values ($1, 'Roteiro', 'https://docs.google.com/document/d/abc')",
       [t.id],
     );
+  });
+});
+
+describe("passar tarefa de semana", () => {
+  const criar = (prazo: string | null) =>
+    um<{ id: string }>(
+      "insert into tarefa (titulo, semana_id, prazo) values ('Passar', (select id from semana where numero = 3), $1) returning id",
+      [prazo],
+    );
+  const mover = (id: string, numero: number) => um<{ id: string; prazo: string | null }>(SQL_MOVER_PARA_SEMANA, [id, numero]);
+  const iso = (v: string | null | undefined) => (v ? new Date(v).toISOString() : null);
+
+  it("leva o prazo junto quando ele caía na semana antiga, e o histórico registra a troca", async () => {
+    await como("service_role", async () => {
+      // semana 3 vai de 03/11 a 09/11; o prazo é o fim da semana, 23:59 de Brasília
+      const t = (await criar("2026-11-09T23:59:00-03:00"))!;
+      expect(iso((await mover(t.id, 4))!.prazo)).toBe("2026-11-17T02:59:00.000Z"); // 16/11, 23:59
+      // e volta para trás do mesmo jeito
+      expect(iso((await mover(t.id, 2))!.prazo)).toBe("2026-11-03T02:59:00.000Z"); // 02/11, 23:59
+      const h = (
+        await db.query<{ detalhe: { de: number; para: number } }>(
+          "select detalhe from historico where tarefa_id = $1 and acao = 'semana' order by id",
+          [t.id],
+        )
+      ).rows.map((r) => r.detalhe);
+      expect(h).toEqual([
+        { de: 3, para: 4 },
+        { de: 4, para: 2 },
+      ]);
+    });
+  });
+
+  it("não mexe no prazo fora da semana antiga nem cria prazo", async () => {
+    await como("service_role", async () => {
+      const longe = (await criar("2026-11-30T12:00:00-03:00"))!;
+      expect(iso((await mover(longe.id, 5))!.prazo)).toBe("2026-11-30T15:00:00.000Z");
+      const sem = (await criar(null))!;
+      expect((await mover(sem.id, 5))!.prazo).toBeNull();
+      expect(await mover(sem.id, 13)).toBeUndefined();
+    });
+  });
+
+  it("orientador vê a tarefa, mas não passa de semana", async () => {
+    // o login do orientador já foi ligado à pessoa num teste anterior
+    const leomar = (await um<{ auth_id: string }>("select auth_id from pessoa where apelido = 'Leomar'"))!.auth_id;
+    expect(leomar).toBeTruthy();
+    const t = (await como("service_role", () => criar(null)))!;
+    await como({ usuario: leomar }, async () => {
+      expect(await um("select id from tarefa where id = $1", [t.id])).toBeDefined();
+      expect(await mover(t.id, 4)).toBeUndefined();
+    });
   });
 });

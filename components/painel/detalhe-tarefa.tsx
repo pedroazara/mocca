@@ -986,6 +986,9 @@ function descreverHistorico(h: Historico, nome: (id: string | null) => string) {
       return `${quem} mudou o status de ${rotuloStatus(d.de as Status)} para ${rotuloStatus(d.para as Status)}.`;
     case "prazo":
       return d.para ? `${quem} mudou o prazo para ${dataHora(d.para)}.` : `${quem} tirou o prazo.`;
+    case "semana":
+      if (!d.para) return `${quem} tirou a tarefa da semana ${d.de}.`;
+      return d.de ? `${quem} passou a tarefa da semana ${d.de} para a ${d.para}.` : `${quem} pôs a tarefa na semana ${d.para}.`;
     case "atribuiu":
       return `${quem} atribuiu ${nome(d.pessoa_id)} como ${d.papel === "apoio" ? "apoio" : "responsável"}.`;
     case "desatribuiu":

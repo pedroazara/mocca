@@ -386,6 +386,68 @@
   }
 }
 
+/* Tela Semana: passar tarefa de uma semana para outra (DUVIDAS 4m). Com
+   movimento reduzido, a regra abaixo zera a duração e tudo troca na hora. */
+@keyframes mocca-subir {
+  from {
+    transform: translateY(calc(100% + 32px));
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes mocca-descer {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(calc(100% + 32px));
+    opacity: 0;
+  }
+}
+@keyframes mocca-receber {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.24);
+  }
+  65% {
+    transform: scale(0.94);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes mocca-mais-um {
+  0% {
+    transform: translate(-50%, 4px);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -22px);
+    opacity: 0;
+  }
+}
+@keyframes mocca-chegou {
+  0% {
+    background-color: color-mix(in oklab, var(--caramelo) 24%, transparent);
+    transform: translateX(-12px);
+  }
+  30% {
+    transform: translateX(0);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

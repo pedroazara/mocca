@@ -55,7 +55,11 @@ export function PilhaAvatares({ pessoas, tamanho = 20 }: { pessoas: (Pessoa | un
           pessoa={p}
           tamanho={tamanho}
           titulo
-          className={cn("ring-2 ring-superficie", i > 0 && "-ml-1.5")}
+          className={cn(
+            // no tamanho 20, sobrepor pouco: com mais, a segunda inicial some
+            tamanho === 20 ? "ring-[1.5px] ring-superficie" : "ring-2 ring-superficie",
+            i > 0 && (tamanho === 20 ? "-ml-0.5" : "-ml-1.5"),
+          )}
         />
       ))}
       {lista.length > 4 && <span className="t-dado ml-1 text-[0.75rem] text-texto-2">+{lista.length - 4}</span>}

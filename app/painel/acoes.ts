@@ -9,6 +9,7 @@ import { esquecerArvore } from "@/lib/drive";
 import { avisarAtribuicao } from "@/lib/email";
 import { buscar, configuracao, semanas as listarSemanas } from "@/lib/painel/dados";
 import { fimDaSemanaIso, proximaReuniao } from "@/lib/painel/datas";
+import { SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
 import { ehJpegBase64, normalizarLinkedin } from "@/lib/painel/perfil";
 import { planejarImportacao, type TrelloJson } from "@/lib/painel/trello";
 import type {
@@ -167,6 +168,16 @@ export async function moverTarefa(id: string, status: Status, posicao: number) {
       await q("update tarefa set status = $2::status_tarefa, posicao = $3 where id = $1 returning id", [id, status, posicao]),
     );
     return id;
+  });
+}
+
+// Passa a tarefa para outra semana (tela Semana: arrastar ou "próxima semana").
+// O prazo vai junto quando caía dentro da semana antiga, no mesmo dia da semana
+// e horário; prazo fora da semana (ou sem prazo) fica como está.
+export async function moverParaSemana(id: string, numero: number) {
+  return agir(async (q) => {
+    if (!Number.isInteger(numero) || numero < 1 || numero > 12) throw new Recusa("Semana inválida.");
+    return exigir(await q<{ id: string; prazo: string | null }>(SQL_MOVER_PARA_SEMANA, [id, numero])).prazo;
   });
 }
 

@@ -81,7 +81,7 @@ Em `/painel`, só para quem está na equipe. Admin (Pedro) edita tudo, aprova o 
 
 | Página | O que tem |
 |---|---|
-| **Semana** (`/painel`) | A semana atual do programa: a entrega do Avança Café e o prazo, as tarefas por pessoa, o que pede atenção (atrasadas, sem responsável, contatos sem resposta) e a próxima reunião. Setas para ir às outras semanas |
+| **Semana** (`/painel`) | A semana atual do programa: a entrega do Avança Café e o prazo, as tarefas da semana (uma linha por tarefa, com o anel dos passos feitos; os passos abrem ali mesmo), o que pede atenção (atrasadas, sem responsável, contatos sem resposta) e a próxima reunião. Arrastar uma tarefa abre a barra das 12 semanas para passá-la de semana, com o prazo junto. Setas para ir às outras semanas |
 | **Minhas tarefas** | Só o que tem você como responsável ou apoio, separado em atrasadas, esta semana, próximas semanas, anteriores e sem semana |
 | **Quadro** | Kanban (A fazer, Fazendo, Em revisão, Feito) com arrastar e soltar, também pelo teclado (espaço para pegar, setas para mover). Filtros por semana, pessoa, etiqueta e atrasadas |
 | **Tarefa** | Abre numa janela central (ou em página inteira), em duas colunas: descrição em Markdown, uma atribuição por pessoa com a sua lista de itens, documentos do Drive, comentários e histórico à esquerda; semana, prazo, etiquetas, entrega e origem à direita |
