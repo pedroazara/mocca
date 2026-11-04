@@ -96,7 +96,7 @@ Em `/painel`, só para quem está na equipe. Admin (Pedro) edita tudo, aprova o 
 | **Aprovações** (admin) | O que o Claude pediu com token e ainda não entrou no painel, com Aprovar e Recusar. Em alterações, mostra o valor de hoje e o proposto. A barra lateral conta as pendentes |
 | **Configurações** (admin) | Reunião semanal, responsável pelos contatos, datas do programa, tokens da API, importação do Trello e tema |
 
-**Paleta de comandos:** `Ctrl/Cmd + K` ou `/` busca tarefas, pessoas, semanas, etiquetas e reuniões, e tem as ações rápidas (nova tarefa, nova reunião, alternar tema). Outros atalhos: `N` nova tarefa, `G S` / `G M` / `G Q` para Semana, Minhas tarefas e Quadro, e `?` mostra a lista.
+**Paleta de comandos:** `Ctrl/Cmd + K` ou `/` busca tarefas, pessoas, semanas, etiquetas e reuniões, e tem as ações rápidas (nova tarefa, nova reunião, alternar tema). Outros atalhos: `N` nova tarefa, `G S` / `G M` / `G Q` para Semana, Minhas tarefas e Quadro, e `?` mostra a lista. Com uma tarefa aberta: `E` edita o título, `A` atribui pessoa e `D` vai para o prazo. No Quadro, com o cartão em foco, `Enter` abre a tarefa e `Espaço` pega e solta.
 
 Mudanças feitas por outras pessoas aparecem sozinhas (Supabase Realtime em produção; a cada 15 s no modo local).
 
