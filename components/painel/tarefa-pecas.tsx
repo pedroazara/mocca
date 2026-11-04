@@ -47,7 +47,7 @@ export function ItemMarcavel({
             if (!r.ok) avisar(r.erro, { erro: true });
           });
         }}
-        className="mt-0.5 size-4 shrink-0 accent-[var(--botao-primario)]"
+        className="mt-px shrink-0"
       />
       <span className={cn(feito ? "text-texto-2 line-through" : "text-texto")}>{item.texto}</span>
     </label>

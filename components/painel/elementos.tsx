@@ -33,7 +33,8 @@ export function Avatar({
     <span
       title={titulo ? pessoa.nome : undefined}
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-titulo font-semibold text-creme",
+        // o fio por dentro destaca as cores escuras (o café do Pedro) no tema escuro
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-titulo font-semibold text-creme shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--texto)_14%,transparent)]",
         tamanhos[tamanho],
         className,
       )}
@@ -66,7 +67,7 @@ export function PilhaAvatares({
           className={cn(
             // no tamanho 20, sobrepor pouco: com mais, a segunda inicial some
             tamanho === 20 ? "ring-[1.5px] ring-superficie" : "ring-2 ring-superficie",
-            i > 0 && (tamanho === 20 ? "-ml-0.5" : "-ml-1.5"),
+            i > 0 && (tamanho === 20 ? "-ml-px" : "-ml-1.5"),
           )}
         />
       ))}

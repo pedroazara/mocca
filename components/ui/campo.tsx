@@ -1,4 +1,4 @@
-import { ChevronDown, CircleAlert } from "lucide-react";
+import { CircleAlert } from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 // ligado ao controle por aria-describedby.
 
 export const estiloControle =
-  "w-full rounded-p border border-linha bg-superficie px-3 text-base text-texto transition-colors duration-150 ease-out placeholder:text-texto-2/70 hover:border-texto-2/60 aria-[invalid=true]:border-erro";
+  "w-full rounded-m border border-linha bg-superficie px-3 text-base text-texto transition-[border-color,box-shadow] duration-150 ease-out placeholder:text-texto-2/70 hover:border-borda-campo aria-[invalid=true]:border-erro";
 
 export function Campo({
   id,
@@ -47,17 +47,9 @@ export function Campo({
   );
 }
 
+// A seta da lista vem do CSS global (app/globals.css), igual em todo o site.
 export function CaixaSelecao({ className, ...props }: React.ComponentProps<"select">) {
-  return (
-    <div className="relative">
-      <select {...props} className={cn(estiloControle, "h-10 appearance-none pr-10", className)} />
-      <ChevronDown
-        aria-hidden
-        strokeWidth={1.75}
-        className="pointer-events-none absolute top-1/2 right-3 size-[18px] -translate-y-1/2 text-texto-2"
-      />
-    </div>
-  );
+  return <select {...props} className={cn(estiloControle, "h-10", className)} />;
 }
 
 export function descricaoDoCampo(id: string, erro?: string, ajuda?: string) {

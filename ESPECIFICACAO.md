@@ -342,8 +342,10 @@ Direto, concreto, de quem conhece o campo. Frases curtas. Exemplos e cenas em ve
 | Botão secundário | Borda 1 px `--texto`, fundo transparente. Hover `--superficie-2`. |
 | Botão fantasma | Sem borda, texto `--texto-2`, hover `--superficie-2`. Usado em ações de linha. |
 | Link | `--link`, sublinhado com `text-underline-offset: 3px`. |
-| Foco | `outline: 2px solid var(--foco); outline-offset: 2px` em todo elemento interativo. Nunca remover. |
-| Campo de texto | Altura 40 px, borda `--linha`, raio `--raio-p`, fundo `--superficie`. Rótulo sempre visível acima (não usar só placeholder). Erro em `--erro` abaixo do campo com ícone. |
+| Foco | `outline: 2px solid var(--foco); outline-offset: 2px` em todo elemento interativo. Nunca remover. Nos campos de texto, data, hora e listas de opções, o foco acende a borda em `--foco` com um halo de 3 px da mesma cor a 24%. |
+| Campo de texto | Altura 40 px, borda `--linha` (`--borda-campo` com o mouse por cima), raio `--raio-m`, fundo `--superficie`. Rótulo sempre visível acima (não usar só placeholder). Erro em `--erro` abaixo do campo com ícone. |
+| Lista de opções | Como o campo de texto, sem a seta do navegador: a seta é o `ChevronDown` do site, em `--texto-2`, desenhada pelo CSS global. |
+| Caixa de seleção | Feita à mão no CSS global, igual no site e no painel: 18 px, quadrado com raio 6 px, borda 1,5 px `--borda-campo` (pelo menos 3:1 com a superfície), fundo `--superficie`. Marcada: fundo `--botao-primario` e o visto em `--botao-primario-texto`, que entra crescendo. Borda `--caramelo` com o mouse por cima; encolhe um pouco ao clicar. |
 | Chip de etiqueta | Altura 22 px, raio 999 px, fundo da cor da etiqueta a 14% de opacidade, texto na cor da etiqueta, ponto de 6 px à esquerda. |
 | Avatar | Círculo com iniciais (Sora 600) sobre a cor da pessoa (seção 9.4). Tamanhos 20, 28 e 40 px. Pilha de avatares sobrepostos em −6 px com borda 2 px `--superficie`. |
 | Toast | Canto inferior direito, `--superficie` com `--sombra-flutuante`. Ação de "Desfazer" por 6 s em exclusões e movimentações. |

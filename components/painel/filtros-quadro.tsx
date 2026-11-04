@@ -56,7 +56,7 @@ export function FiltrosQuadro() {
           type="checkbox"
           checked={params.get("atrasadas") === "1"}
           onChange={(e) => mudar("atrasadas", e.target.checked ? "1" : null)}
-          className="size-4 accent-[var(--botao-primario)]"
+         
         />
         Só atrasadas
       </label>

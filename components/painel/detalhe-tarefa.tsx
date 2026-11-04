@@ -412,7 +412,7 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
                               await rodar(() => acoes.definirEtiquetas(t.id, nova));
                             });
                           }}
-                          className="size-4 accent-[var(--botao-primario)]"
+                         
                         />
                         <ChipEtiqueta etiqueta={e} />
                       </label>
@@ -430,7 +430,7 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
           checked={t.ligada_entrega}
           disabled={!podeEditar}
           onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { ligada_entrega: e.target.checked }))}
-          className="mt-0.5 size-4 shrink-0 accent-[var(--botao-primario)]"
+          className="mt-px shrink-0"
         />
         Ligada à entrega do programa
       </label>
@@ -759,7 +759,7 @@ function ItemEditavel({ item }: { item: Item }) {
             await rodar(() => acoes.marcarItem(item.id, novo));
           });
         }}
-        className="mt-0.5 size-4 shrink-0 accent-[var(--botao-primario)]"
+        className="mt-px shrink-0"
       />
       {editando ? (
         <input
