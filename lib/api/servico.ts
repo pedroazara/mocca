@@ -5,6 +5,7 @@ import { comoServico, type Consulta } from "@/lib/banco";
 import { avisarAtribuicao } from "@/lib/email";
 import * as dados from "@/lib/painel/dados";
 import { fimDaSemanaIso, proximaReuniao, semanaAtual } from "@/lib/painel/datas";
+import { SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
 import { linkProposta, linkTarefa } from "@/lib/painel/links";
 import { montarPauta, reuniaoAnteriorA } from "@/lib/painel/pauta";
 import type { Status, StatusProposta } from "@/lib/painel/tipos";
@@ -358,8 +359,11 @@ const OPERACOES: { [O in keyof Dados]: Operacao<Dados[O]> } = {
       if (c.status !== undefined) add("status", c.status, "::status_tarefa");
       if (c.prazo !== undefined) add("prazo", c.prazo);
       if (c.ligada_entrega !== undefined) add("ligada_entrega", c.ligada_entrega);
-      if (c.semana !== undefined) add("semana_id", (await semanaPorNumero(q, c.semana))?.id ?? null);
+      // trocar só a semana leva o prazo junto, como no painel (DUVIDAS 4m)
+      const moverSemana = typeof c.semana === "number" && c.prazo === undefined;
+      if (c.semana !== undefined && !moverSemana) add("semana_id", (await semanaPorNumero(q, c.semana))?.id ?? null);
       if (sets.length) await q(`update tarefa set ${sets.join(", ")} where id = $1`, [id, ...vals]);
+      if (moverSemana) await q(SQL_MOVER_PARA_SEMANA, [id, c.semana]);
       if (c.etiquetas) {
         const etqs = await idsEtiquetas(q, c.etiquetas);
         await q("delete from tarefa_etiqueta where tarefa_id = $1", [id]);
