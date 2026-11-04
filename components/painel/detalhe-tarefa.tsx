@@ -75,9 +75,48 @@ const CLAUDE = { id: "claude", nome: "Claude", apelido: "Claude", cor: "#B9733F"
 // acima disso, a descrição (um roteiro colado, por exemplo) abre recolhida
 const LIMITE_DESCRICAO = 600;
 
+// Atalhos da tarefa aberta (seção 8.3): E edita o título, A atribui pessoa e
+// D vai para o prazo. Cada parte da tela escuta o seu pelo evento abaixo.
+const EVENTO_ATALHO_TAREFA = "mocca:atalho-tarefa";
+type AtalhoTarefa = "titulo" | "atribuir" | "prazo";
+
+function useAtalhoTarefa(qual: AtalhoTarefa, fazer: () => void) {
+  const ref = useRef(fazer);
+  ref.current = fazer;
+  useEffect(() => {
+    const ouvir = (e: Event) => {
+      if ((e as CustomEvent<AtalhoTarefa>).detail === qual) ref.current();
+    };
+    window.addEventListener(EVENTO_ATALHO_TAREFA, ouvir);
+    return () => window.removeEventListener(EVENTO_ATALHO_TAREFA, ouvir);
+  }, [qual]);
+}
+
+function AtalhosTarefa() {
+  const { podeEditar } = usePainel();
+  useEffect(() => {
+    if (!podeEditar) return;
+    const tecla = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const alvo = e.target as HTMLElement | null;
+      // digitando num campo, ou com outra janela por cima (menu, seletor), não vale
+      if (alvo?.closest("input, textarea, select, [contenteditable=true], [role=menu], [role=listbox]")) return;
+      if (document.querySelector("[data-radix-popper-content-wrapper]")) return;
+      const qual = ({ e: "titulo", a: "atribuir", d: "prazo" } as const)[e.key.toLowerCase() as "e" | "a" | "d"];
+      if (!qual) return;
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent(EVENTO_ATALHO_TAREFA, { detail: qual }));
+    };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [podeEditar]);
+  return null;
+}
+
 export function DetalheTarefa({ tarefa: t }: { tarefa: TarefaCompleta }) {
   return (
     <div className="@container flex flex-col gap-6">
+      <AtalhosTarefa />
       <Cabecalho t={t} />
       {t.arquivada && (
         <p className="rounded-m bg-superficie-2 px-3 py-2 text-[0.875rem] text-texto-2">
@@ -240,6 +279,7 @@ function Cabecalho({ t }: { t: TarefaCompleta }) {
   const [titulo, setTitulo] = useState(t.titulo);
   const [, rodar] = useRodar();
   useEffect(() => setTitulo(t.titulo), [t.titulo]);
+  useAtalhoTarefa("titulo", () => podeEditar && setEditando(true));
 
   const salvar = async () => {
     setEditando(false);
@@ -293,6 +333,17 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
   const [, iniciar] = useTransition();
   const linha = "grid grid-cols-[76px_minmax(0,1fr)] items-center gap-3 min-h-9";
   const criador = pessoa(t.criado_por);
+  const campoPrazo = useRef<HTMLInputElement>(null);
+  useAtalhoTarefa("prazo", () => {
+    const c = campoPrazo.current;
+    if (!c || c.disabled) return;
+    c.focus();
+    try {
+      c.showPicker();
+    } catch {
+      // navegador sem showPicker: o campo fica focado, e as setas mudam a data
+    }
+  });
 
   return (
     <section
@@ -303,6 +354,7 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
         <span className="pt-2 text-[0.875rem] text-texto-2">Prazo</span>
         <div className="min-w-0">
           <input
+            ref={campoPrazo}
             type="date"
             value={paraCampoData(t.prazo)}
             disabled={!podeEditar}
@@ -515,6 +567,7 @@ function AtribuirPessoa({ t }: { t: TarefaCompleta }) {
   const [, rodar] = useRodar();
   const livres = ativas.filter((p) => !t.atribuicoes.some((a) => a.pessoa_id === p.id));
   const temResponsavel = t.atribuicoes.some((a) => a.papel === "responsavel");
+  useAtalhoTarefa("atribuir", () => livres.length > 0 && setAberto(true));
   return (
     <Popover.Root open={aberto} onOpenChange={setAberto}>
       <Popover.Trigger asChild>
@@ -920,7 +973,7 @@ function ComentariosEHistorico({ t }: { t: TarefaCompleta }) {
                         <button
                           type="button"
                           onClick={() => rodar(() => acoes.apagarComentario(c.id))}
-                          className="ml-2 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100"
+                          className="ml-2 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                         >
                           apagar
                         </button>

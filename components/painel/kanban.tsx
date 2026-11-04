@@ -239,6 +239,17 @@ function Coluna({
             <CartaoArrastavel key={t.id} tarefa={t} desabilitado={!podeEditar} arrastou={arrastou} />
           ))}
         </SortableContext>
+        {tarefas.length === 0 && (
+          // coluna vazia: diz o que fazer em vez de só mostrar um vão
+          <p
+            className={cn(
+              "rounded-m border border-dashed px-3 py-6 text-center text-[0.8125rem] text-texto-2 transition-colors duration-150",
+              isOver ? "border-caramelo bg-caramelo/10 text-texto" : "border-linha",
+            )}
+          >
+            {podeEditar ? "Arraste uma tarefa para cá" : "Nenhuma tarefa"}
+          </p>
+        )}
         {ocultas > 0 && (
           <Link href={`${caminho}?${verTodas.toString()}`} className="link px-1 text-[0.875rem]">
             Ver todas ({ocultas} a mais)

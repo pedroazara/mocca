@@ -259,7 +259,7 @@ export function DetalhesSemana({
                     type="button"
                     aria-label={`Remover ${d.titulo}`}
                     onClick={() => iniciar(async () => void (await removerDocumento(d.id)))}
-                    className="rounded-p p-1 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100"
+                    className="rounded-p p-1 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                   >
                     <Trash2 aria-hidden strokeWidth={1.75} className="size-3.5" />
                   </button>

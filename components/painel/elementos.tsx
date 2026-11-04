@@ -44,12 +44,20 @@ export function Avatar({
   );
 }
 
-export function PilhaAvatares({ pessoas, tamanho = 20 }: { pessoas: (Pessoa | undefined)[]; tamanho?: 20 | 28 }) {
+export function PilhaAvatares({
+  pessoas,
+  tamanho = 20,
+  maximo = 4,
+}: {
+  pessoas: (Pessoa | undefined)[];
+  tamanho?: 20 | 28;
+  maximo?: number;
+}) {
   const lista = pessoas.filter(Boolean) as Pessoa[];
   if (!lista.length) return null;
   return (
-    <span className="flex items-center" aria-label={lista.map((p) => p.nome).join(", ")}>
-      {lista.slice(0, 4).map((p, i) => (
+    <span className="flex shrink-0 items-center" aria-label={lista.map((p) => p.nome).join(", ")}>
+      {lista.slice(0, maximo).map((p, i) => (
         <Avatar
           key={p.id}
           pessoa={p}
@@ -62,7 +70,7 @@ export function PilhaAvatares({ pessoas, tamanho = 20 }: { pessoas: (Pessoa | un
           )}
         />
       ))}
-      {lista.length > 4 && <span className="t-dado ml-1 text-[0.75rem] text-texto-2">+{lista.length - 4}</span>}
+      {lista.length > maximo && <span className="t-dado ml-1 text-[0.75rem] text-texto-2">+{lista.length - maximo}</span>}
     </span>
   );
 }

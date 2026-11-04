@@ -9,6 +9,9 @@ import { useRouter } from "next/navigation";
 // inteira. O topo fica parado, com as ações da tarefa sempre à vista, e a janela
 // não pula quando o conteúdo muda de altura. Fechar (Esc, X ou clique fora) volta
 // para a tela anterior.
+const CAMPO_DE_TEXTO =
+  "input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]), textarea, select, [contenteditable=true]";
+
 export function JanelaTarefa({
   titulo,
   rotulo,
@@ -29,6 +32,12 @@ export function JanelaTarefa({
         <Dialog.Overlay className="fixed inset-0 z-40 bg-sobreposicao" />
         <Dialog.Content
           aria-describedby={undefined}
+          // Esc num campo de texto (título, item, comentário) cancela só o campo;
+          // o segundo Esc fecha a janela, sem perder o que estava sendo escrito
+          onEscapeKeyDown={(e) => {
+            const ativo = document.activeElement as HTMLElement | null;
+            if (ativo?.closest(CAMPO_DE_TEXTO)) e.preventDefault();
+          }}
           className="fixed inset-0 z-40 flex flex-col bg-fundo shadow-flutuante data-[state=open]:animate-[janela-entra_200ms_ease-out] sm:inset-x-6 sm:top-[4dvh] sm:bottom-auto sm:mx-auto sm:max-h-[92dvh] sm:max-w-[1040px] sm:overflow-hidden sm:rounded-g sm:border sm:border-linha"
         >
           <Dialog.Title className="sr-only">{titulo}</Dialog.Title>

@@ -137,7 +137,8 @@ export function CartaoTarefa({
           </span>
         )}
         <span className="ml-auto">
-          <PilhaAvatares pessoas={t.atribuicoes.map((a) => pessoa(a.pessoa_id))} />
+          {/* no cartão do Quadro cabem 3; o resto vira "+N" */}
+          <PilhaAvatares pessoas={t.atribuicoes.map((a) => pessoa(a.pessoa_id))} maximo={3} />
         </span>
       </div>
     </article>
