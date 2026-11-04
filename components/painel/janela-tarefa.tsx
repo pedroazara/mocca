@@ -4,6 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Maximize2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useRef } from "react";
 
 // Janela central da tarefa, com URL própria (DUVIDAS 4h). No celular ocupa a tela
 // inteira. O topo fica parado, com as ações da tarefa sempre à vista, e a janela
@@ -26,19 +27,25 @@ export function JanelaTarefa({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const conteudo = useRef<HTMLDivElement>(null);
   return (
     <Dialog.Root open onOpenChange={(aberto) => !aberto && router.back()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-sobreposicao" />
         <Dialog.Content
+          ref={conteudo}
           aria-describedby={undefined}
-          // Esc num campo de texto (título, item, comentário) cancela só o campo;
-          // o segundo Esc fecha a janela, sem perder o que estava sendo escrito
+          // O primeiro Esc num campo não fecha a janela, para não perder o que
+          // estava sendo escrito: o título e os itens cancelam a própria edição
+          // (data-esc-local); nos outros campos, o Esc só sai do campo. O Esc
+          // seguinte fecha a janela.
           onEscapeKeyDown={(e) => {
-            const ativo = document.activeElement as HTMLElement | null;
-            if (ativo?.closest(CAMPO_DE_TEXTO)) e.preventDefault();
+            const campo = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(CAMPO_DE_TEXTO);
+            if (!campo) return;
+            e.preventDefault();
+            if (!campo.closest("[data-esc-local]")) conteudo.current?.focus();
           }}
-          className="fixed inset-0 z-40 flex flex-col bg-fundo shadow-flutuante data-[state=open]:animate-[janela-entra_200ms_ease-out] sm:inset-x-6 sm:top-[4dvh] sm:bottom-auto sm:mx-auto sm:max-h-[92dvh] sm:max-w-[1040px] sm:overflow-hidden sm:rounded-g sm:border sm:border-linha"
+          className="fixed inset-0 z-40 flex flex-col bg-fundo outline-none shadow-flutuante data-[state=open]:animate-[janela-entra_200ms_ease-out] sm:inset-x-6 sm:top-[4dvh] sm:bottom-auto sm:mx-auto sm:max-h-[92dvh] sm:max-w-[1040px] sm:overflow-hidden sm:rounded-g sm:border sm:border-linha"
         >
           <Dialog.Title className="sr-only">{titulo}</Dialog.Title>
           <div className="flex h-12 shrink-0 items-center gap-1 border-b border-linha pr-3 pl-5 sm:pl-8">

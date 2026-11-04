@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useOptimistic, useRef, useState, useTransition } from "react";
+import { createContext, useContext, useEffect, useId, useOptimistic, useRef, useState, useTransition } from "react";
 import * as acoes from "@/app/painel/acoes";
 import { Botao } from "@/components/ui/botao";
 import { estiloControle } from "@/components/ui/campo";
@@ -76,23 +76,27 @@ const CLAUDE = { id: "claude", nome: "Claude", apelido: "Claude", cor: "#B9733F"
 const LIMITE_DESCRICAO = 600;
 
 // Atalhos da tarefa aberta (seção 8.3): E edita o título, A atribui pessoa e
-// D vai para o prazo. Cada parte da tela escuta o seu pelo evento abaixo.
+// D vai para o prazo. Cada tarefa na tela tem o seu canal (a página inteira
+// pode estar embaixo da janela de outra tarefa), e cada parte dela escuta o seu.
 const EVENTO_ATALHO_TAREFA = "mocca:atalho-tarefa";
 type AtalhoTarefa = "titulo" | "atribuir" | "prazo";
+const CanalAtalhos = createContext<EventTarget | null>(null);
 
 function useAtalhoTarefa(qual: AtalhoTarefa, fazer: () => void) {
+  const canal = useContext(CanalAtalhos);
   const ref = useRef(fazer);
   ref.current = fazer;
   useEffect(() => {
+    if (!canal) return;
     const ouvir = (e: Event) => {
       if ((e as CustomEvent<AtalhoTarefa>).detail === qual) ref.current();
     };
-    window.addEventListener(EVENTO_ATALHO_TAREFA, ouvir);
-    return () => window.removeEventListener(EVENTO_ATALHO_TAREFA, ouvir);
-  }, [qual]);
+    canal.addEventListener(EVENTO_ATALHO_TAREFA, ouvir);
+    return () => canal.removeEventListener(EVENTO_ATALHO_TAREFA, ouvir);
+  }, [canal, qual]);
 }
 
-function AtalhosTarefa() {
+function AtalhosTarefa({ canal, raiz }: { canal: EventTarget; raiz: React.RefObject<HTMLDivElement | null> }) {
   const { podeEditar } = usePainel();
   useEffect(() => {
     if (!podeEditar) return;
@@ -102,37 +106,45 @@ function AtalhosTarefa() {
       // digitando num campo, ou com outra janela por cima (menu, seletor), não vale
       if (alvo?.closest("input, textarea, select, [contenteditable=true], [role=menu], [role=listbox]")) return;
       if (document.querySelector("[data-radix-popper-content-wrapper]")) return;
+      // só a tarefa de cima: a janela aberta por último precisa conter esta
+      const janelas = document.querySelectorAll("[role=dialog][data-state=open], [role=alertdialog][data-state=open]");
+      const topo = janelas[janelas.length - 1];
+      if (!raiz.current || (topo && !topo.contains(raiz.current))) return;
       const qual = ({ e: "titulo", a: "atribuir", d: "prazo" } as const)[e.key.toLowerCase() as "e" | "a" | "d"];
       if (!qual) return;
       e.preventDefault();
-      window.dispatchEvent(new CustomEvent(EVENTO_ATALHO_TAREFA, { detail: qual }));
+      canal.dispatchEvent(new CustomEvent(EVENTO_ATALHO_TAREFA, { detail: qual }));
     };
     window.addEventListener("keydown", tecla);
     return () => window.removeEventListener("keydown", tecla);
-  }, [podeEditar]);
+  }, [podeEditar, canal, raiz]);
   return null;
 }
 
 export function DetalheTarefa({ tarefa: t }: { tarefa: TarefaCompleta }) {
+  const [canal] = useState(() => new EventTarget());
+  const raiz = useRef<HTMLDivElement>(null);
   return (
-    <div className="@container flex flex-col gap-6">
-      <AtalhosTarefa />
-      <Cabecalho t={t} />
-      {t.arquivada && (
-        <p className="rounded-m bg-superficie-2 px-3 py-2 text-[0.875rem] text-texto-2">
-          Esta tarefa está arquivada e não aparece no Quadro nem nas listas.
-        </p>
-      )}
-      <div className="grid grid-cols-1 gap-x-8 gap-y-7 @3xl:grid-cols-[minmax(0,1fr)_280px]">
-        <Propriedades t={t} />
-        <div className="flex min-w-0 flex-col gap-7 @3xl:col-start-1 @3xl:row-start-1">
-          <Descricao t={t} />
-          <Pessoas t={t} />
-          <Documentos t={t} />
-          <ComentariosEHistorico t={t} />
+    <CanalAtalhos.Provider value={canal}>
+      <div ref={raiz} className="@container flex flex-col gap-6">
+        <AtalhosTarefa canal={canal} raiz={raiz} />
+        <Cabecalho t={t} />
+        {t.arquivada && (
+          <p className="rounded-m bg-superficie-2 px-3 py-2 text-[0.875rem] text-texto-2">
+            Esta tarefa está arquivada e não aparece no Quadro nem nas listas.
+          </p>
+        )}
+        <div className="grid grid-cols-1 gap-x-8 gap-y-7 @3xl:grid-cols-[minmax(0,1fr)_280px]">
+          <Propriedades t={t} />
+          <div className="flex min-w-0 flex-col gap-7 @3xl:col-start-1 @3xl:row-start-1">
+            <Descricao t={t} />
+            <Pessoas t={t} />
+            <Documentos t={t} />
+            <ComentariosEHistorico t={t} />
+          </div>
         </div>
       </div>
-    </div>
+    </CanalAtalhos.Provider>
   );
 }
 
@@ -295,6 +307,7 @@ function Cabecalho({ t }: { t: TarefaCompleta }) {
           value={titulo}
           maxLength={200}
           onChange={(e) => setTitulo(e.target.value)}
+          data-esc-local
           onBlur={salvar}
           onKeyDown={(e) => {
             if (e.key === "Enter") salvar();
@@ -690,6 +703,7 @@ function BlocoPessoa({ a }: { a: Atribuicao }) {
               autoFocus
               value={novo}
               onChange={(e) => setNovo(e.target.value)}
+              data-esc-local
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
                   e.stopPropagation();
@@ -772,6 +786,7 @@ function ItemEditavel({ item }: { item: Item }) {
           value={texto}
           maxLength={500}
           onChange={(e) => setTexto(e.target.value)}
+          data-esc-local
           onBlur={salvar}
           onKeyDown={(e) => {
             if (e.key === "Enter") salvar();

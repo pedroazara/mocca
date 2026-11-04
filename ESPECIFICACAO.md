@@ -342,7 +342,7 @@ Direto, concreto, de quem conhece o campo. Frases curtas. Exemplos e cenas em ve
 | Botão secundário | Borda 1 px `--texto`, fundo transparente. Hover `--superficie-2`. |
 | Botão fantasma | Sem borda, texto `--texto-2`, hover `--superficie-2`. Usado em ações de linha. |
 | Link | `--link`, sublinhado com `text-underline-offset: 3px`. |
-| Foco | `outline: 2px solid var(--foco); outline-offset: 2px` em todo elemento interativo. Nunca remover. Nos campos de texto, data, hora e listas de opções, o foco acende a borda em `--foco` com um halo de 3 px da mesma cor a 24%. |
+| Foco | `outline: 2px solid var(--foco); outline-offset: 2px` em todo elemento interativo. Nunca remover. Nos campos de texto, data, hora e listas de opções, o contorno de 2 px vem por cima da borda (`outline-offset: -1px`), acendendo-a em `--foco`, com um halo de 4 px da mesma cor a 20%. |
 | Campo de texto | Altura 40 px, borda `--linha` (`--borda-campo` com o mouse por cima), raio `--raio-m`, fundo `--superficie`. Rótulo sempre visível acima (não usar só placeholder). Erro em `--erro` abaixo do campo com ícone. |
 | Lista de opções | Como o campo de texto, sem a seta do navegador: a seta é o `ChevronDown` do site, em `--texto-2`, desenhada pelo CSS global. |
 | Caixa de seleção | Feita à mão no CSS global, igual no site e no painel: 18 px, quadrado com raio 6 px, borda 1,5 px `--borda-campo` (pelo menos 3:1 com a superfície), fundo `--superficie`. Marcada: fundo `--botao-primario` e o visto em `--botao-primario-texto`, que entra crescendo. Borda `--caramelo` com o mouse por cima; encolhe um pouco ao clicar. |

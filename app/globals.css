@@ -327,6 +327,20 @@
     cursor: default;
     opacity: 0.5;
   }
+  /* alto contraste (Windows): o navegador troca as cores de fundo pela cor da
+     tela, e o visto, pintado com background-color, sumiria; as cores do
+     sistema ficam como estão, então a caixa marcada se desenha como a nativa */
+  @media (forced-colors: active) {
+    input[type="checkbox"]:checked,
+    input[type="radio"]:checked {
+      border-color: Highlight;
+      background-color: Highlight;
+    }
+    input[type="checkbox"]::before,
+    input[type="radio"]::before {
+      background-color: HighlightText;
+    }
+  }
 
   /* lista de opções: sem a seta do navegador, com a do site */
   select:not([multiple]) {
@@ -343,13 +357,16 @@
     cursor: default;
   }
 
-  /* campos de texto, data e hora: o foco acende a borda em caramelo, com um halo */
+  /* campos de texto, data e hora: o foco acende a borda em caramelo, com um
+     halo suave. É um contorno de 2px por cima da borda, e não a cor da borda,
+     porque as classes de borda de cada campo (border-linha, hover:…) ganham
+     desta camada; e o contorno continua aparecendo no alto contraste. */
   input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"], [type="submit"]):focus-visible,
   textarea:focus-visible,
   select:focus-visible {
-    outline: none;
-    border-color: var(--foco);
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--foco) 24%, transparent);
+    outline: 2px solid var(--foco);
+    outline-offset: -1px;
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--foco) 20%, transparent);
   }
   ::-webkit-calendar-picker-indicator {
     cursor: pointer;
