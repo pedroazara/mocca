@@ -387,11 +387,25 @@ describe("passar tarefa de semana", () => {
         expect(iso((await mover(sexta.id, 4))!.prazo)).toBe("2026-11-13T21:00:00.000Z"); // sexta 13/11, 18:00
         const fim = (await criar("2026-11-11T23:59:00-03:00"))!;
         expect(iso((await mover(fim.id, 4))!.prazo)).toBe("2026-11-19T02:59:00.000Z"); // fim da semana 4: 18/11
-        // semana 4 curta, de 10/11 a 13/11: o prazo não passa do fim dela
+        // terça e quarta existem na semana 4: não viram a quinta 12/11
+        const terca = (await criar("2026-11-03T18:00:00-03:00"))!;
+        expect(iso((await mover(terca.id, 4))!.prazo)).toBe("2026-11-17T21:00:00.000Z"); // terça 17/11, 18:00
+        const quarta = (await criar("2026-11-04T18:00:00-03:00"))!;
+        expect(iso((await mover(quarta.id, 4))!.prazo)).toBe("2026-11-18T21:00:00.000Z"); // quarta 18/11, 18:00
+        // semanas de 7 dias com dois dias de folga entre elas (03/11 a 09/11 e 12/11 a 18/11)
         await db.query("update semana set fim = '2026-11-09' where numero = 3");
+        const outraTerca = (await criar("2026-11-03T18:00:00-03:00"))!;
+        expect(iso((await mover(outraTerca.id, 4))!.prazo)).toBe("2026-11-17T21:00:00.000Z"); // terça 17/11
+        const quinta = (await criar("2026-11-05T18:00:00-03:00"))!;
+        expect(iso((await mover(quinta.id, 4))!.prazo)).toBe("2026-11-12T21:00:00.000Z"); // quinta 12/11
+        expect(iso((await mover(quinta.id, 3))!.prazo)).toBe("2026-11-05T21:00:00.000Z"); // e de volta, quinta 05/11
+        // semana 4 curta, de 10/11 a 13/11 (terça a sexta): o prazo não passa do fim dela
         await db.query("update semana set inicio = '2026-11-10', fim = '2026-11-13' where numero = 4");
         const fimDa3 = (await criar("2026-11-09T23:59:00-03:00"))!;
         expect(iso((await mover(fimDa3.id, 4))!.prazo)).toBe("2026-11-14T02:59:00.000Z"); // 13/11, 23:59
+        const tercaCurta = (await criar("2026-11-03T09:00:00-03:00"))!;
+        expect(iso((await mover(tercaCurta.id, 4))!.prazo)).toBe("2026-11-10T12:00:00.000Z"); // terça 10/11, 09:00
+        // sábado não existe nela: fica na ponta mais perto, a sexta 13/11
         const sabado = (await criar("2026-11-07T12:00:00-03:00"))!;
         expect(iso((await mover(sabado.id, 4))!.prazo)).toBe("2026-11-13T15:00:00.000Z"); // 13/11, 12:00
       } finally {

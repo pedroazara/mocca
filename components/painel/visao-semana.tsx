@@ -233,7 +233,15 @@ export function VisaoSemana({
               <p className="mt-3 text-texto-2">Nada atrasado, tudo com responsável e nenhum contato esperando.</p>
             ) : (
               <>
-                <ul className="mt-2 flex flex-col divide-y divide-linha">
+                <ul
+                  className="mt-2 flex flex-col divide-y divide-linha"
+                  onClickCapture={(e) => {
+                    // o segundo clique de um duplo clique no "Trazer" cairia na de baixo, que sobe
+                    if (e.detail < 2) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
                   {(verTudo ? atencao : atencao.slice(0, LIMITE_ATENCAO)).map(({ id, tarefa, href, manterRolagem, titulo, Icone, cor, detalhe }) => (
                     <li
                       key={id}
@@ -259,9 +267,7 @@ export function VisaoSemana({
                       {podeEditar && tarefa && tarefa.semana !== semana.numero && estaAtrasada(tarefa) && (
                         <button
                           type="button"
-                          onClick={(e) => {
-                            if (e.detail < 2) void trazerParaEsta(tarefa);
-                          }}
+                          onClick={() => void trazerParaEsta(tarefa)}
                           aria-label={`Trazer “${tarefa.titulo}” para a semana ${semana.numero}`}
                           title={`Trazer para a semana ${semana.numero}`}
                           className="relative -mr-1 self-center rounded-p p-1.5 text-texto-2 transition-[opacity,color,background-color] duration-150 after:absolute after:-inset-1.5 after:content-[''] hover:bg-superficie-2 hover:text-texto focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:opacity-0"

@@ -7,6 +7,7 @@ import {
   MouseSensor,
   pointerWithin,
   TouchSensor,
+  useDndContext,
   useDraggable,
   useDroppable,
   useSensor,
@@ -83,8 +84,8 @@ const medicao = { droppable: { strategy: MeasuringStrategy.Always, frequency: 10
 
 // Um clique, uma tarefa: enquanto a linha sai, a de baixo sobe para baixo do
 // ponteiro (com movimento reduzido, na hora), e o segundo clique de um duplo
-// clique passaria a vizinha junto. Os botões também ignoram o clique que já
-// é o segundo (e.detail > 1).
+// clique cairia na vizinha. Por isso as listas engolem o clique que já é o
+// segundo (e.detail > 1), e passar ou trazer espera 0,7 s entre uma e outra.
 export function useUmDeCadaVez(ms = 700) {
   const ate = useRef(0);
   return () => {
@@ -264,6 +265,12 @@ export function TarefasDaSemana({
     window.setTimeout(() => (arrastou.current = false), 50);
   };
 
+  function cancelar() {
+    soltou();
+    setAtiva(null);
+    fecharBarra();
+  }
+
   function inicio(e: DragStartEvent) {
     arrastando.current = true;
     arrastou.current = true;
@@ -307,7 +314,8 @@ export function TarefasDaSemana({
     <ul
       className="flex flex-col divide-y divide-linha overflow-hidden rounded-g border border-linha bg-superficie"
       onClickCapture={(e) => {
-        if (!arrastou.current) return;
+        // o clique do soltar, depois de um arrasto, e o segundo de um duplo clique
+        if (!arrastou.current && e.detail < 2) return;
         e.preventDefault();
         e.stopPropagation();
       }}
@@ -371,11 +379,7 @@ export function TarefasDaSemana({
           measuring={medicao}
           onDragStart={inicio}
           onDragEnd={fim}
-          onDragCancel={() => {
-            soltou();
-            setAtiva(null);
-            fecharBarra();
-          }}
+          onDragCancel={cancelar}
           accessibility={{
             announcements: anuncios,
             screenReaderInstructions: {
@@ -384,6 +388,7 @@ export function TarefasDaSemana({
           }}
         >
           {corpo}
+          <FimSemAviso ativa={ativa !== null} encerrar={cancelar} />
           {noNavegador &&
             createPortal(
               <div className="text-[0.9375rem] leading-[1.5]">
@@ -525,9 +530,7 @@ function LinhaTarefaSemana({
             {proxima && (
               <button
                 type="button"
-                onClick={(e) => {
-                  if (e.detail < 2) proxima();
-                }}
+                onClick={proxima}
                 aria-label={`Passar “${t.titulo}” para a semana ${numeroProxima}`}
                 title={`Passar para a semana ${numeroProxima}`}
                 className="relative -my-1 rounded-p p-1 text-texto-2 transition-[opacity,color,background-color] duration-150 after:absolute after:-inset-2 after:content-[''] hover:bg-superficie-2 hover:text-texto focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:opacity-0"
@@ -564,6 +567,20 @@ function LinhaTarefaSemana({
       </div>
     </li>
   );
+}
+
+// O dnd-kit não chama onDragEnd nem onDragCancel quando o botão é solto antes
+// de o React desenhar o começo do arrasto (um puxão rápido na linha): a linha
+// ficaria apagada, a barra aberta e os cliques da lista engolidos. Se o arrasto
+// acabou sem aviso, o fim é feito aqui.
+function FimSemAviso({ ativa, encerrar }: { ativa: boolean; encerrar: () => void }) {
+  const { active } = useDndContext();
+  const fim = useRef(encerrar);
+  fim.current = encerrar;
+  useEffect(() => {
+    if (ativa && !active) fim.current();
+  }, [ativa, active]);
+  return null;
 }
 
 // O cartão que acompanha o ponteiro enquanto a tarefa é arrastada.
