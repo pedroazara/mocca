@@ -592,7 +592,7 @@ Clicar numa tarefa abre uma **janela central** de até 1040 px (tela cheia no ce
 2. **Cabeçalho**: título editável inline (Sora 600, 1.375rem) e o status em quatro botões, na ordem das colunas do Quadro.
 3. **Detalhes** (grade de rótulo à esquerda e valor à direita, numa coluna que acompanha a rolagem):
    - Prazo (seletor de data; padrão = fim da semana), com a contagem embaixo ("atrasada há 2 dias")
-   - Semana (seletor com as 12 semanas)
+   - Semana (seletor com as 12 semanas); trocar de semana leva o prazo junto quando ele caía na semana antiga
    - Etiquetas (multisseleção)
    - Ligada à entrega do programa (caixa)
    - Criada por / origem (`manual`, `reunião`, `Claude`, `contato do site`), só leitura, numa linha discreta no fim

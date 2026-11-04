@@ -373,7 +373,12 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
           aria-label="Semana"
           value={t.semana ?? ""}
           disabled={!podeEditar}
-          onChange={(e) => rodar(() => acoes.atualizarTarefa(t.id, { semana: e.target.value ? Number(e.target.value) : null }))}
+          // trocar de semana leva o prazo junto, como na tela Semana (DUVIDAS 4m)
+          onChange={(e) =>
+            rodar(() =>
+              e.target.value ? acoes.moverParaSemana(t.id, Number(e.target.value)) : acoes.atualizarTarefa(t.id, { semana: null }),
+            )
+          }
           className={cn(estiloControle, "h-9 w-full")}
         >
           <option value="">Sem semana</option>
