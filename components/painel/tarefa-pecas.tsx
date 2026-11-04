@@ -66,11 +66,14 @@ export function CartaoTarefa({
   comItens = false,
   className,
   arrastando = false,
+  foraDoTab = false,
 }: {
   tarefa: TarefaResumo;
   comItens?: boolean;
   className?: string;
   arrastando?: boolean;
+  // no Quadro, quem recebe o foco é o cartão arrastável em volta
+  foraDoTab?: boolean;
 }) {
   const { pessoa, etiqueta } = usePainel();
   const { feitos, total } = progresso(t);
@@ -103,6 +106,8 @@ export function CartaoTarefa({
       <Link
         href={`/painel/tarefas/${t.id}`}
         scroll={false}
+        tabIndex={foraDoTab ? -1 : undefined}
+        aria-hidden={foraDoTab || undefined}
         className={cn(
           "line-clamp-3 pr-5 font-medium text-texto after:absolute after:inset-0 after:content-[''] hover:underline",
           t.status === "feito" && "text-texto-2",

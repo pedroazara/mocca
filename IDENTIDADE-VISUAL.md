@@ -85,8 +85,8 @@ Caramelo `#B9733F` sobre creme dá 3,3:1: só para ícones, gráficos e texto ac
 
 | Estado | Cor (claro / escuro) | Fundo (claro / escuro) |
 |---|---|---|
-| ok | `#3F7A4A` / `#8CC795` | `#E1EEDF` / `#20311F` |
-| alerta | `#8F6210` / `#E3B862` | `#F5E8C8` / `#362B14` |
+| ok | `#3A7245` / `#8CC795` | `#E1EEDF` / `#20311F` |
+| alerta | `#8A5E0F` / `#E3B862` | `#F5E8C8` / `#362B14` |
 | erro | `#A2412F` / `#E58B78` | `#F5DED7` / `#3A211B` |
 | info | `#2F5F86` / `#8DB8DD` | `#DDE8F1` / `#1C2A36` |
 
@@ -96,8 +96,8 @@ Caramelo `#B9733F` sobre creme dá 3,3:1: só para ícones, gráficos e texto ac
 |---|---|---|
 | Entregas | `#A2412F` | `#E58B78` |
 | Validação do Produto | `#2F5F86` | `#8DB8DD` |
-| Técnico | `#3F7A4A` | `#8CC795` |
-| Negócio | `#8F6210` | `#E3B862` |
+| Técnico | `#3A7245` | `#8CC795` |
+| Negócio | `#8A5E0F` | `#E3B862` |
 | Marketing | `#7A3F7A` | `#D39BD3` |
 
 ## Escala de produção (mapas)

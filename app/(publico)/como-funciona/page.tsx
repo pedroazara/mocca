@@ -166,7 +166,7 @@ function Termo({ titulo, texto, children }: { titulo: string; texto: string; chi
   return (
     <div>
       <p className="font-titulo text-[1.375rem] leading-tight font-bold md:text-[1.5rem]">{titulo}</p>
-      <p className="mt-1.5 text-creme/85">{texto}</p>
+      <p className="mt-1.5 text-creme">{texto}</p>
       {children}
     </div>
   );
@@ -189,7 +189,7 @@ function ContaDasSacas() {
         conjunto="cartao"
         className="absolute -top-20 -left-20 -z-10 size-96 text-creme/15 [mask-image:radial-gradient(circle_at_40%_40%,black,transparent_72%)]"
       />
-      <p className="t-rotulo text-creme/75">A conta</p>
+      <p className="t-rotulo text-creme">A conta</p>
       <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_auto_1.5fr_auto_1fr] lg:gap-8">
         <Termo titulo="Volume medido" texto="O café que passou pelo tubo de saída." />
         <Operador sinal="×" nome="vezes" />
@@ -209,7 +209,7 @@ function ContaDasSacas() {
         <Operador sinal="=" nome="igual a" />
         <Termo titulo="Estimativa de sacas" texto="Em sacas de 60 kg de café beneficiado." />
       </div>
-      <figcaption className="t-pequeno mt-7 border-t border-creme/25 pt-4 text-creme/85">
+      <figcaption className="t-pequeno mt-7 border-t border-creme/25 pt-4 text-creme">
         É esse fator que a equipe estuda estimar pela reconstrução 3D do café.
       </figcaption>
     </figure>
@@ -278,7 +278,7 @@ export default function ComoFunciona() {
             {passos.map(({ id, titulo, textos, Vinheta }, i) => (
               <li key={id} id={id} className="grid scroll-mt-24 items-center gap-8 lg:grid-cols-2 lg:gap-x-16 lg:gap-y-12">
                 <div className={cn(i % 2 === 1 && "lg:order-2")}>
-                  <p className="t-dado text-[0.875rem] font-medium text-caramelo">{numero(i)}</p>
+                  <p className="t-dado text-[0.875rem] font-medium text-link">{numero(i)}</p>
                   <h3 className="t-h2 mt-3 text-texto md:text-[2rem]">{titulo}</h3>
                   {textos.map((texto) => (
                     <p key={texto} className="medida mt-4 text-texto-2">

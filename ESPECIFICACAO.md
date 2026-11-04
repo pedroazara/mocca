@@ -227,16 +227,16 @@ Cores da marca (da logo, não alterar):
   --botao-primario-hover: #5E3A27;
 
   /* estados (semânticas, separadas da marca) */
-  --ok: #3F7A4A;      --ok-fundo: #E1EEDF;
-  --alerta: #8F6210;  --alerta-fundo: #F5E8C8;
+  --ok: #3A7245;      --ok-fundo: #E1EEDF;
+  --alerta: #8A5E0F;  --alerta-fundo: #F5E8C8;
   --erro: #A2412F;    --erro-fundo: #F5DED7;
   --info: #2F5F86;    --info-fundo: #DDE8F1;
 
   /* etiquetas das tarefas (seção 9.3) */
   --et-entregas: #A2412F;
   --et-validacao: #2F5F86;
-  --et-tecnico: #3F7A4A;
-  --et-negocio: #8F6210;
+  --et-tecnico: #3A7245;
+  --et-negocio: #8A5E0F;
   --et-marketing: #7A3F7A;
 
   /* tipografia */

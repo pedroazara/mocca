@@ -87,6 +87,7 @@ export function PaginaConfiguracoes({ config, tokens, siteUrl }: { config: Confi
 
       <Bloco titulo="Contatos do site" descricao="Quem recebe a tarefa “Responder contato” quando alguém escreve pelo site.">
         <select
+          aria-label="Quem responde os contatos do site"
           className={cn(campo, "w-auto")}
           value={c.responsavel_contato_id ?? ""}
           onChange={(e) => setC({ ...c, responsavel_contato_id: e.target.value || null })}

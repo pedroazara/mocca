@@ -69,7 +69,11 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
   const sensores = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    // Espaço pega e solta; o Enter fica para abrir a tarefa (CartaoArrastavel)
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space"] },
+    }),
   );
 
   const colunaDe = (id: UniqueIdentifier): Status | undefined => {
@@ -167,7 +171,7 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
         announcements: anuncios,
         screenReaderInstructions: {
           draggable:
-            "Para mover uma tarefa, aperte espaço para pegar, use as setas para mudar de lugar ou de coluna, e espaço de novo para soltar. Esc cancela.",
+            "Enter abre a tarefa. Para mover, aperte espaço para pegar, use as setas para mudar de lugar ou de coluna, e espaço de novo para soltar. Esc cancela.",
         },
       }}
     >
@@ -265,14 +269,25 @@ function Coluna({
   );
 }
 
+// O cartão inteiro é o botão do teclado: Enter abre a tarefa, espaço pega. O
+// link do título fica fora do Tab, para não haver um controle dentro do outro.
 function CartaoArrastavel({ tarefa, desabilitado, arrastou }: { tarefa: TarefaResumo; desabilitado: boolean; arrastou: React.RefObject<boolean> }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tarefa.id, disabled: desabilitado });
+  const router = useRouter();
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
       {...listeners}
+      onKeyDown={(e) => {
+        listeners?.onKeyDown?.(e);
+        if (e.key === "Enter" && !isDragging && e.target === e.currentTarget) {
+          e.preventDefault();
+          router.push(`/painel/tarefas/${tarefa.id}`, { scroll: false });
+        }
+      }}
+      aria-label={tarefa.titulo}
       aria-roledescription="tarefa arrastável"
       onClickCapture={(e) => {
         if (arrastou.current) {
@@ -282,7 +297,7 @@ function CartaoArrastavel({ tarefa, desabilitado, arrastou }: { tarefa: TarefaRe
       }}
       className={cn("touch-manipulation rounded-m outline-offset-2 [-webkit-touch-callout:none]", isDragging && "opacity-40")}
     >
-      <CartaoTarefa tarefa={tarefa} className="cursor-grab active:cursor-grabbing" />
+      <CartaoTarefa tarefa={tarefa} foraDoTab className="cursor-grab active:cursor-grabbing" />
     </div>
   );
 }
