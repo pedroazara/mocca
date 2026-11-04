@@ -20,12 +20,14 @@ import {
 // app). Sem GMAIL_APP_PASSWORD nada sai, só fica no log. Falha de envio nunca
 // desfaz o que foi gravado nem vira erro para quem está usando o site.
 
+// Devolve quantos e-mails o Gmail aceitou de fato: sem a senha, para endereço
+// de exemplo ou com falha no envio, não conta.
 async function enviar(mensagens: Mensagem[]) {
   const senha = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "");
   const validas = mensagens.filter((m) => !enderecoDeExemplo(m.para));
   if (!senha) {
     for (const m of validas) console.info(`[email] sem GMAIL_APP_PASSWORD, não enviado: "${m.assunto}"`);
-    return;
+    return 0;
   }
   const transporte = nodemailer.createTransport({
     host: "smtp.gmail.com",
@@ -36,13 +38,16 @@ async function enviar(mensagens: Mensagem[]) {
     greetingTimeout: 8000,
     socketTimeout: 10000,
   });
+  let enviados = 0;
   for (const m of validas) {
     try {
       await transporte.sendMail({ from: `MoCCa <${EMAIL_MOCCA}>`, to: m.para, subject: m.assunto, text: m.texto, html: m.html });
+      enviados++;
     } catch (e) {
       console.error("[email] falha ao enviar:", e);
     }
   }
+  return enviados;
 }
 
 // Roda depois da resposta, quando a transação de quem chamou já terminou: o que
@@ -106,6 +111,7 @@ export function avisarContatoRecebido(contatoId: string, contato: { nome: string
 export async function enviarLembretes(dia: string) {
   const linhas = await comoServico((q) => q<LinhaLembrete>(SQL_LEMBRETES, [dia]));
   const mensagens = lembretesDaVespera(linhas, linkTarefa);
-  await enviar(mensagens);
-  return { tarefas: new Set(linhas.map((l) => l.tarefa_id)).size, emails: mensagens.length };
+  // "emails": os montados, um por pessoa; "enviados": os que o Gmail aceitou
+  const enviados = await enviar(mensagens);
+  return { tarefas: new Set(linhas.map((l) => l.tarefa_id)).size, emails: mensagens.length, enviados };
 }

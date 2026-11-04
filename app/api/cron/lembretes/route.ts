@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   const amanha = format(addDays(parseISO(hojeBrasilia()), 1), "yyyy-MM-dd");
   try {
     const r = await enviarLembretes(amanha);
-    console.info(`[lembretes] ${amanha}: ${r.tarefas} tarefas, ${r.emails} e-mails`);
+    console.info(`[lembretes] ${amanha}: ${r.tarefas} tarefas, ${r.emails} e-mails, ${r.enviados} enviados`);
     return NextResponse.json({ dia: amanha, ...r });
   } catch (e) {
     console.error("[lembretes]", e);

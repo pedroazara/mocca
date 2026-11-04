@@ -1,13 +1,15 @@
 "use client";
 
 import { RotateCcw } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect } from "react";
 import { Botao } from "@/components/ui/botao";
 
 // Tela de erro no estilo do site: diz o que houve em português, oferece tentar
 // de novo e mostra um código curto para a equipe procurar no log da Vercel.
+// O "voltar" carrega a página inteira: a navegação do Next não tira o erro da
+// tela quando o caminho é o mesmo (a Semana que falhou e o "Ir para a Semana").
+// Na janela da tarefa, ele fica de fora (voltar={null}): fechar já volta.
 export function TelaErro({
   erro,
   tentarDeNovo,
@@ -16,7 +18,7 @@ export function TelaErro({
 }: {
   erro: Error & { digest?: string };
   tentarDeNovo: () => void;
-  voltar?: { href: string; rotulo: string };
+  voltar?: { href: string; rotulo: string } | null;
   className?: string;
 }) {
   const router = useRouter();
@@ -41,9 +43,11 @@ export function TelaErro({
           <RotateCcw aria-hidden />
           Tentar de novo
         </Botao>
-        <Botao asChild variante="secundario" tamanho="painel">
-          <Link href={voltar.href}>{voltar.rotulo}</Link>
-        </Botao>
+        {voltar && (
+          <Botao asChild variante="secundario" tamanho="painel">
+            <a href={voltar.href}>{voltar.rotulo}</a>
+          </Botao>
+        )}
       </div>
       {erro.digest && <p className="t-dado mt-6 text-[0.8125rem] text-texto-2">código: {erro.digest}</p>}
     </div>

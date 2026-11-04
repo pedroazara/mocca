@@ -182,10 +182,23 @@ describe("envio", () => {
       { ...base, para: "gabriel@ufla.br", nome: "Gabriel", tarefa_id: "t2", titulo: "Relatar a conversa" },
       { ...base, para: "marcos@ufla.br", nome: "Marcos", tarefa_id: "t1", titulo: "Ligar para a cooperativa", papel: "apoio" },
     ];
-    expect(await enviarLembretes("2026-11-09")).toEqual({ tarefas: 2, emails: 2 });
+    expect(await enviarLembretes("2026-11-09")).toEqual({ tarefas: 2, emails: 2, enviados: 2 });
     expect(destinos()).toEqual(["gabriel@ufla.br", "marcos@ufla.br"]);
     expect(sim.sendMail.mock.calls[0][0].subject).toBe("Amanhã vencem 2 tarefas suas no MoCCa");
     expect(sim.sendMail.mock.calls[1][0].subject).toBe("Amanhã vence: Ligar para a cooperativa");
+  });
+
+  it("o lembrete conta só o que saiu: sem senha, endereço de exemplo e falha de envio não contam", async () => {
+    const base = { papel: "responsavel", prazo: "2026-11-10T02:59:00.000Z", itens: [], tarefa_id: "t1", titulo: "Ligar" };
+    sim.linhas.lembretes = [
+      { ...base, para: "gabriel@ufla.br", nome: "Gabriel" },
+      { ...base, para: "marcos@exemplo.com", nome: "Marcos" },
+      { ...base, para: "lucas@ufla.br", nome: "Lucas" },
+    ];
+    sim.sendMail.mockRejectedValueOnce(new Error("535 senha recusada"));
+    expect(await enviarLembretes("2026-11-09")).toEqual({ tarefas: 1, emails: 3, enviados: 1 });
+    vi.stubEnv("GMAIL_APP_PASSWORD", "");
+    expect((await enviarLembretes("2026-11-09")).enviados).toBe(0);
   });
 
   it("uma falha de envio não derruba nada e os outros e-mails ainda saem", async () => {
