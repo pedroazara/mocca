@@ -30,7 +30,7 @@ const acoes = await import("@/app/painel/acoes");
 const rota = await import("@/app/api/mcp/route");
 const { comoServico } = await import("@/lib/banco");
 const { propostasPendentes } = await import("@/lib/painel/dados");
-const { resumirProposta } = await import("@/lib/painel/propostas");
+const { mudancasDaTarefa, resumirProposta } = await import("@/lib/painel/propostas");
 const { PGlite: Banco } = await import("@electric-sql/pglite");
 
 const pasta = join(__dirname, "..", "supabase");
@@ -226,6 +226,114 @@ describe("aprovar", () => {
   });
 });
 
+describe("editar antes de aprovar", () => {
+  const dados = async (id: string) => (await proposta(id))!.dados as Record<string, unknown>;
+
+  it("troca o que será gravado, com a mesma conferência do pedido, e aprovar aplica a versão editada", async () => {
+    const r = await api.criarTarefa({ titulo: "Rascunho do Claude", origem: "reuniao", atribuicoes: [{ pessoa: "Gabriel", itens: ["Agendar"] }] }, token);
+    const marcos = (await um<{ id: string }>("select id from pessoa where apelido = 'Marcos'"))!.id;
+    const editada = await api.editarProposta(r.proposta_id, {
+      titulo: "  Entrevistas editadas  ",
+      semana: 4,
+      etiquetas: ["Técnico"],
+      origem: "claude",
+      atribuicoes: [{ pessoa: "marcos", papel: "responsavel", itens: ["Ligar", "Anotar"] }],
+    });
+    expect(editada.operacao).toBe("criar_tarefa");
+    // pessoa pelo id, como no pedido, e a origem do pedido continua
+    expect(await dados(r.proposta_id)).toMatchObject({
+      titulo: "Entrevistas editadas",
+      origem: "reuniao",
+      atribuicoes: [{ pessoa: marcos, papel: "responsavel", itens: ["Ligar", "Anotar"] }],
+    });
+    expect(await proposta(r.proposta_id)).toMatchObject({ status: "pendente", decidido_por: null });
+    expect(await contar("tarefa", "titulo = $1", ["Entrevistas editadas"])).toBe(0);
+
+    const a = await api.aprovarProposta(r.proposta_id, admin);
+    if (a.status !== "aprovada") throw new Error(a.erro);
+    expect(await um("select t.titulo, s.numero, t.origem::text from tarefa t join semana s on s.id = t.semana_id where t.id = $1", [a.id])).toEqual({
+      titulo: "Entrevistas editadas",
+      numero: 4,
+      origem: "reuniao",
+    });
+    expect(await um("select pessoa_id, papel::text from atribuicao where tarefa_id = $1", [a.id])).toEqual({ pessoa_id: marcos, papel: "responsavel" });
+    expect(await contar("item i join atribuicao x on x.id = i.atribuicao_id", "x.tarefa_id = $1", [a.id])).toBe(2);
+  });
+
+  it("não troca a tarefa, o item nem a pessoa de quem entra ou sai", async () => {
+    const id = await tarefaSimples("Para editar");
+    const outra = await tarefaSimples("Outra tarefa");
+    const item = (await um<{ id: string }>("select i.id from item i join atribuicao a on a.id = i.atribuicao_id where a.tarefa_id = $1", [id]))!.id;
+    const gabriel = (await um<{ id: string }>("select id from pessoa where apelido = 'Gabriel'"))!.id;
+
+    const atribuir = await api.atribuir(id, { pessoa: "Gabriel", papel: "apoio", itens: ["Antigo"] }, token);
+    await api.editarProposta(atribuir.proposta_id, { tarefa_id: outra, pessoa: "Marcos", papel: "responsavel", itens: ["Novo"] });
+    expect(await dados(atribuir.proposta_id)).toEqual({ tarefa_id: id, pessoa: gabriel, papel: "responsavel", itens: ["Novo"] });
+
+    const alterar = await api.atualizarTarefa(id, { status: "feito" }, token);
+    await api.editarProposta(alterar.proposta_id, { tarefa_id: outra, campos: { status: "fazendo", prazo: null } });
+    expect(await dados(alterar.proposta_id)).toEqual({ tarefa_id: id, campos: { status: "fazendo", prazo: null } });
+
+    const marcar = await api.atualizarItem(item, { feito: true }, token);
+    await api.editarProposta(marcar.proposta_id, { item_id: "00000000-0000-4000-8000-000000000000", texto: " Renomeado " });
+    expect(await dados(marcar.proposta_id)).toEqual({ item_id: item, tarefa_id: id, texto: "Renomeado" });
+
+    const item2 = await api.adicionarItem(id, "Gabriel", "Ligar", token);
+    await api.editarProposta(item2.proposta_id, { pessoa: "Marcos", texto: "Ligar duas vezes" });
+    expect(await dados(item2.proposta_id)).toMatchObject({ tarefa_id: id, texto: "Ligar duas vezes" });
+    expect((await dados(item2.proposta_id)).pessoa).not.toBe(gabriel);
+
+    const doc = await api.adicionarDocumento(id, { titulo: "Ata", url: "https://drive.google.com/file/d/a" }, token);
+    await api.editarProposta(doc.proposta_id, { titulo: "Ata da reunião", url: "https://docs.google.com/document/d/b", tipo: "registro" });
+    expect(await dados(doc.proposta_id)).toEqual({ tarefa_id: id, titulo: "Ata da reunião", url: "https://docs.google.com/document/d/b", tipo: "registro" });
+
+    const comentario = await api.comentar(id, "Primeira versão", token);
+    await api.editarProposta(comentario.proposta_id, { texto: "Segunda versão" });
+    expect(await dados(comentario.proposta_id)).toEqual({ tarefa_id: id, texto: "Segunda versão" });
+  });
+
+  it("recusa a edição que não daria para aplicar e mantém a proposta como estava", async () => {
+    const id = await tarefaSimples("Edição errada");
+    const criar = await api.criarTarefa({ titulo: "Intacta" }, token);
+    const antes = await dados(criar.proposta_id);
+    const casos: [Promise<unknown>, string][] = [
+      [api.editarProposta(criar.proposta_id, { titulo: "  " }), "dados_invalidos"],
+      [api.editarProposta(criar.proposta_id, { titulo: "x", etiquetas: ["Não existe"] }), "etiqueta_inexistente"],
+      [api.editarProposta(criar.proposta_id, { titulo: "x", atribuicoes: [{ pessoa: "Ninguém" }] }), "pessoa_inexistente"],
+      [api.editarProposta(criar.proposta_id, { titulo: "x", documentos: [{ titulo: "Doc", url: "https://exemplo.com" }] }), "dados_invalidos"],
+      [api.editarProposta((await api.atualizarTarefa(id, { status: "feito" }, token)).proposta_id, { campos: {} }), "sem_mudancas"],
+      [api.editarProposta((await api.removerAtribuicao(id, "Gabriel", token)).proposta_id, {}), "sem_edicao"],
+      [api.editarProposta("00000000-0000-4000-8000-000000000000", { titulo: "x" }), "proposta_decidida"],
+      [api.editarProposta("nao-e-id", { titulo: "x" }), "proposta_inexistente"],
+    ];
+    for (const [pedido, codigo] of casos) await expect(pedido).rejects.toMatchObject({ codigo });
+    expect(await dados(criar.proposta_id)).toEqual(antes);
+  });
+
+  it("não edita proposta já decidida", async () => {
+    const r = await api.criarTarefa({ titulo: "Já decidida" }, token);
+    await api.aprovarProposta(r.proposta_id, admin);
+    await expect(api.editarProposta(r.proposta_id, { titulo: "Tarde demais" })).rejects.toMatchObject({ codigo: "proposta_decidida" });
+    expect(await dados(r.proposta_id)).toMatchObject({ titulo: "Já decidida" });
+  });
+
+  it("só o admin edita, porque o service role ignora o RLS", async () => {
+    const r = await api.criarTarefa({ titulo: "Edição só do admin" }, token);
+    for (const eu of [null, { id: admin, papel: "membro" }, { id: admin, papel: "orientador" }]) {
+      t.eu.mockResolvedValueOnce(eu);
+      expect(await acoes.editarProposta(r.proposta_id, { titulo: "Invadida" })).toMatchObject({ ok: false });
+    }
+    expect(await dados(r.proposta_id)).toMatchObject({ titulo: "Edição só do admin" });
+
+    t.eu.mockResolvedValue({ id: admin, papel: "admin" });
+    expect(await acoes.editarProposta(r.proposta_id, { titulo: "Editada pelo admin" })).toEqual({ ok: true });
+    expect(await dados(r.proposta_id)).toMatchObject({ titulo: "Editada pelo admin" });
+    // o erro do esquema diz qual campo conferir
+    expect(await acoes.editarProposta(r.proposta_id, { titulo: "" })).toEqual({ ok: false, erro: "Confira os campos enviados: titulo." });
+    t.eu.mockReset();
+  });
+});
+
 describe("consulta da tela de aprovações", () => {
   it("traz o que o admin precisa comparar, e o resumo funciona com ela", async () => {
     const id = await tarefaSimples("Para a tela");
@@ -249,7 +357,9 @@ describe("consulta da tela de aprovações", () => {
     expect(lista.map((p) => p.criado_em)).toEqual([...lista.map((p) => p.criado_em)].sort());
 
     for (const p of lista) expect(resumirProposta(p, () => "Alguém").titulo).toBeTruthy();
-    expect(resumirProposta(de(alterar), () => "Alguém").linhas).toContainEqual({ rotulo: "Prazo", atual: "sem prazo", proposto: "02/01/2027 às 12:00" });
+    const alteracao = de(alterar);
+    if (alteracao.operacao !== "atualizar_tarefa") throw new Error("operação errada");
+    expect(mudancasDaTarefa(alteracao)).toContainEqual({ campo: "prazo", rotulo: "Prazo", atual: "sem prazo", proposto: "02/01/2027 às 12:00" });
   });
 });
 

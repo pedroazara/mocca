@@ -18,7 +18,8 @@ import {
 } from "@/lib/painel/datas";
 import { montarPauta, reuniaoAnteriorA } from "@/lib/painel/pauta";
 import { ehJpegBase64, normalizarLinkedin } from "@/lib/painel/perfil";
-import { resumirProposta } from "@/lib/painel/propostas";
+import { mudancasDaTarefa, prepararEdicao, resumirProposta } from "@/lib/painel/propostas";
+import type { Pedido } from "@/lib/api/servico";
 import type { Contato, Proposta, Semana, TarefaResumo } from "@/lib/painel/tipos";
 import { acharPessoa, planejarImportacao, type TrelloJson } from "@/lib/painel/trello";
 
@@ -352,70 +353,42 @@ describe("resumo das propostas do Claude", () => {
     etiquetas: ["Técnico", "Negócio"],
     ligada_entrega: false,
   } as const;
-  const alterar = (campos: Record<string, unknown>, extra: Partial<Proposta> = {}) =>
-    resumirProposta({ ...base, atual: { ...atual, etiquetas: [...atual.etiquetas] }, operacao: "atualizar_tarefa", dados: { tarefa_id: "t1", campos }, ...extra } as Proposta, nome);
+  const proposta = (campos: Record<string, unknown>, extra: Partial<Proposta> = {}) =>
+    ({ ...base, atual: { ...atual, etiquetas: [...atual.etiquetas] }, operacao: "atualizar_tarefa", dados: { tarefa_id: "t1", campos }, ...extra }) as Proposta & {
+      operacao: "atualizar_tarefa";
+    };
+  const alterar = (campos: Record<string, unknown>, extra: Partial<Proposta> = {}) => resumirProposta(proposta(campos, extra), nome);
+  const mudancas = (campos: Record<string, unknown>, extra: Partial<Proposta> = {}) => mudancasDaTarefa(proposta(campos, extra));
 
-  it("mostra todo o conteúdo de uma tarefa nova, com as pessoas pelo nome", () => {
-    const r = resumirProposta(
-      {
-        ...base,
-        tarefa_id: null,
-        tarefa_titulo: null,
-        operacao: "criar_tarefa",
-        dados: {
-          titulo: "Entrevistas",
-          descricao: "Meta: 5",
-          semana: 2,
-          etiquetas: ["Técnico"],
-          ligada_entrega: true,
-          origem: "reuniao",
-          atribuicoes: [
-            { pessoa: "g", papel: "responsavel", itens: ["Agendar", "Conduzir"] },
-            { pessoa: "m", papel: "apoio" },
-          ],
-          documentos: [{ titulo: "Roteiro", url: "https://docs.google.com/document/d/a" }],
-        },
-      },
-      nome,
-    );
-    expect(r.titulo).toBe("Criar a tarefa “Entrevistas”");
-    expect(r.linhas).toEqual([
-      { rotulo: "Descrição", proposto: "Meta: 5" },
-      { rotulo: "Semana", proposto: "Semana 2" },
-      { rotulo: "Prazo", proposto: "fim da semana" },
-      { rotulo: "Etiquetas", proposto: "Técnico" },
-      { rotulo: "Ligada à entrega", proposto: "sim" },
-      { rotulo: "Origem", proposto: "reunião" },
-      { rotulo: "Gabriel (responsável)", proposto: "Agendar; Conduzir" },
-      { rotulo: "Marcos (apoio)", proposto: "sem itens" },
-      { rotulo: "Documento", proposto: "Roteiro (outro): https://docs.google.com/document/d/a" },
-    ]);
+  it("nomeia a tarefa nova pelo título", () => {
+    const r = resumirProposta({ ...base, tarefa_id: null, tarefa_titulo: null, operacao: "criar_tarefa", dados: { titulo: "Entrevistas" } }, nome);
+    expect(r).toEqual({ titulo: "Criar a tarefa “Entrevistas”", acao: "Tarefa nova" });
   });
 
-  it("numa alteração, compara só os campos enviados com o valor de hoje", () => {
-    const r = alterar({ status: "feito", semana: 3 });
-    expect(r.titulo).toBe("Alterar “Entrevistas”");
-    expect(r.linhas).toEqual([
-      { rotulo: "Status", atual: "A fazer", proposto: "Feito" },
-      { rotulo: "Semana", atual: "Semana 2", proposto: "Semana 3" },
+  it("numa alteração, compara só os campos enviados com o valor de hoje, na ordem da tela", () => {
+    const r = alterar({ semana: 3, status: "feito" });
+    expect(r).toMatchObject({ titulo: "Alterar “Entrevistas”", acao: "Alteração" });
+    expect(mudancas({ semana: 3, status: "feito" })).toEqual([
+      { campo: "status", rotulo: "Status", atual: "A fazer", proposto: "Feito" },
+      { campo: "semana", rotulo: "Semana", atual: "Semana 2", proposto: "Semana 3" },
     ]);
     // trocar a semana sem mandar prazo leva o prazo junto (DUVIDAS 4m)
     expect(r.aviso).toContain("vai junto para a semana nova");
   });
 
   it("mostra o ano do prazo, porque a mudança pode estar só nele", () => {
-    const r = alterar({ prazo: "2027-11-08T02:59:00Z" }, { atual: { ...atual, etiquetas: [], prazo: "2026-11-08T02:59:00Z" } });
-    expect(r.linhas).toEqual([{ rotulo: "Prazo", atual: "07/11/2026 às 23:59", proposto: "07/11/2027 às 23:59" }]);
+    expect(mudancas({ prazo: "2027-11-08T02:59:00Z" }, { atual: { ...atual, etiquetas: [], prazo: "2026-11-08T02:59:00Z" } })).toEqual([
+      { campo: "prazo", rotulo: "Prazo", atual: "07/11/2026 às 23:59", proposto: "07/11/2027 às 23:59" },
+    ]);
   });
 
   it("deixa claro quando a alteração apaga um valor", () => {
-    expect(alterar({ prazo: null, descricao: null, semana: null }).linhas.map((l) => l.proposto)).toEqual(["vazio", "sem prazo", "sem semana"]);
+    expect(mudancas({ prazo: null, descricao: null, semana: null }).map((l) => l.proposto)).toEqual(["vazio", "sem prazo", "sem semana"]);
   });
 
   it("avisa que etiquetas substitui a lista inteira", () => {
-    const r = alterar({ etiquetas: ["Marketing"] });
-    expect(r.linhas).toEqual([{ rotulo: "Etiquetas", atual: "Técnico, Negócio", proposto: "Marketing" }]);
-    expect(r.aviso).toContain("substituem a lista inteira");
+    expect(mudancas({ etiquetas: ["Marketing"] })).toEqual([{ campo: "etiquetas", rotulo: "Etiquetas", atual: "Técnico, Negócio", proposto: "Marketing" }]);
+    expect(alterar({ etiquetas: ["Marketing"] }).aviso).toContain("substituem a lista inteira");
   });
 
   it("avisa que trocar só a semana leva o prazo junto", () => {
@@ -425,7 +398,7 @@ describe("resumo das propostas do Claude", () => {
   });
 
   it("depois de decidida, não compara com o valor de hoje", () => {
-    expect(alterar({ status: "feito" }, { status: "aprovada" }).linhas).toEqual([{ rotulo: "Status", proposto: "Feito" }]);
+    expect(mudancas({ status: "feito" }, { status: "aprovada" })).toEqual([{ campo: "status", rotulo: "Status", proposto: "Feito" }]);
   });
 
   it("mostra que atribuir quem já está na tarefa muda o papel", () => {
@@ -433,19 +406,11 @@ describe("resumo das propostas do Claude", () => {
       resumirProposta({ ...base, operacao: "atribuir", dados: { tarefa_id: "t1", pessoa: "g", papel, itens: ["Novo"] }, ...extra } as Proposta, nome);
 
     const muda = atribuir({ papel_atual: "responsavel" }, "apoio");
-    expect(muda.titulo).toBe("Mudar o papel de Gabriel em “Entrevistas”");
-    expect(muda.linhas[0]).toEqual({ rotulo: "Papel", atual: "responsável", proposto: "apoio" });
+    expect(muda).toMatchObject({ titulo: "Mudar o papel de Gabriel em “Entrevistas”", acao: "Troca de papel" });
     expect(muda.aviso).toContain("sem responsável");
 
-    const soItens = atribuir({ papel_atual: "apoio" });
-    expect(soItens.titulo).toBe("Adicionar itens de Gabriel em “Entrevistas”");
-    expect(soItens.linhas).toEqual([
-      { rotulo: "Papel", atual: "apoio", proposto: "apoio" },
-      { rotulo: "Itens novos", proposto: "Novo" },
-    ]);
-    expect(soItens.aviso).toBeUndefined();
-
-    expect(atribuir({}, "apoio").titulo).toBe("Atribuir Gabriel a “Entrevistas”");
+    expect(atribuir({ papel_atual: "apoio" })).toEqual({ titulo: "Adicionar itens de Gabriel em “Entrevistas”", acao: "Itens novos" });
+    expect(atribuir({}, "apoio")).toEqual({ titulo: "Atribuir Gabriel a “Entrevistas”", acao: "Atribuição" });
     expect(atribuir({ status: "aprovada", papel_atual: "apoio" }, "apoio").titulo).toBe("Atribuir Gabriel a “Entrevistas”");
   });
 
@@ -458,40 +423,73 @@ describe("resumo das propostas do Claude", () => {
     expect(item({ tarefa_titulo: null }).aviso).toBeUndefined();
   });
 
-  it("lista os itens que somem ao tirar alguém da tarefa", () => {
+  it("avisa que os itens somem ao tirar alguém da tarefa", () => {
     const tirar = (extra: Partial<Proposta>) =>
       resumirProposta({ ...base, operacao: "remover_atribuicao", dados: { tarefa_id: "t1", pessoa: "g" }, ...extra } as Proposta, nome);
     const lista = [
       { texto: "Agendar", feito: true },
       { texto: "Conduzir", feito: false },
     ];
-    const r = tirar({ papel_atual: "responsavel", itens_da_pessoa: lista });
-    expect(r.linhas).toEqual([{ rotulo: "Itens apagados", proposto: "Agendar (feito); Conduzir" }]);
-    expect(r.aviso).toContain("não voltam");
-    expect(tirar({ itens_da_pessoa: [] })).toEqual({ titulo: "Tirar Gabriel de “Entrevistas”", linhas: [] });
+    expect(tirar({ papel_atual: "responsavel", itens_da_pessoa: lista }).aviso).toContain("não voltam");
+    expect(tirar({ itens_da_pessoa: [] })).toEqual({ titulo: "Tirar Gabriel de “Entrevistas”", acao: "Saída da tarefa" });
     expect(tirar({ status: "aprovada", itens_da_pessoa: lista }).aviso).toBeUndefined();
-  });
-
-  it("mostra o tipo do documento ligado a uma tarefa", () => {
-    const r = resumirProposta(
-      { ...base, operacao: "adicionar_documento", dados: { tarefa_id: "t1", titulo: "Síntese", url: "https://docs.google.com/document/d/a", tipo: "sintese" } },
-      nome,
-    );
-    expect(r.linhas).toContainEqual({ rotulo: "Tipo", proposto: "síntese" });
   });
 
   it("nomeia a ação sobre o item e a tarefa que sumiu", () => {
     const item = (dados: { feito?: boolean; texto?: string }) =>
       resumirProposta({ ...base, item_texto: "Agendar", operacao: "atualizar_item", dados: { item_id: "i1", ...dados } }, nome);
-    expect(item({ feito: true }).titulo).toBe("Marcar item de “Entrevistas”");
-    expect(item({ feito: false }).titulo).toBe("Desmarcar item de “Entrevistas”");
-    expect(item({ texto: "Ligar" }).linhas).toEqual([
-      { rotulo: "Item", proposto: "Agendar" },
-      { rotulo: "Novo texto", proposto: "Ligar" },
-    ]);
-    const semItem = resumirProposta({ ...base, operacao: "atualizar_item", dados: { item_id: "i1", feito: true } }, nome);
-    expect(semItem.linhas).toEqual([{ rotulo: "Item", proposto: "um item que não existe mais" }]);
+    expect(item({ feito: true })).toEqual({ titulo: "Marcar item de “Entrevistas”", acao: "Item marcado" });
+    expect(item({ feito: false })).toEqual({ titulo: "Desmarcar item de “Entrevistas”", acao: "Item desmarcado" });
+    expect(item({ texto: "Ligar", feito: true })).toEqual({ titulo: "Alterar item de “Entrevistas”", acao: "Item alterado" });
     const sumiu = resumirProposta({ ...base, tarefa_titulo: null, operacao: "comentar", dados: { tarefa_id: "t1", texto: "ok" } }, nome);
     expect(sumiu.titulo).toBe("Comentar em uma tarefa que não existe mais");
+  });
+});
+
+describe("edição de uma proposta pelo admin", () => {
+  const tarefaNova = (d: Partial<Extract<Pedido, { operacao: "criar_tarefa" }>["dados"]>): Pedido => ({
+    operacao: "criar_tarefa",
+    dados: { titulo: "Entrevistas", ...d },
+  });
+
+  it("tira espaços e itens em branco, e a descrição vazia vira nula", () => {
+    const r = prepararEdicao(
+      tarefaNova({
+        titulo: "  Entrevistas  ",
+        descricao: "   ",
+        atribuicoes: [{ pessoa: "g", itens: [" Agendar ", "", "  "] }],
+        documentos: [{ titulo: " Roteiro ", url: " https://docs.google.com/document/d/a " }],
+      }),
+    );
+    expect(r).toEqual({
+      ok: true,
+      dados: {
+        titulo: "Entrevistas",
+        descricao: null,
+        atribuicoes: [{ pessoa: "g", itens: ["Agendar"] }],
+        documentos: [{ titulo: "Roteiro", url: "https://docs.google.com/document/d/a" }],
+      },
+    });
+  });
+
+  it("diz o que falta antes de mandar ao servidor", () => {
+    const erro = (p: Pedido) => (prepararEdicao(p) as { erro?: string }).erro;
+    expect(erro(tarefaNova({ titulo: " " }))).toBe("Dê um título para a tarefa.");
+    expect(erro(tarefaNova({ documentos: [{ titulo: "Doc", url: "https://exemplo.com" }] }))).toContain("Google Drive");
+    expect(erro(tarefaNova({ documentos: [{ titulo: "", url: "https://docs.google.com/x" }] }))).toBe("Dê um título ao documento.");
+    expect(erro({ operacao: "atualizar_tarefa", dados: { tarefa_id: "t1", campos: {} } })).toContain("ao menos um campo");
+    expect(erro({ operacao: "atualizar_tarefa", dados: { tarefa_id: "t1", campos: { titulo: "  " } } })).toBe("Dê um título para a tarefa.");
+    expect(erro({ operacao: "adicionar_item", dados: { tarefa_id: "t1", pessoa: "g", texto: " " } })).toBe("Escreva o item.");
+    expect(erro({ operacao: "atualizar_item", dados: { item_id: "i1", texto: "" } })).toBe("Escreva o item.");
+    expect(erro({ operacao: "atualizar_item", dados: { item_id: "i1" } })).toBe("Escolha o que muda no item.");
+    expect(erro({ operacao: "comentar", dados: { tarefa_id: "t1", texto: "\n" } })).toBe("Escreva o comentário.");
+    expect(erro({ operacao: "remover_atribuicao", dados: { tarefa_id: "t1", pessoa: "g" } })).toContain("aprove ou recuse");
+  });
+
+  it("numa alteração, mantém o null que apaga e não inventa campo", () => {
+    expect(prepararEdicao({ operacao: "atualizar_tarefa", dados: { tarefa_id: "t1", campos: { descricao: " ", prazo: null } } })).toEqual({
+      ok: true,
+      dados: { tarefa_id: "t1", campos: { descricao: null, prazo: null } },
+    });
   });
 });

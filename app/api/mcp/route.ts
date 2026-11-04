@@ -37,6 +37,7 @@ function criarServidor(tokenId: string) {
         "Painel de tarefas da equipe MoCCa (UFLA, programa Avança Café). Use para propor tarefas depois das reuniões, " +
         "já atribuídas e com itens por pessoa. Leituras respondem na hora. Toda escrita vira uma proposta pendente e nada " +
         "muda no painel até um admin aprovar: diga que pediu, nunca que fez, e acompanhe com listar_propostas. " +
+        "O admin pode ajustar a proposta antes de aprovar; listar_propostas mostra o que vale. " +
         "Tarefa nova ainda não tem id, então atribuições, itens e documentos vão dentro de criar_tarefa. " +
         "Pessoas podem ser indicadas por id, e-mail ou apelido (ex.: Gabriel, Pinotti). " +
         "Status: a_fazer, fazendo, em_revisao, feito. Semanas do programa: 1 a 12. Escreva em português do Brasil.",
