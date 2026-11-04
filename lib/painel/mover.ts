@@ -11,30 +11,37 @@
 // ou sem prazo, fica como está. Devolve o id e o prazo novo; nenhuma linha se a
 // tarefa não existe, a semana não existe ou o RLS não deixa.
 //
+// A tarefa é travada antes da conta (`for update`): se outra pessoa está
+// mudando o prazo ou a semana dela no mesmo instante, o comando espera e faz a
+// conta com o que ela gravou, em vez de passar por cima.
+//
 // Na conta: `alvo` é o prazo andado tantas semanas inteiras quantas separam o
 // começo das duas semanas; `n.inicio + resto` é o primeiro dia da semana nova
 // com o mesmo dia da semana do prazo, e `n.fim - (...) % 7`, o último.
 export const SQL_MOVER_PARA_SEMANA = `
+  with a as (
+    select id, semana_id,
+           (prazo at time zone 'America/Sao_Paulo')::date as dia,
+           (prazo at time zone 'America/Sao_Paulo')::time as hora
+      from tarefa where id = $1 for update
+  )
   update tarefa t
      set semana_id = n.id,
          prazo = case
-           when p.dia between v.inicio and v.fim then (
+           when a.dia between v.inicio and v.fim then (
              case
-               when p.dia = v.fim then n.fim
+               when a.dia = v.fim then n.fim
                when n.inicio + p.resto > n.fim then greatest(n.inicio, least(n.fim, p.alvo))
                else greatest(n.inicio + p.resto, least(p.alvo, n.fim - (n.fim - n.inicio - p.resto) % 7))
-             end + p.hora
+             end + a.hora
            ) at time zone 'America/Sao_Paulo'
            else t.prazo end
-    from semana n
-    left join semana v on v.id = (select semana_id from tarefa where id = $1)
+    from a
+    join semana n on n.numero = $2
+    left join semana v on v.id = a.semana_id
     cross join lateral (
-      select d.dia, d.hora,
-             d.dia + 7 * round((n.inicio - v.inicio) / 7.0)::int as alvo,
-             ((d.dia - n.inicio) % 7 + 7) % 7 as resto
-        from (select (prazo at time zone 'America/Sao_Paulo')::date as dia,
-                     (prazo at time zone 'America/Sao_Paulo')::time as hora
-                from tarefa where id = $1) d
+      select a.dia + 7 * round((n.inicio - v.inicio) / 7.0)::int as alvo,
+             ((a.dia - n.inicio) % 7 + 7) % 7 as resto
     ) p
-   where t.id = $1 and n.numero = $2
+   where t.id = a.id
   returning t.id, t.prazo`;
