@@ -389,7 +389,7 @@ async function enviarPeloPainel(fn: () => Promise<Envio>): Promise<Resultado<Env
   const eu = await pessoaLogada();
   if (!eu) return { ok: false, erro: "Sua sessão expirou. Entre de novo." };
   if (eu.papel === "orientador") return { ok: false, erro: "Você não tem permissão para fazer isso." };
-  if (!envioConfigurado()) return { ok: false, erro: "O envio de e-mail não está configurado: falta a GMAIL_APP_PASSWORD." };
+  if (!envioConfigurado()) return { ok: false, erro: "O envio de e-mail não está configurado: faltam GMAIL_SCRIPT_URL e GMAIL_SCRIPT_CHAVE." };
   try {
     const r = await fn();
     revalidatePath("/painel", "layout");

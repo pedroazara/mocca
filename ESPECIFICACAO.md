@@ -83,7 +83,7 @@ O projeto tem duas partes no mesmo código e no mesmo domínio:
 | Formulários | **react-hook-form** + **zod** | Validação no cliente e no servidor com o mesmo schema |
 | Datas | **date-fns** com locale `pt-BR`, fuso `America/Sao_Paulo` | Gravar em UTC, exibir em horário de Brasília |
 | Anti-spam | **Cloudflare Turnstile** no formulário de contato | Gratuito |
-| E-mail (fase 4) | **Gmail** (SMTP com senha de app) | Aviso de tarefa atribuída, confirmação de contato e lembretes de prazo |
+| E-mail (fase 4) | **Gmail**, por um app da Web do Apps Script | Aviso de tarefa atribuída, confirmação de contato e lembretes de prazo |
 | MCP | **@modelcontextprotocol/sdk** em rota HTTP do próprio Next.js | Seção 11 |
 | Hospedagem | **Vercel** (plano gratuito), deploy a cada push na `main` | Prévia por pull request |
 | Testes | **Vitest** (lógica) + **Playwright** (fluxos principais) | Seção 13 |
@@ -150,7 +150,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=        só no servidor
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
-GMAIL_APP_PASSWORD=               fase 4
+GMAIL_SCRIPT_URL=                 fase 4
+GMAIL_SCRIPT_CHAVE=               fase 4
 GOOGLE_DRIVE_FOLDER=              aba Arquivos: link ou id da pasta do projeto no Drive
 GOOGLE_SERVICE_ACCOUNT_KEY=       só no servidor: JSON da chave da conta de serviço do Google
 NEXT_PUBLIC_SITE_URL=https://[PREENCHER].vercel.app

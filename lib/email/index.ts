@@ -1,7 +1,5 @@
 import "server-only";
 import { after } from "next/server";
-import nodemailer from "nodemailer";
-import { EMAIL_MOCCA } from "@/components/publico/navegacao";
 import { comoServico } from "@/lib/banco";
 import { linkMinhasTarefas, linkTarefa } from "@/lib/painel/links";
 import type { PapelAtribuicao } from "@/lib/painel/tipos";
@@ -25,12 +23,29 @@ import {
   type SemanaPacote,
 } from "./mensagens";
 
-// E-mails automáticos, enviados pela conta do MoCCa no Gmail (SMTP com senha de
-// app). Sem GMAIL_APP_PASSWORD nada sai, só fica no log. Falha de envio nunca
-// desfaz o que foi gravado nem vira erro para quem está usando o site.
+// E-mails automáticos, enviados pela conta do MoCCa no Gmail por um app da Web
+// do Apps Script (scripts/enviar-email.gs), que só envia com a chave certa. Sem
+// GMAIL_SCRIPT_URL e GMAIL_SCRIPT_CHAVE nada sai, só fica no log. Falha de envio
+// nunca desfaz o que foi gravado nem vira erro para quem está usando o site.
 
-const senhaGmail = () => process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "") ?? "";
-export const envioConfigurado = () => Boolean(senhaGmail());
+const scriptGmail = () => ({ url: process.env.GMAIL_SCRIPT_URL?.trim() ?? "", chave: process.env.GMAIL_SCRIPT_CHAVE?.trim() ?? "" });
+export const envioConfigurado = () => {
+  const { url, chave } = scriptGmail();
+  return Boolean(url && chave);
+};
+
+// O Apps Script responde com um redirecionamento para o resultado, que o fetch
+// segue; o JSON diz se o Gmail aceitou. Qualquer outra resposta conta como falha.
+async function entregar({ url, chave }: ReturnType<typeof scriptGmail>, m: Mensagem) {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chave, para: m.para, assunto: m.assunto, texto: m.texto, html: m.html }),
+    signal: AbortSignal.timeout(20000),
+  });
+  const resposta = (await r.json().catch(() => null)) as { ok?: boolean; erro?: string } | null;
+  if (resposta?.ok !== true) throw new Error(resposta?.erro ?? `o script respondeu ${r.status} sem JSON`);
+}
 
 // O registro de um e-mail aceito. Uma falha aqui só vai para o log: o e-mail já saiu.
 async function registrar(r: Registro) {
@@ -57,25 +72,16 @@ async function registrar(r: Registro) {
 // de exemplo ou com falha no envio, não entram. Os que têm registro ficam em
 // email_enviado, para o painel mostrar quem já recebeu.
 async function enviar(mensagens: Mensagem[]) {
-  const senha = senhaGmail();
+  const script = scriptGmail();
   const validas = mensagens.filter((m) => !enderecoDeExemplo(m.para));
-  if (!senha) {
-    for (const m of validas) console.info(`[email] sem GMAIL_APP_PASSWORD, não enviado: "${m.assunto}"`);
+  if (!envioConfigurado()) {
+    for (const m of validas) console.info(`[email] sem GMAIL_SCRIPT_URL e GMAIL_SCRIPT_CHAVE, não enviado: "${m.assunto}"`);
     return [];
   }
-  const transporte = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: { user: EMAIL_MOCCA, pass: senha },
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 10000,
-  });
   const enviadas: Mensagem[] = [];
   for (const m of validas) {
     try {
-      await transporte.sendMail({ from: `MoCCa <${EMAIL_MOCCA}>`, to: m.para, subject: m.assunto, text: m.texto, html: m.html });
+      await entregar(script, m);
       enviadas.push(m);
     } catch (e) {
       console.error("[email] falha ao enviar:", e);

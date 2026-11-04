@@ -46,7 +46,8 @@ Outros comandos:
 | `SUPABASE_SERVICE_ROLE_KEY` | idem | **Secreta, só no servidor.** Cria a conta no primeiro acesso e apaga a antiga quando o admin troca o e-mail de alguém |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare › Turnstile | Em desenvolvimento: `1x00000000000000000000AA` |
 | `TURNSTILE_SECRET_KEY` | idem | Em desenvolvimento: `1x0000000000000000000000000000000AA` |
-| `GMAIL_APP_PASSWORD` | Conta Google do MoCCa (ver "E-mails automáticos") | **Secreta, só no servidor.** Sem ela, nenhum e-mail sai |
+| `GMAIL_SCRIPT_URL` | Apps Script da conta do MoCCa (ver "E-mails automáticos") | **Secreta, só no servidor.** O endereço do app da Web, terminado em `/exec` |
+| `GMAIL_SCRIPT_CHAVE` | idem | **Secreta, só no servidor.** Sem ela ou sem o endereço, nenhum e-mail sai |
 | `GOOGLE_DRIVE_FOLDER` | Drive › pasta do projeto › Compartilhar › Copiar link | Link (ou id) da pasta que a aba Arquivos mostra (ver "Arquivos do Google Drive") |
 | `GOOGLE_SERVICE_ACCOUNT_KEY` | Google Cloud › Contas de serviço › Chaves | **Secreta, só no servidor.** O JSON inteiro da chave. Sem ela, a aba Arquivos avisa que a pasta não está ligada |
 | `CRON_SECRET` | Gere uma sequência aleatória longa (por exemplo, `openssl rand -hex 32`) | **Secreta, só no servidor.** Protege o lembrete da véspera do prazo; a Vercel envia sozinha nas chamadas agendadas. Sem ela, nenhum lembrete sai |
@@ -189,19 +190,23 @@ Em Configurações › Importar do Trello, envie o JSON exportado do quadro (men
 
 ## E-mails automáticos
 
-Os e-mails saem de `moccaufla@gmail.com`, pelo SMTP do Gmail. O Resend da especificação não serve aqui porque só envia de um domínio próprio verificado.
+Os e-mails saem de `moccaufla@gmail.com`, por um app da Web do Google Apps Script que fica nessa conta: o projeto "E-mails do site MoCCa", em <https://script.google.com>, com o código de [`scripts/enviar-email.gs`](scripts/enviar-email.gs). O site manda cada e-mail num POST com a chave secreta, e o script envia pelo Gmail. Assim não é preciso verificação em duas etapas nem senha de app. O Resend da especificação não serve aqui porque só envia de um domínio próprio verificado.
 
 - **Tarefa atribuída:** quem recebe uma tarefa ganha um e-mail com título, papel, prazo, itens e link, venha a atribuição do painel, do formulário do site ou de uma proposta do Claude, que só avisa quando o admin aprova. Quem atribui a si mesmo não recebe. Trocar o papel, duplicar uma tarefa e importar do Trello não enviam nada.
 - **Contato pelo site:** quem preenche o formulário recebe uma confirmação de texto fixo, sem repetir a mensagem, porque qualquer um pode digitar o endereço de outra pessoa. O limite de 5 envios por hora e o Turnstile valem aqui também, e o mesmo endereço recebe no máximo uma confirmação por dia.
-- **Véspera do prazo:** todo dia às 8h de Brasília, a Vercel chama `/api/cron/lembretes` (agendado no `vercel.json`), e cada pessoa recebe um e-mail só com as tarefas abertas dela que vencem no dia seguinte, com os itens dela ainda não feitos. Tarefa feita ou arquivada não entra. Precisa da variável `CRON_SECRET` na Vercel; para testar à mão: `curl -H "Authorization: Bearer $CRON_SECRET" https://SEU_DOMINIO/api/cron/lembretes`. A resposta diz quantas tarefas vencem amanhã, quantos e-mails foram montados (`emails`, um por pessoa) e quantos o Gmail aceitou (`enviados`): sem `GMAIL_APP_PASSWORD`, para os endereços de exemplo ou com falha no envio, não conta.
+- **Véspera do prazo:** todo dia às 8h de Brasília, a Vercel chama `/api/cron/lembretes` (agendado no `vercel.json`), e cada pessoa recebe um e-mail só com as tarefas abertas dela que vencem no dia seguinte, com os itens dela ainda não feitos. Tarefa feita ou arquivada não entra. Precisa da variável `CRON_SECRET` na Vercel; para testar à mão: `curl -H "Authorization: Bearer $CRON_SECRET" https://SEU_DOMINIO/api/cron/lembretes`. A resposta diz quantas tarefas vencem amanhã, quantos e-mails foram montados (`emails`, um por pessoa) e quantos o Gmail aceitou (`enviados`): sem o script configurado, para os endereços de exemplo ou com falha no envio, não conta.
 
-Para ligar:
+O script já está publicado. Para ligar o envio num ambiente, cadastre no `.env.local` ou nas variáveis da Vercel `GMAIL_SCRIPT_URL` (o endereço do app da Web, terminado em `/exec`) e `GMAIL_SCRIPT_CHAVE` (a chave). Os dois valores estão no `.env.local` do Pedro.
 
-1. Entre em `moccaufla@gmail.com` e ative a verificação em duas etapas (<https://myaccount.google.com/security>).
-2. Crie uma senha de app em <https://myaccount.google.com/apppasswords>.
-3. Coloque as 16 letras em `GMAIL_APP_PASSWORD`, no `.env.local` e nas variáveis da Vercel.
+Para refazer o script do zero:
 
-Em produção, os links dos e-mails usam `NEXT_PUBLIC_SITE_URL`, e a equipe precisa estar com os e-mails reais: nada é enviado para endereços `@exemplo.com`, os do seed. O limite do Gmail é de cerca de 500 envios por dia.
+1. Em <https://script.google.com>, entre com `moccaufla@gmail.com`, crie um projeto e cole o código de `scripts/enviar-email.gs`.
+2. Rode a função `criarChave` (selecione-a ao lado de Executar). Na primeira vez, o Google pede autorização: Revisar permissões › Avançado › Acessar. A permissão é só para enviar e-mails. A chave aparece no registro de execução e vai em `GMAIL_SCRIPT_CHAVE`. Rodar de novo troca a chave, e a antiga deixa de valer.
+3. Em Implantar › Nova implantação › App da Web, escolha executar como "Eu" e acesso "Qualquer pessoa": o site chama o script sem login no Google, e sem a chave ele não envia nada. O endereço gerado vai em `GMAIL_SCRIPT_URL`.
+
+Para mudar o código do script sem trocar o endereço, use Implantar › Gerenciar implantações › editar › Nova versão.
+
+Em produção, os links dos e-mails usam `NEXT_PUBLIC_SITE_URL`, e a equipe precisa estar com os e-mails reais: nada é enviado para endereços `@exemplo.com`, os do seed. Pelo Apps Script, o Gmail aceita 100 destinatários por dia (o script responde quantos restam). Passando disso, os envios falham até o dia seguinte e não são registrados como recebidos.
 
 ## Arquivos do Google Drive
 
@@ -228,7 +233,7 @@ Como funciona:
 ## Deploy (Vercel)
 
 1. Suba o repositório para o GitHub e importe o projeto na Vercel (framework: Next.js, sem configurações extras).
-2. Em Settings › Environment Variables, cadastre as variáveis da tabela acima (`DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TURNSTILE_SECRET_KEY`, `GMAIL_APP_PASSWORD` e `GOOGLE_SERVICE_ACCOUNT_KEY` sem o prefixo `NEXT_PUBLIC_`).
+2. Em Settings › Environment Variables, cadastre as variáveis da tabela acima (`DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TURNSTILE_SECRET_KEY`, `GMAIL_SCRIPT_URL`, `GMAIL_SCRIPT_CHAVE` e `GOOGLE_SERVICE_ACCOUNT_KEY` sem o prefixo `NEXT_PUBLIC_`).
 3. No Cloudflare Turnstile, cadastre o domínio da Vercel (e o domínio próprio, quando houver).
 4. Cada push na `main` publica o site; cada pull request ganha uma prévia.
 

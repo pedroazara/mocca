@@ -1,12 +1,14 @@
-// E-mails automáticos: textos, quem recebe e o que acontece sem senha ou com
-// falha de envio. O SMTP e o banco são simulados; a consulta real está em banco.test.ts.
+// E-mails automáticos: textos, quem recebe e o que acontece sem a chave ou com
+// falha de envio. O Apps Script (fetch) e o banco são simulados; a consulta real
+// está em banco.test.ts.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { confirmacaoContato, enderecoDeExemplo, entregaDaSemana, lembretesDaVespera, tarefaAtribuida } from "@/lib/email/mensagens";
 
 const sim = vi.hoisted(() => ({
   fila: [] as (() => Promise<unknown>)[],
-  sendMail: vi.fn(),
+  // recebe o endereço do script e o corpo do POST; devolve a resposta dele
+  envio: vi.fn<(url: string, corpo: Record<string, string>) => Promise<Response>>(),
   linhas: {} as {
     atribuicao?: unknown[];
     contato?: unknown[];
@@ -22,7 +24,7 @@ const sim = vi.hoisted(() => ({
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/server", () => ({ after: (fn: () => Promise<unknown>) => sim.fila.push(fn) }));
-vi.mock("nodemailer", () => ({ default: { createTransport: () => ({ sendMail: sim.sendMail }) } }));
+vi.stubGlobal("fetch", (url: string, init: RequestInit) => sim.envio(url, JSON.parse(String(init.body))));
 vi.mock("@/lib/banco", () => ({
   comoServico: (fn: (q: (sql: string, params?: unknown[]) => Promise<unknown[]>) => Promise<unknown>) =>
     fn(async (sql, params) => {
@@ -44,7 +46,9 @@ vi.mock("@/lib/banco", () => ({
 const { avisarAtribuicao, avisarContatoRecebido, enviarAvisosPendentes, enviarLembretes, enviarPacote } = await import("@/lib/email");
 
 const aposResposta = () => Promise.all(sim.fila.splice(0).map((fn) => fn()));
-const destinos = () => sim.sendMail.mock.calls.map(([m]) => m.to);
+const destinos = () => sim.envio.mock.calls.map(([, corpo]) => corpo.para);
+// o que o script responde quando o Gmail recusa, por exemplo com a cota do dia gasta
+const recusa = () => Response.json({ ok: false, erro: "Exception: Service invoked too many times for one day: email." });
 
 const atribuicao = {
   para: "gabriel@ufla.br",
@@ -149,23 +153,25 @@ describe("textos dos e-mails", () => {
 describe("envio", () => {
   beforeEach(() => {
     sim.fila.length = 0;
-    sim.sendMail.mockReset().mockResolvedValue({});
+    sim.envio.mockReset().mockImplementation(async () => Response.json({ ok: true, restantes: 99 }));
     sim.linhas = { atribuicao: [atribuicao] };
     sim.registros.length = 0;
-    vi.stubEnv("GMAIL_APP_PASSWORD", "abcd efgh ijkl mnop");
+    vi.stubEnv("GMAIL_SCRIPT_URL", "https://script.test/exec");
+    vi.stubEnv("GMAIL_SCRIPT_CHAVE", "chave-de-teste");
     vi.spyOn(console, "info").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  it("só envia depois da resposta, pela conta do MoCCa", async () => {
+  it("só envia depois da resposta, pelo script e com a chave dele", async () => {
     avisarAtribuicao("t1", "p1", { id: "p2", nome: "Pedro Henrique", apelido: "Pedro" });
-    expect(sim.sendMail).not.toHaveBeenCalled();
+    expect(sim.envio).not.toHaveBeenCalled();
     await aposResposta();
-    expect(sim.sendMail).toHaveBeenCalledOnce();
-    const [m] = sim.sendMail.mock.calls[0];
-    expect(m.from).toBe("MoCCa <moccaufla@gmail.com>");
-    expect(m.to).toBe("gabriel@ufla.br");
-    expect(m.text).toContain("Pedro atribuiu");
+    expect(sim.envio).toHaveBeenCalledOnce();
+    const [url, corpo] = sim.envio.mock.calls[0];
+    expect(url).toBe("https://script.test/exec");
+    expect(corpo).toMatchObject({ chave: "chave-de-teste", para: "gabriel@ufla.br", assunto: "Nova tarefa no MoCCa: Agendar <visita>" });
+    expect(corpo.texto).toContain("Pedro atribuiu");
+    expect(corpo.html).toContain("Agendar &lt;visita&gt;");
   });
 
   it("não avisa quem atribuiu a si mesmo", async () => {
@@ -177,7 +183,7 @@ describe("envio", () => {
     sim.linhas = { atribuicao: [] };
     avisarAtribuicao("t1", "p1");
     await aposResposta();
-    expect(sim.sendMail).not.toHaveBeenCalled();
+    expect(sim.envio).not.toHaveBeenCalled();
   });
 
   it("confirma para quem escreveu e avisa o responsável", async () => {
@@ -197,15 +203,19 @@ describe("envio", () => {
     sim.linhas = { atribuicao: [{ ...atribuicao, para: "gabriel.leonardo@exemplo.com" }] };
     avisarAtribuicao("t1", "p1");
     await aposResposta();
-    expect(sim.sendMail).not.toHaveBeenCalled();
+    expect(sim.envio).not.toHaveBeenCalled();
   });
 
-  it("sem a senha, só registra no log", async () => {
-    vi.stubEnv("GMAIL_APP_PASSWORD", "");
+  it("sem o endereço ou a chave do script, só registra no log", async () => {
+    vi.stubEnv("GMAIL_SCRIPT_CHAVE", "");
     avisarContatoRecebido("c1", { nome: "Maria Teste", email: "maria@fazenda.test" });
     await aposResposta();
-    expect(sim.sendMail).not.toHaveBeenCalled();
-    expect(console.info).toHaveBeenCalledOnce();
+    vi.stubEnv("GMAIL_SCRIPT_CHAVE", "chave-de-teste");
+    vi.stubEnv("GMAIL_SCRIPT_URL", "");
+    avisarContatoRecebido("c2", { nome: "Maria Teste", email: "maria@fazenda.test" });
+    await aposResposta();
+    expect(sim.envio).not.toHaveBeenCalled();
+    expect(console.info).toHaveBeenCalledTimes(2);
   });
 
   it("não confirma de novo para o mesmo endereço no mesmo dia, mas avisa o responsável", async () => {
@@ -225,20 +235,20 @@ describe("envio", () => {
     ];
     expect(await enviarLembretes("2026-11-09")).toEqual({ tarefas: 2, emails: 2, enviados: 2 });
     expect(destinos()).toEqual(["gabriel@ufla.br", "marcos@ufla.br"]);
-    expect(sim.sendMail.mock.calls[0][0].subject).toBe("Amanhã vencem 2 tarefas suas no MoCCa");
-    expect(sim.sendMail.mock.calls[1][0].subject).toBe("Amanhã vence: Ligar para a cooperativa");
+    expect(sim.envio.mock.calls[0][1].assunto).toBe("Amanhã vencem 2 tarefas suas no MoCCa");
+    expect(sim.envio.mock.calls[1][1].assunto).toBe("Amanhã vence: Ligar para a cooperativa");
   });
 
-  it("o lembrete conta só o que saiu: sem senha, endereço de exemplo e falha de envio não contam", async () => {
+  it("o lembrete conta só o que saiu: sem a chave, endereço de exemplo e falha de envio não contam", async () => {
     const base = { papel: "responsavel", prazo: "2026-11-10T02:59:00.000Z", itens: [], tarefa_id: "t1", titulo: "Ligar" };
     sim.linhas.lembretes = [
       { ...base, para: "gabriel@ufla.br", nome: "Gabriel" },
       { ...base, para: "marcos@exemplo.com", nome: "Marcos" },
       { ...base, para: "lucas@ufla.br", nome: "Lucas" },
     ];
-    sim.sendMail.mockRejectedValueOnce(new Error("535 senha recusada"));
+    sim.envio.mockResolvedValueOnce(recusa());
     expect(await enviarLembretes("2026-11-09")).toEqual({ tarefas: 1, emails: 3, enviados: 1 });
-    vi.stubEnv("GMAIL_APP_PASSWORD", "");
+    vi.stubEnv("GMAIL_SCRIPT_CHAVE", "");
     expect((await enviarLembretes("2026-11-09")).enviados).toBe(0);
   });
 
@@ -246,7 +256,7 @@ describe("envio", () => {
     avisarAtribuicao("t1", "p1");
     await aposResposta();
     expect(sim.registros).toEqual([["tarefa", "p1", "t1", null, "[]"]]);
-    sim.sendMail.mockRejectedValueOnce(new Error("535 senha recusada"));
+    sim.envio.mockResolvedValueOnce(recusa());
     avisarAtribuicao("t1", "p1");
     await aposResposta();
     expect(sim.registros).toHaveLength(1);
@@ -256,7 +266,7 @@ describe("envio", () => {
     sim.linhas = { atribuicao: [{ ...atribuicao, ligada_entrega: true }] };
     avisarAtribuicao("t1", "p1", { id: "p2", nome: "Pedro Henrique", apelido: "Pedro" });
     await aposResposta();
-    expect(sim.sendMail).not.toHaveBeenCalled();
+    expect(sim.envio).not.toHaveBeenCalled();
   });
 
   it("o botão da tarefa envia para quem falta e diz para quem não saiu", async () => {
@@ -264,7 +274,7 @@ describe("envio", () => {
       { pessoa_id: "p1", nome: "Gabriel" },
       { pessoa_id: "p3", nome: "Marcos" },
     ];
-    sim.sendMail.mockRejectedValueOnce(new Error("535 senha recusada"));
+    sim.envio.mockResolvedValueOnce(recusa());
     expect(await enviarAvisosPendentes("t1")).toEqual({ enviados: ["Marcos"], falharam: ["Gabriel"] });
     expect(sim.registros).toEqual([["tarefa", "p3", "t1", null, "[]"]]);
   });
@@ -286,16 +296,29 @@ describe("envio", () => {
     ];
     expect(await enviarPacote("s3")).toEqual({ enviados: ["Gabriel"], falharam: [] });
     expect(destinos()).toEqual(["gabriel@ufla.br"]);
-    expect(sim.sendMail.mock.calls[0][0].subject).toBe("Entrega da semana 3: onde você entra");
+    expect(sim.envio.mock.calls[0][1].assunto).toBe("Entrega da semana 3: onde você entra");
     expect(sim.registros).toEqual([["entrega", "p1", null, "s3", JSON.stringify(["t1", "t2"])]]);
   });
 
   it("uma falha de envio não derruba nada e os outros e-mails ainda saem", async () => {
     sim.linhas.contato = [{ tarefa_id: "t1", pessoa_id: "p1" }];
-    sim.sendMail.mockRejectedValueOnce(new Error("535 senha recusada"));
+    sim.envio.mockResolvedValueOnce(recusa());
     avisarContatoRecebido("c1", { nome: "Maria Teste", email: "maria@fazenda.test" });
     await expect(aposResposta()).resolves.toBeDefined();
-    expect(sim.sendMail).toHaveBeenCalledTimes(2);
+    expect(sim.envio).toHaveBeenCalledTimes(2);
     expect(console.error).toHaveBeenCalledOnce();
+  });
+
+  it("rede caída e resposta que não é JSON do script também contam como falha", async () => {
+    sim.linhas.pendentes = [
+      { pessoa_id: "p1", nome: "Gabriel" },
+      { pessoa_id: "p3", nome: "Marcos" },
+      { pessoa_id: "p4", nome: "Henrique" },
+    ];
+    sim.envio
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(new Response("<html>Erro do Google</html>", { status: 500 }));
+    expect(await enviarAvisosPendentes("t1")).toEqual({ enviados: ["Henrique"], falharam: ["Gabriel", "Marcos"] });
+    expect(sim.registros).toEqual([["tarefa", "p4", "t1", null, "[]"]]);
   });
 });
