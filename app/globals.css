@@ -368,6 +368,12 @@
     outline-offset: -1px;
     box-shadow: 0 0 0 4px color-mix(in oklab, var(--foco) 20%, transparent);
   }
+  /* campo com erro: o contorno do foco fica na cor do erro. Em caramelo, ele
+     cobriria a borda vermelha, e o campo pareceria certo enquanto é corrigido */
+  :is(input, textarea, select)[aria-invalid="true"]:not([type="checkbox"], [type="radio"]):focus-visible {
+    outline-color: var(--erro);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--erro) 20%, transparent);
+  }
   ::-webkit-calendar-picker-indicator {
     cursor: pointer;
     opacity: 0.6;
