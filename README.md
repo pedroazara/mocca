@@ -93,7 +93,7 @@ Em `/painel`, só para quem está na equipe. Admin (Pedro) edita tudo, aprova o 
 | **Reuniões** | Pauta gerada da próxima reunião (entrega da semana, atrasadas, concluídas desde a última, contatos novos), presença, anotações, decisões e tarefas criadas na reunião |
 | **Arquivos** | A pasta do projeto no Google Drive: as pastas com o caminho, a busca em todas elas e os arquivos modificados por último. Cada arquivo mostra as tarefas, semanas e atas do painel em que aparece, e abre no Drive |
 | **Contatos** | Mensagens do formulário do site, com status, responsável, notas e exportação em CSV. Cada contato novo cria a tarefa "Responder contato" |
-| **Aprovações** (admin) | O que o Claude pediu com token e ainda não entrou no painel, com Aprovar e Recusar. Em alterações, mostra o valor de hoje e o proposto. A barra lateral conta as pendentes |
+| **Aprovações** (admin) | O que o Claude pediu com token e ainda não entrou no painel, um cartão por pedido no jeito do Quadro, com Aprovar, Editar e Recusar. Em alterações, mostra o valor de hoje riscado e o proposto. A barra lateral conta as pendentes |
 | **Configurações** (admin) | Reunião semanal, responsável pelos contatos, datas do programa, tokens da API, importação do Trello e tema |
 
 **Paleta de comandos:** `Ctrl/Cmd + K` ou `/` busca tarefas, pessoas, semanas, etiquetas e reuniões, e tem as ações rápidas (nova tarefa, nova reunião, alternar tema). Outros atalhos: `N` nova tarefa, `G S` / `G M` / `G Q` para Semana, Minhas tarefas e Quadro, e `?` mostra a lista. Com uma tarefa aberta: `E` edita o título, `A` atribui pessoa e `D` vai para o prazo. No Quadro, com o cartão em foco, `Enter` abre a tarefa e `Espaço` pega e solta.
@@ -112,7 +112,7 @@ Nada do que chega com token grava direto. Leituras respondem na hora; toda escri
 - O pedido é conferido na hora: pessoa ou etiqueta errada ou repetida, semana ou tarefa errada volta como erro e não cria proposta.
 - Ao aprovar, a mudança é aplicada numa transação só e aparece no histórico como "Claude". O e-mail de tarefa atribuída sai nesse momento.
 - Se não der para aplicar (a tarefa sumiu, a pessoa saiu da equipe), a proposta fica como `falhou`, com o motivo, e nada é gravado. Um erro inesperado, como uma queda do banco, mantém a proposta pendente, para tentar de novo.
-- Não há edição antes de aprovar: se a proposta estiver errada, recuse e peça de novo.
+- O admin pode editar a proposta antes de aprovar ("Salvar e aprovar" ou "Só salvar"). A edição passa pela mesma conferência do pedido; a tarefa, o item e a pessoa de uma atribuição não mudam (para isso, recuse e peça de novo). O `listar_propostas` devolve a versão editada.
 - Tarefa nova não tem id até ser aprovada, então atribuições, itens e documentos vão dentro do próprio `criar_tarefa`.
 
 O Claude acompanha os pedidos com `listar_propostas` (MCP) ou `GET /api/v1/propostas` (REST).

@@ -662,9 +662,10 @@ Cores das pessoas (avatares), todas com texto creme com contraste ≥ 4,5:1:
 ### 9.10 Aprovações (`/painel/aprovacoes`, só admin)
 
 - Lista do que o Claude pediu com token e ainda não entrou no painel (seção 11.4), da mais antiga para a mais nova, com o nome do token e a data.
-- Cada proposta mostra tudo o que será gravado, com as datas completas, inclusive o ano. Em alterações, mostra o valor de hoje e o proposto, e avisa que `etiquetas` substitui a lista inteira. Mostra também o papel de quem já está na tarefa, os itens apagados ao tirar alguém e quando adicionar um item atribui a pessoa.
-- Só há os botões Aprovar e Recusar, sem edição antes de aprovar.
-- Abaixo, as 30 decisões mais recentes, com quem decidiu e, nas que falharam, o motivo.
+- Cada proposta é um cartão no jeito do Quadro (dois por linha a partir de 768 px): um selo com o tipo do pedido, o nome do token e a hora; o que será gravado, com as peças da tarefa (etiquetas, título, descrição, prazo com o ano, semana, status, avatares, itens com a caixinha do checklist, documentos); e os botões Aprovar, Editar e Recusar.
+- O cartão mostra tudo o que será gravado. Em alterações, cada campo aparece riscado com o valor de hoje, com uma seta para o proposto, e o cartão avisa que `etiquetas` substitui a lista inteira. Mostra também o papel de quem já está na tarefa, os itens apagados ao tirar alguém (riscados) e quando adicionar um item atribui a pessoa. O título da tarefa abre a tarefa na janela.
+- **Editar** abre o formulário no próprio cartão, que ocupa a largura toda: numa tarefa nova, todos os campos, as pessoas (papel e itens) e os documentos; numa alteração, os campos propostos, cada um com "Não mudar" e o valor de hoje, e "Mudar também" para incluir outro; nos outros tipos, o que o pedido grava. A tarefa, o item e a pessoa de uma atribuição não mudam, e tirar alguém da tarefa não tem edição. "Salvar e aprovar" grava e aprova; "Só salvar" deixa a proposta editada pendente. A edição passa pela mesma conferência do pedido (seção 11.4).
+- Abaixo, as 30 decisões mais recentes, numa lista compacta com quem decidiu e, nas que falharam, o motivo; "Ver o pedido" abre o cartão.
 
 ### 9.11 Arquivadas (`/painel/arquivadas`)
 
@@ -1013,7 +1014,7 @@ Toda ferramenta que escreve só cria uma proposta e devolve o link dela no paine
 Tudo o que o Claude grava com token passa por um admin. Leituras não passam.
 
 1. **Pedido:** a escrita é conferida na hora (esquema, pessoas, etiquetas, semana, tarefa). Se houver erro, nada é criado e o Claude recebe o erro. Se estiver certa, entra em `proposta` como `pendente`, com as pessoas pelo id, e a resposta é `{ status: "pendente", proposta_id, tarefa_id, link, mensagem }`.
-2. **Decisão:** um admin aprova ou recusa em `/painel/aprovacoes` (seção 9.10). Não há edição antes de aprovar.
+2. **Decisão:** um admin aprova ou recusa em `/painel/aprovacoes` (seção 9.10). Antes de aprovar, pode editar o que a proposta grava: a edição passa pela mesma conferência do pedido, com as pessoas pelo id, e a proposta continua pendente. A tarefa, o item e a pessoa de uma atribuição não mudam. Como a edição grava com o service role, a checagem de admin fica na server action.
 3. **Aplicação:** aprovar roda numa transação só: trava a proposta pendente, confere tudo de novo, grava e marca `aprovada`. Um segundo clique não aplica de novo. Grava com o service role, para o histórico sair como "Claude", e `decidido_por` registra quem aprovou. Como o service role ignora o RLS, a checagem de admin fica na server action.
 4. **Falha:** se não der para aplicar, nada é gravado e a proposta vira `falhou`, com o motivo em `erro`. Erro inesperado, como queda do banco, não consome a proposta: ela continua `pendente`, para o admin tentar de novo.
 

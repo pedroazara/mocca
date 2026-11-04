@@ -2,7 +2,7 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { aprovarProposta as aprovar, ErroApi } from "@/lib/api/servico";
+import { aprovarProposta as aprovar, editarProposta as editar, ErroApi } from "@/lib/api/servico";
 import { pessoaLogada, type PessoaLogada } from "@/lib/auth";
 import { comoServico, comoUsuario, mensagemDeErro, modoLocal, type Consulta } from "@/lib/banco";
 import { esquecerArvore } from "@/lib/drive";
@@ -631,6 +631,25 @@ export async function aprovarProposta(id: string) {
     return { ok: true as const, dado };
   } catch (e) {
     return { ok: false as const, erro: e instanceof ErroApi ? e.message : mensagemDeErro(e) };
+  }
+}
+
+// Editar antes de aprovar: troca o que a proposta vai gravar, com a mesma
+// conferência do pedido do Claude. Grava com o service role, como aprovar, então
+// a conferência de admin aqui é a proteção real. Nada muda no painel até aprovar.
+export async function editarProposta(id: string, dados: unknown) {
+  const eu = await pessoaLogada();
+  if (!eu) return { ok: false as const, erro: "Sua sessão expirou. Entre de novo." };
+  if (eu.papel !== "admin") return { ok: false as const, erro: "Só o admin edita as propostas do Claude." };
+  try {
+    await editar(id, dados);
+    revalidatePath("/painel/aprovacoes");
+    return { ok: true as const };
+  } catch (e) {
+    if (!(e instanceof ErroApi)) return { ok: false as const, erro: mensagemDeErro(e) };
+    // o esquema responde em inglês: o admin vê quais campos conferir
+    const campos = (e.extra?.problemas as { campo: string }[] | undefined)?.map((p) => p.campo).filter(Boolean);
+    return { ok: false as const, erro: campos?.length ? `${e.message.replace(/\.$/, "")}: ${campos.join(", ")}.` : e.message };
   }
 }
 

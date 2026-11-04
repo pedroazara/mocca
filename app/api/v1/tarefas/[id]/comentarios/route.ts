@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { comApi, corpoJson } from "@/lib/api/rota";
-import { comentar, validar } from "@/lib/api/servico";
+import { comentar, esquemaTextoComentario, validar } from "@/lib/api/servico";
 
 export const dynamic = "force-dynamic";
-const esquema = z.object({ texto: z.string().trim().min(1).max(5000) });
+const esquema = z.object({ texto: esquemaTextoComentario });
 
 // POST /api/v1/tarefas/{id}/comentarios  { texto }  (autor exibido como "Claude")
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
