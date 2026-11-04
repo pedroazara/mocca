@@ -105,7 +105,8 @@ export async function tarefa(q: Consulta, id: string): Promise<TarefaCompleta | 
                    from historico h where h.tarefa_id = t.id), '[]'::json) as historico,
        coalesce((select json_agg(json_build_object('pessoa_id', e.pessoa_id, 'tipo', e.tipo, 'enviado_em', e.enviado_em))
                    from (select pessoa_id, tipo, max(enviado_em) as enviado_em from email_enviado
-                          where (tipo = 'tarefa' and tarefa_id = t.id) or (tipo = 'entrega' and t.id = any(tarefas))
+                          where (tipo = 'tarefa' and tarefa_id = t.id)
+                             or (tipo = 'entrega' and semana_id = t.semana_id and t.id = any(tarefas))
                           group by pessoa_id, tipo) e), '[]'::json) as emails
        from tarefa t left join semana s on s.id = t.semana_id
       where t.id = $1`,
@@ -207,7 +208,7 @@ export async function propostasDecididas(q: Consulta) {
 }
 
 export async function situacaoPacote(q: Consulta, semanaId: string) {
-  return q<SituacaoPacote>(SQL_SITUACAO_PACOTE, [semanaId]);
+  return q<SituacaoPacote>(SQL_SITUACAO_PACOTE, [semanaId, null]);
 }
 
 export async function documentosDaSemana(q: Consulta, semanaId: string) {

@@ -4,7 +4,7 @@ import { AlertTriangle, Clock } from "lucide-react";
 import Image from "next/image";
 import { estaAtrasada, textoPrazo, dataCurta, diasAtePrazo } from "@/lib/painel/datas";
 import type { Etiqueta, Pessoa, Status } from "@/lib/painel/tipos";
-import { cn, iniciais } from "@/lib/utils";
+import { cn, iniciais, listaNomes } from "@/lib/utils";
 
 // Peças pequenas do painel (seção 5): avatar, pilha de avatares, chips.
 
@@ -133,4 +133,16 @@ export function EstadoVazio({
       {acao}
     </div>
   );
+}
+
+// O aviso depois de um botão "Enviar": para quem saiu, para quem não saiu, ou que
+// já tinha saído para todos (outra pessoa enviou antes, ou o aviso automático).
+export function textoEnvio(feito: string, r: { enviados: string[]; falharam: string[] }) {
+  if (!r.enviados.length && !r.falharam.length) return "Já tinha saído para todos.";
+  return [
+    r.enviados.length ? `${feito} para ${listaNomes(r.enviados)}.` : "",
+    r.falharam.length ? `Não saiu para ${listaNomes(r.falharam)}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }

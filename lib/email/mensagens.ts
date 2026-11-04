@@ -27,8 +27,10 @@ const SQL_OUTROS = `
              where x.tarefa_id = t.id and x.pessoa_id <> p.id and o.ativo), '[]'::json)`;
 
 // Dados do aviso de uma atribuição ($1 = tarefa, $2 = pessoa). Pessoa inativa não recebe.
+// "ja_recebeu": o aviso desta tarefa já foi para ela, então não sai de novo.
 export const SQL_ATRIBUICAO = `
   select p.email as para, coalesce(p.apelido, p.nome) as nome, a.papel::text as papel, t.titulo, t.prazo, t.ligada_entrega,
+         exists (select 1 from email_enviado e where e.tipo = 'tarefa' and e.tarefa_id = t.id and e.pessoa_id = p.id) as ja_recebeu,
          coalesce((select json_agg(i.texto order by i.posicao, i.id) from item i where i.atribuicao_id = a.id), '[]'::json) as itens,
          case when s.id is not null then json_build_object('numero', s.numero, 'total', (select count(*)::int from semana)) end as semana,
          coalesce((select json_agg(json_build_object('nome', e.nome, 'token', e.token) order by e.nome)
@@ -41,6 +43,13 @@ export const SQL_ATRIBUICAO = `
     left join semana s on s.id = t.semana_id
    where a.tarefa_id = $1 and a.pessoa_id = $2 and p.ativo`;
 
+// Registro de um e-mail aceito ($5 = as tarefas do pacote, em JSON). O $5::text::json
+// é de propósito: com $5::json, o postgres.js serializa o texto de novo e o banco
+// recebe uma string JSON em vez da lista (o PGlite não faz isso), como no contato.
+export const SQL_REGISTRAR = `
+  insert into email_enviado (tipo, pessoa_id, tarefa_id, semana_id, tarefas)
+  values ($1, $2, $3, $4, (select coalesce(array_agg(x::uuid), '{}') from json_array_elements_text($5::text::json) x))`;
+
 // Quem da tarefa $1 ainda não recebeu o aviso dela (e tem e-mail de verdade).
 export const SQL_AVISOS_PENDENTES = `
   select a.pessoa_id, coalesce(p.apelido, p.nome) as nome
@@ -50,14 +59,17 @@ export const SQL_AVISOS_PENDENTES = `
                       where e.tipo = 'tarefa' and e.tarefa_id = a.tarefa_id and e.pessoa_id = a.pessoa_id)
    order by a.papel, p.nome`;
 
-// As tarefas do pacote da entrega: abertas, ligadas à entrega da semana $1.
+// As tarefas do pacote da entrega: abertas, ligadas à entrega da semana $1; com
+// $2, só as da pessoa $2.
 const TAREFAS_DO_PACOTE = `
     from tarefa t
     join atribuicao a on a.tarefa_id = t.id
     join pessoa p on p.id = a.pessoa_id
-   where t.semana_id = $1 and t.ligada_entrega and not t.arquivada and t.status <> 'feito' and p.ativo`;
+   where t.semana_id = $1 and t.ligada_entrega and not t.arquivada and t.status <> 'feito' and p.ativo
+     and ($2::uuid is null or p.id = $2::uuid)`;
 
-// Uma linha por pessoa e tarefa do pacote ($1 = semana), com os itens dela ainda abertos.
+// Uma linha por pessoa e tarefa do pacote ($1 = semana, $2 = pessoa ou nulo), com
+// os itens dela ainda abertos.
 export const SQL_PACOTE = `
   select p.id as pessoa_id, p.email as para, coalesce(p.apelido, p.nome) as nome,
          t.id as tarefa_id, t.titulo, t.prazo, a.papel::text as papel,
@@ -78,8 +90,8 @@ export const SQL_SEMANA_PACOTE = `
                     order by d.criado_em limit 1)) as entrega_url
     from semana s where s.id = $1`;
 
-// Situação do pacote ($1 = semana), por pessoa com tarefa no pacote: quando
-// recebeu o último e se alguma tarefa dela ainda não foi em nenhum pacote.
+// Situação do pacote ($1 = semana, $2 = pessoa ou nulo), por pessoa com tarefa no
+// pacote: quando recebeu o último e se alguma tarefa dela ainda não foi em nenhum pacote.
 export const SQL_SITUACAO_PACOTE = `
   select p.id as pessoa_id, coalesce(p.apelido, p.nome) as nome, p.email !~* '@exemplo\\.com$' as tem_email,
          (select max(e.enviado_em) from email_enviado e

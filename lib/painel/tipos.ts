@@ -152,7 +152,7 @@ export type TarefaCompleta = TarefaResumo & {
   lista_documentos: Documento[];
   lista_comentarios: Comentario[];
   historico: Historico[];
-  // e-mails que levaram esta tarefa: o aviso dela ou o pacote da entrega (o último de cada pessoa)
+  // e-mails que levaram esta tarefa: o aviso dela ou o pacote da entrega da semana dela (o último de cada pessoa)
   emails: { pessoa_id: string; tipo: "tarefa" | "entrega"; enviado_em: string }[];
 };
 

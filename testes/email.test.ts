@@ -20,6 +20,7 @@ const sim = vi.hoisted(() => ({
     pacote?: unknown[];
   },
   registros: [] as unknown[][],
+  travas: [] as unknown[],
 }));
 
 vi.mock("server-only", () => ({}));
@@ -32,10 +33,17 @@ vi.mock("@/lib/banco", () => ({
         sim.registros.push(params ?? []);
         return [];
       }
+      if (sql.includes("pg_advisory_xact_lock")) {
+        sim.travas.push(params?.[0]);
+        return [];
+      }
+      // as consultas do pacote recebem a pessoa em $2 (ou nulo, para todas)
+      const daPessoa = (linhas: unknown[] = []) =>
+        params?.[1] ? linhas.filter((l) => (l as { pessoa_id: string }).pessoa_id === params[1]) : linhas;
       if (sql.includes("t.contato_id")) return sim.linhas.contato ?? [];
-      if (sql.includes("as falta")) return sim.linhas.situacao ?? [];
+      if (sql.includes("as falta")) return daPessoa(sim.linhas.situacao);
       if (sql.includes("from semana s where s.id")) return sim.linhas.semana ?? [];
-      if (sql.includes("and not i.feito), '[]'::json) as itens,") && sql.includes("t.ligada_entrega and")) return sim.linhas.pacote ?? [];
+      if (sql.includes("and not i.feito), '[]'::json) as itens,") && sql.includes("t.ligada_entrega and")) return daPessoa(sim.linhas.pacote);
       if (sql.includes("not exists (select 1 from email_enviado")) return sim.linhas.pendentes ?? [];
       if (sql.includes("from contato")) return [{ n: sim.linhas.anteriores ?? 0 }];
       if (sql.includes("not t.arquivada")) return sim.linhas.lembretes ?? [];
@@ -156,6 +164,7 @@ describe("envio", () => {
     sim.envio.mockReset().mockImplementation(async () => Response.json({ ok: true, restantes: 99 }));
     sim.linhas = { atribuicao: [atribuicao] };
     sim.registros.length = 0;
+    sim.travas.length = 0;
     vi.stubEnv("GMAIL_SCRIPT_URL", "https://script.test/exec");
     vi.stubEnv("GMAIL_SCRIPT_CHAVE", "chave-de-teste");
     vi.spyOn(console, "info").mockImplementation(() => {});
@@ -262,11 +271,28 @@ describe("envio", () => {
     expect(sim.registros).toHaveLength(1);
   });
 
-  it("tarefa ligada à entrega não tem aviso próprio: vai no pacote", async () => {
-    sim.linhas = { atribuicao: [{ ...atribuicao, ligada_entrega: true }] };
+  it("tarefa ligada à entrega de uma semana não tem aviso próprio: vai no pacote", async () => {
+    sim.linhas = { atribuicao: [{ ...atribuicao, ligada_entrega: true, semana: { numero: 3, total: 12 } }] };
     avisarAtribuicao("t1", "p1", { id: "p2", nome: "Pedro Henrique", apelido: "Pedro" });
     await aposResposta();
     expect(sim.envio).not.toHaveBeenCalled();
+  });
+
+  it("ligada à entrega mas sem semana, não entra em pacote nenhum: o aviso sai", async () => {
+    sim.linhas = { atribuicao: [{ ...atribuicao, ligada_entrega: true, semana: null }] };
+    avisarAtribuicao("t1", "p1");
+    await aposResposta();
+    expect(destinos()).toEqual(["gabriel@ufla.br"]);
+  });
+
+  it("cada envio trava a pessoa na tarefa ou na semana, e quem já recebeu não recebe de novo", async () => {
+    avisarAtribuicao("t1", "p1");
+    await aposResposta();
+    expect(sim.travas).toEqual(["email:tarefa:t1:p1"]);
+    // o aviso automático saiu antes do clique: o botão não manda de novo
+    sim.linhas = { atribuicao: [{ ...atribuicao, ja_recebeu: true }], pendentes: [{ pessoa_id: "p1", nome: "Gabriel" }] };
+    expect(await enviarAvisosPendentes("t1")).toEqual({ enviados: [], falharam: [] });
+    expect(sim.envio).toHaveBeenCalledOnce();
   });
 
   it("o botão da tarefa envia para quem falta e diz para quem não saiu", async () => {
@@ -295,6 +321,7 @@ describe("envio", () => {
       { ...linha, pessoa_id: "p3", para: "marcos@ufla.br", nome: "Marcos", tarefa_id: "t1", titulo: "Pitch" },
     ];
     expect(await enviarPacote("s3")).toEqual({ enviados: ["Gabriel"], falharam: [] });
+    expect(sim.travas).toEqual(["email:entrega:s3:p1"]);
     expect(destinos()).toEqual(["gabriel@ufla.br"]);
     expect(sim.envio.mock.calls[0][1].assunto).toBe("Entrega da semana 3: onde você entra");
     expect(sim.registros).toEqual([["entrega", "p1", null, "s3", JSON.stringify(["t1", "t2"])]]);

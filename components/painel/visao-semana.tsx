@@ -11,7 +11,7 @@ import { dataCurta, dataHora, dataLonga, diaCurto, diasAtePrazo, estaAtrasada, t
 import type { Contato, Semana, SituacaoPacote, TarefaResumo } from "@/lib/painel/tipos";
 import { cn, listaNomes } from "@/lib/utils";
 import { usePainel } from "./contexto";
-import { EstadoVazio } from "./elementos";
+import { EstadoVazio, textoEnvio } from "./elementos";
 import {
   animarSaida,
   EVENTO_PASSOU_SEMANA,
@@ -406,20 +406,18 @@ function PacotePorEmail({ semana, pacote }: { semana: Semana; pacote: SituacaoPa
   const { podeEditar, avisar } = usePainel();
   const [enviando, iniciar] = useTransition();
   if (!pacote.length) return null;
-  const recebeu = pacote.filter((p) => p.enviado_em && !p.falta);
+  const recebeu = pacote.filter((p) => p.enviado_em);
   const faltam = pacote.filter((p) => p.falta && p.tem_email);
   const semEmail = pacote.filter((p) => p.falta && !p.tem_email);
   const ultimo = recebeu.map((p) => p.enviado_em!).sort().at(-1);
-  const nomes = (ps: SituacaoPacote[]) => listaNomes(ps.map((p) => p.nome));
+  // quem já tinha recebido e ganhou tarefa nova aparece marcado
+  const nomes = (ps: SituacaoPacote[]) => listaNomes(ps.map((p) => (p.enviado_em && p.falta ? `${p.nome} (tarefa nova)` : p.nome)));
 
   const enviar = () =>
     iniciar(async () => {
       const r = await enviarPacoteDaSemana(semana.id);
       if (!r.ok) avisar(r.erro, { erro: true });
-      else if (r.dado)
-        avisar(
-          `Pacote enviado para ${listaNomes(r.dado.enviados)}.${r.dado.falharam.length ? ` Não saiu para ${listaNomes(r.dado.falharam)}.` : ""}`,
-        );
+      else if (r.dado) avisar(textoEnvio("Pacote enviado", r.dado));
     });
 
   return (
@@ -431,7 +429,7 @@ function PacotePorEmail({ semana, pacote }: { semana: Semana; pacote: SituacaoPa
             {recebeu.length ? (
               <>
                 <Check aria-hidden strokeWidth={2} className="mr-1 inline size-3.5 align-[-2px] text-ok" />
-                Pacote enviado para {nomes(recebeu)}
+                Pacote enviado para {listaNomes(recebeu.map((p) => p.nome))}
                 <span className="t-dado text-texto-2"> · {dataHora(ultimo!)}</span>
               </>
             ) : (
@@ -441,13 +439,13 @@ function PacotePorEmail({ semana, pacote }: { semana: Semana; pacote: SituacaoPa
           {faltam.length > 0 && (
             <p className="text-texto-2">{recebeu.length ? `Falta enviar para ${nomes(faltam)}.` : `Vai para ${nomes(faltam)}.`}</p>
           )}
-          {semEmail.length > 0 && <p className="text-texto-2">Sem e-mail cadastrado: {nomes(semEmail)}.</p>}
+          {semEmail.length > 0 && <p className="text-texto-2">Sem e-mail cadastrado: {listaNomes(semEmail.map((p) => p.nome))}.</p>}
         </div>
       </div>
       {podeEditar && faltam.length > 0 && (
         <Botao tamanho="painel" className="shrink-0 self-start md:self-auto" disabled={enviando} onClick={enviar}>
           <Send aria-hidden />
-          {enviando ? "Enviando…" : recebeu.length ? `Enviar para ${nomes(faltam)}` : "Enviar o pacote por e-mail"}
+          {enviando ? "Enviando…" : recebeu.length ? `Enviar para ${listaNomes(faltam.map((p) => p.nome))}` : "Enviar o pacote por e-mail"}
         </Botao>
       )}
     </div>

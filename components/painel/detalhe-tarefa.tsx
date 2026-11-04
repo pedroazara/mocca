@@ -45,6 +45,7 @@ import {
 } from "@/lib/painel/tipos";
 import { cn, listaNomes } from "@/lib/utils";
 import { usePainel } from "./contexto";
+import { textoEnvio } from "./elementos";
 import { Avatar, ChipEtiqueta, corPrazo } from "./elementos";
 import { Markdown } from "./markdown";
 
@@ -468,12 +469,12 @@ function Propriedades({ t }: { t: TarefaCompleta }) {
 }
 
 // Para quem o e-mail desta tarefa já foi e o botão para quem falta. A tarefa
-// ligada à entrega não tem e-mail próprio: vai no pacote da semana, e o botão
-// manda o pacote para todos da semana que ainda não receberam.
+// ligada à entrega de uma semana não tem e-mail próprio: vai no pacote dela, e o
+// botão manda o pacote para todos da semana que ainda não receberam.
 function EmailDaTarefa({ t }: { t: TarefaCompleta }) {
   const { pessoa, podeEditar, avisar } = usePainel();
   const [enviando, rodar] = useRodar();
-  const doPacote = t.ligada_entrega;
+  const doPacote = t.ligada_entrega && Boolean(t.semana_id);
   const envios = t.emails.filter((e) => e.tipo === (doPacote ? "entrega" : "tarefa"));
   const recebeu = new Set(envios.map((e) => e.pessoa_id));
   const pessoas = t.atribuicoes.map((a) => pessoa(a.pessoa_id)).filter((p): p is Pessoa => Boolean(p?.ativo));
@@ -482,21 +483,18 @@ function EmailDaTarefa({ t }: { t: TarefaCompleta }) {
   const semEmail = pessoas.filter((p) => !recebeu.has(p.id) && enderecoDeExemplo(p.email));
   const ultimo = envios.map((e) => e.enviado_em).sort().at(-1);
   const nomes = (ps: Pessoa[]) => listaNomes(ps.map((p) => p.apelido ?? p.nome));
-  const podeEnviar = podeEditar && faltam.length > 0 && t.status !== "feito" && !t.arquivada && (!doPacote || t.semana_id);
+  const podeEnviar = podeEditar && faltam.length > 0 && t.status !== "feito" && !t.arquivada;
 
   const enviar = async () => {
     const r = await rodar(() => (doPacote ? acoes.enviarPacoteDaSemana(t.semana_id!) : acoes.enviarEmailDaTarefa(t.id)));
-    if (r)
-      avisar(
-        `${doPacote ? "Pacote enviado" : "E-mail enviado"} para ${listaNomes(r.enviados)}.${r.falharam.length ? ` Não saiu para ${listaNomes(r.falharam)}.` : ""}`,
-      );
+    if (r) avisar(textoEnvio(doPacote ? "Pacote enviado" : "E-mail enviado", r));
   };
 
   return (
     <div className="mt-1.5 flex flex-col gap-1.5 border-t border-linha pt-3 text-[0.875rem]">
       <p className="flex items-center gap-1.5 text-texto-2">
         <Mail aria-hidden strokeWidth={1.75} className="size-4" />
-        {doPacote ? `E-mail: vai no pacote da entrega${t.semana ? ` da semana ${t.semana}` : ""}` : "E-mail"}
+        {doPacote ? `E-mail: vai no pacote da entrega da semana ${t.semana}` : "E-mail"}
       </p>
       {pessoas.length === 0 ? (
         <p className="text-texto-2">Ninguém atribuído para receber.</p>
