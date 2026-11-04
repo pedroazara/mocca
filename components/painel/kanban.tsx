@@ -5,7 +5,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useDroppable,
   useSensor,
   useSensors,
@@ -63,8 +64,11 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
 
   // id estável: sem ele, o dnd-kit gera ids diferentes no servidor e no navegador
   const idDnd = useId();
+  // No toque, segurar um instante antes de arrastar: com o arrasto imediato, o
+  // navegador começava a rolar o quadro e cancelava o movimento.
   const sensores = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -276,7 +280,7 @@ function CartaoArrastavel({ tarefa, desabilitado, arrastou }: { tarefa: TarefaRe
           e.stopPropagation();
         }
       }}
-      className={cn("touch-manipulation rounded-m outline-offset-2", isDragging && "opacity-40")}
+      className={cn("touch-manipulation rounded-m outline-offset-2 [-webkit-touch-callout:none]", isDragging && "opacity-40")}
     >
       <CartaoTarefa tarefa={tarefa} className="cursor-grab active:cursor-grabbing" />
     </div>
