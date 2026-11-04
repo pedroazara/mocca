@@ -232,7 +232,32 @@ describe("RLS", () => {
         papel: "apoio",
         titulo: "Upsert",
         itens: ["Primeiro", "Segundo"],
+        semana: null,
+        etiquetas: [],
+        outros: [],
       });
+
+      // semana, etiquetas e quem mais está na tarefa, responsáveis primeiro
+      const s3 = (await um<{ id: string }>("select id from semana where numero = 3"))!;
+      await db.query("update tarefa set semana_id = $2 where id = $1", [t.id, s3.id]);
+      await db.query("insert into tarefa_etiqueta select $1, id from etiqueta where nome = 'Marketing'", [t.id]);
+      await db.query(
+        `insert into atribuicao (tarefa_id, pessoa_id, papel)
+         select $1, id, (case when apelido = 'Pedro' then 'responsavel' else 'apoio' end)::papel_atrib
+           from pessoa where apelido in ('Marcos', 'Pedro')`,
+        [t.id],
+      );
+      expect(await um(SQL_ATRIBUICAO, [t.id, gab.id])).toMatchObject({
+        semana: { numero: 3, total: 12 },
+        etiquetas: [{ nome: "Marketing", token: "et-marketing" }],
+        outros: [
+          { apelido: "Pedro", papel: "responsavel" },
+          { apelido: "Marcos", papel: "apoio" },
+        ],
+      });
+      await db.query("update tarefa set semana_id = null where id = $1", [t.id]);
+      await db.query("delete from tarefa_etiqueta where tarefa_id = $1", [t.id]);
+      await db.query("delete from atribuicao where tarefa_id = $1 and pessoa_id <> $2", [t.id, gab.id]);
 
       await db.query("update pessoa set ativo = false where id = $1", [gab.id]);
       expect(await um(SQL_ATRIBUICAO, [t.id, gab.id])).toBeUndefined();

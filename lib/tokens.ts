@@ -63,6 +63,15 @@ export const etiquetas = {
   Marketing: "et-marketing",
 } as const;
 
+// Cores das etiquetas no tema claro (--et-*), para os e-mails.
+export const coresEtiquetas: Record<string, string> = {
+  "et-entregas": "#A2412F",
+  "et-validacao": "#2F5F86",
+  "et-tecnico": "#3F7A4A",
+  "et-negocio": "#8F6210",
+  "et-marketing": "#7A3F7A",
+};
+
 // Cores das pessoas (seção 9.8). Texto creme sobre todas com contraste >= 4,5:1.
 export const coresPessoas = {
   gabriel: "#2F5F86",

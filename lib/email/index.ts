@@ -12,6 +12,7 @@ import {
   SQL_ATRIBUICAO,
   SQL_LEMBRETES,
   tarefaAtribuida,
+  type Envolvido,
   type LinhaLembrete,
   type Mensagem,
 } from "./mensagens";
@@ -63,10 +64,17 @@ function depoisDaResposta(montar: () => Promise<Mensagem[]>) {
 
 async function mensagemDeAtribuicao(tarefaId: string, pessoaId: string, autor?: string) {
   const [a] = await comoServico((q) =>
-    q<{ para: string; nome: string; papel: PapelAtribuicao; titulo: string; prazo: string | null; itens: string[] }>(SQL_ATRIBUICAO, [
-      tarefaId,
-      pessoaId,
-    ]),
+    q<{
+      para: string;
+      nome: string;
+      papel: PapelAtribuicao;
+      titulo: string;
+      prazo: string | null;
+      itens: string[];
+      semana: { numero: number; total: number } | null;
+      etiquetas: { nome: string; token: string }[];
+      outros: Envolvido[];
+    }>(SQL_ATRIBUICAO, [tarefaId, pessoaId]),
   );
   return a ? [tarefaAtribuida({ ...a, autor, link: linkTarefa(tarefaId) })] : [];
 }

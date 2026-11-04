@@ -4,14 +4,9 @@ import { AlertTriangle, Clock } from "lucide-react";
 import Image from "next/image";
 import { estaAtrasada, textoPrazo, dataCurta, diasAtePrazo } from "@/lib/painel/datas";
 import type { Etiqueta, Pessoa, Status } from "@/lib/painel/tipos";
-import { cn } from "@/lib/utils";
+import { cn, iniciais } from "@/lib/utils";
 
 // Peças pequenas do painel (seção 5): avatar, pilha de avatares, chips.
-
-function iniciais(nome: string) {
-  const partes = nome.replace(/^Prof\.\s*/, "").split(/\s+/).filter(Boolean);
-  return ((partes[0]?.[0] ?? "") + (partes.length > 1 ? partes[partes.length - 1][0] : "")).toUpperCase();
-}
 
 const tamanhos = { 20: "size-5 text-[9px]", 28: "size-7 text-[11px]", 40: "size-10 text-[14px]" } as const;
 

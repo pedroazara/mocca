@@ -36,6 +36,11 @@ export function dataLonga(iso: string | Date) {
   return format(emBrasilia(iso), "EEEE, d 'de' MMMM 'às' HH:mm", { locale: ptBR });
 }
 
+// "sábado, 07/11" (ou "segunda, 09/11 às 23:59"), sem o "-feira".
+export function diaDaSemana(iso: string | Date, comHora = false) {
+  return format(emBrasilia(iso), comHora ? "EEEE, dd/MM 'às' HH:mm" : "EEEE, dd/MM", { locale: ptBR }).replace("-feira", "");
+}
+
 // Datas de calendário (coluna `date`, "YYYY-MM-DD"): sem conversão de fuso.
 export function diaCurto(dia: string) {
   return format(parseISO(dia), "dd/MM");
