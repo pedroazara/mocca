@@ -162,6 +162,9 @@ export const esquemaAtualizacao = z.object({
 
 export const esquemaStatusProposta = z.enum(STATUS_PROPOSTA).nullish();
 
+export const esquemaTextoItem = z.string().trim().min(1).max(500);
+export const esquemaTextoComentario = z.string().trim().min(1).max(5000);
+
 export function validar<T>(esquema: z.ZodType<T>, corpo: unknown): T {
   const r = esquema.safeParse(corpo);
   if (!r.success)
@@ -549,6 +552,59 @@ export async function aprovarProposta(id: string, adminId: string) {
     );
     return { status: "falhou" as const, erro: e.message };
   }
+}
+
+// O que o admin pode trocar numa proposta antes de aprovar (seção 11.4). A
+// tarefa, o item e a pessoa de uma atribuição ou de uma saída continuam os do
+// pedido: trocar isso seria outro pedido. A origem da tarefa nova também fica.
+// Os esquemas descartam o resto do que vier.
+const EDICOES: { [O in keyof Dados]: ((antes: Dados[O], corpo: unknown) => Dados[O]) | null } = {
+  criar_tarefa: (antes, corpo) => ({
+    ...validar(esquemaNovaTarefa.omit({ origem: true }), corpo),
+    ...(antes.origem ? { origem: antes.origem } : {}),
+  }),
+  atualizar_tarefa: (antes, corpo) => ({
+    tarefa_id: antes.tarefa_id,
+    campos: validar(z.object({ campos: esquemaAtualizacao }), corpo).campos,
+  }),
+  atribuir: (antes, corpo) => ({
+    tarefa_id: antes.tarefa_id,
+    pessoa: antes.pessoa,
+    ...validar(esquemaAtribuicao.pick({ papel: true, itens: true }), corpo),
+  }),
+  remover_atribuicao: null,
+  adicionar_item: (antes, corpo) => ({
+    tarefa_id: antes.tarefa_id,
+    ...validar(z.object({ pessoa: z.string().min(1), texto: esquemaTextoItem }), corpo),
+  }),
+  atualizar_item: (antes, corpo) => ({
+    item_id: antes.item_id,
+    ...validar(z.object({ feito: z.boolean().optional(), texto: esquemaTextoItem.optional() }), corpo),
+  }),
+  adicionar_documento: (antes, corpo) => ({ tarefa_id: antes.tarefa_id, ...validar(esquemaDocumento, corpo) }),
+  comentar: (antes, corpo) => ({
+    tarefa_id: antes.tarefa_id,
+    texto: validar(z.object({ texto: esquemaTextoComentario }), corpo).texto,
+  }),
+};
+
+// Só o painel chama, depois de conferir que quem pediu é admin. A edição passa
+// pela mesma conferência do pedido do Claude e troca o que a proposta vai
+// gravar; ela continua pendente, e nada muda no painel até aprovar. O `for
+// update` faz a edição esperar uma aprovação em curso e não achar mais a
+// proposta pendente.
+export async function editarProposta(id: string, corpo: unknown) {
+  if (!ID.test(id)) throw new ErroApi(404, "proposta_inexistente", "Proposta não encontrada.");
+  return comoServico(async (q) => {
+    const [p] = await q<Pedido>("select operacao, dados from proposta where id = $1 and status = 'pendente' for update", [id]);
+    if (!p) throw new ErroApi(409, "proposta_decidida", "Esta proposta já foi decidida.");
+    const editar = EDICOES[p.operacao] as ((antes: unknown, corpo: unknown) => unknown) | null;
+    if (!editar) throw new ErroApi(400, "sem_edicao", "Esta proposta não tem o que editar: aprove ou recuse.");
+    const op = OPERACOES[p.operacao] as Operacao<unknown>;
+    const conferidos = await op.conferir(q, editar(p.dados, corpo));
+    await q("update proposta set dados = $2::text::jsonb where id = $1", [id, JSON.stringify(conferidos)]);
+    return { operacao: p.operacao, dados: conferidos } as Pedido;
+  });
 }
 
 export async function pautaProximaReuniao() {
