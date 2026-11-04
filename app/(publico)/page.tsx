@@ -362,7 +362,10 @@ export default function Inicio() {
                 </span>
                 <div className="flex flex-1 flex-col gap-2 border-b border-linha pb-8 sm:flex-row sm:items-start sm:justify-between sm:gap-6 [li:last-child_&]:border-0 [li:last-child_&]:pb-0">
                   <p className="font-medium text-texto">{e.texto}</p>
-                  <Chip estado={e.estado}>{e.rotulo}</Chip>
+                  {/* no celular a coluna estica os filhos: o selo fica do tamanho do texto */}
+                  <Chip estado={e.estado} className="self-start">
+                    {e.rotulo}
+                  </Chip>
                 </div>
               </li>
             ))}
