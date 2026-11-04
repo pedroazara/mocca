@@ -16,7 +16,7 @@ import { EstadoVazio } from "./elementos";
 export function ListaArquivadas({ tarefas }: { tarefas: TarefaArquivada[] }) {
   if (!tarefas.length) return <EstadoVazio texto="Nada arquivado. Ao arquivar uma tarefa, ela sai do Quadro e fica aqui." />;
   return (
-    <ul className="flex flex-col divide-y divide-linha rounded-m border border-linha bg-superficie">
+    <ul className="flex flex-col divide-y divide-linha overflow-hidden rounded-g border border-linha bg-superficie">
       {tarefas.map((t) => (
         <LinhaArquivada key={t.id} tarefa={t} />
       ))}

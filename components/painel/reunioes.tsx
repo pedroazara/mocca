@@ -44,7 +44,7 @@ export function ListaReunioes({ reunioes }: { reunioes: Reuniao[] }) {
       {reunioes.length === 0 ? (
         <EstadoVazio texto="As reuniões da equipe aparecem aqui, com pauta, decisões e tarefas criadas." />
       ) : (
-        <ul className="flex flex-col divide-y divide-linha rounded-m border border-linha bg-superficie">
+        <ul className="flex flex-col divide-y divide-linha overflow-hidden rounded-g border border-linha bg-superficie">
           {reunioes.map((r) => {
             const futura = new Date(r.data).getTime() > agora;
             return (

@@ -82,7 +82,7 @@ export function LinhaDoTempoSemanas({ tarefas }: { tarefas: TarefaResumo[] }) {
         </ol>
       </div>
 
-      <div className="overflow-x-auto rounded-m border border-linha bg-superficie">
+      <div className="overflow-x-auto rounded-g border border-linha bg-superficie">
         <table className="w-full min-w-[760px] text-left text-[0.9375rem]">
           <thead className="bg-superficie-2">
             <tr className="t-rotulo text-texto-2">

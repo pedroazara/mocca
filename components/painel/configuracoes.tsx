@@ -163,7 +163,7 @@ export function PaginaConfiguracoes({ config, tokens, siteUrl }: { config: Confi
             </p>
           </div>
         )}
-        <ul className="mt-4 flex flex-col divide-y divide-linha rounded-m border border-linha bg-superficie">
+        <ul className="mt-4 flex flex-col divide-y divide-linha overflow-hidden rounded-g border border-linha bg-superficie">
           {tokens.map((t) => (
             <li key={t.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
               <span className="font-medium text-texto">{t.nome}</span>
@@ -206,7 +206,7 @@ export function PaginaConfiguracoes({ config, tokens, siteUrl }: { config: Confi
           />
         </label>
         {plano && json && (
-          <div className="mt-4 rounded-m border border-linha bg-superficie p-4">
+          <div className="mt-4 rounded-g border border-linha bg-superficie p-4">
             <p className="text-texto">
               <span className="t-dado">{plano.totais.tarefas}</span> tarefas, <span className="t-dado">{plano.totais.itens}</span> itens,{" "}
               <span className="t-dado">{plano.totais.documentos}</span> documentos

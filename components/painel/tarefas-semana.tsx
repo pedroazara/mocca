@@ -250,7 +250,7 @@ export function TarefasDaSemana({
   };
 
   const lista = (
-    <ul className="flex flex-col divide-y divide-linha rounded-m border border-linha bg-superficie">
+    <ul className="flex flex-col divide-y divide-linha overflow-hidden rounded-g border border-linha bg-superficie">
       {visiveis.map((t) => (
         <LinhaTarefaSemana
           key={t.id}
