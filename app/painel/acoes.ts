@@ -584,16 +584,20 @@ export async function atualizarPessoa(id: string, d: DadosPessoa & { ativo?: boo
 
 // Depois de trocar o e-mail (DUVIDAS 27): a conta antiga é apagada, e a pessoa
 // cria a senha de novo com o e-mail novo. No modo local não há contas de
-// verdade, e a pessoa só continua ligada ao mesmo login.
+// verdade, e a pessoa só continua ligada ao mesmo login. O salvar já valeu:
+// se apagar falhar (até sem a chave, quando o cliente nem é criado), fica só
+// o registro no log, e a conta solta sai à mão (Authentication › Users).
 async function apagarContaAntiga(pessoaId: string, authId: string) {
   if (modoLocal) {
     await comoServico((q) => q("update pessoa set auth_id = $1 where id = $2 and auth_id is null", [authId, pessoaId]));
     return;
   }
-  const { error } = await supabaseAdmin()
-    .auth.admin.deleteUser(authId)
-    .catch((e: Error) => ({ error: e }));
-  if (error) console.error("[equipe] conta antiga não apagada:", authId, error.message);
+  try {
+    const { error } = await supabaseAdmin().auth.admin.deleteUser(authId);
+    if (error) throw error;
+  } catch (e) {
+    console.error("[equipe] conta antiga não apagada:", authId, e instanceof Error ? e.message : e);
+  }
 }
 
 export async function definirAtivo(id: string, ativo: boolean) {
