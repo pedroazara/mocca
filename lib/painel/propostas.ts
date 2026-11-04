@@ -55,7 +55,7 @@ export function resumirProposta(p: Proposta, nome: (id: string) => string): Resu
       const avisos = [
         ...(c.etiquetas ? ["As etiquetas propostas substituem a lista inteira: a tarefa fica só com elas."] : []),
         ...(typeof c.semana === "number" && c.prazo === undefined
-          ? ["O prazo vai junto para a semana nova, se hoje ele cai dentro da semana atual da tarefa."]
+          ? ["Se o prazo cai dentro da semana em que a tarefa está hoje, ele vai junto para a semana nova."]
           : []),
       ];
       return { titulo: `Alterar ${tarefa}`, linhas, ...(avisos.length ? { aviso: avisos.join(" ") } : {}) };

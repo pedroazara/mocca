@@ -400,7 +400,7 @@ describe("resumo das propostas do Claude", () => {
       { rotulo: "Semana", atual: "Semana 2", proposto: "Semana 3" },
     ]);
     // trocar a semana sem mandar prazo leva o prazo junto (DUVIDAS 4m)
-    expect(r.aviso).toContain("O prazo vai junto");
+    expect(r.aviso).toContain("vai junto para a semana nova");
   });
 
   it("mostra o ano do prazo, porque a mudança pode estar só nele", () => {
@@ -419,7 +419,7 @@ describe("resumo das propostas do Claude", () => {
   });
 
   it("avisa que trocar só a semana leva o prazo junto", () => {
-    expect(alterar({ semana: 3 }).aviso).toContain("O prazo vai junto");
+    expect(alterar({ semana: 3 }).aviso).toContain("vai junto para a semana nova");
     expect(alterar({ semana: 3, prazo: "2026-11-20T02:59:00Z" }).aviso).toBeUndefined();
     expect(alterar({ semana: null }).aviso).toBeUndefined();
   });
