@@ -129,6 +129,8 @@ function FormPessoa({ pessoa, perfil, aoFechar }: { pessoa: Pessoa | null; perfi
   const imagem = useRef<HTMLImageElement>(null);
   const campo = cn(estiloControle, "h-10");
   const fotoAtual = semFoto ? null : perfil?.foto_url;
+  // quem já tem senha e ganha outro e-mail cria a senha de novo (DUVIDAS 27)
+  const trocaConta = !!pessoa?.auth_id && d.email.trim().toLowerCase() !== pessoa.email.toLowerCase();
 
   useEffect(() => {
     if (!fotoNova?.url) return;
@@ -156,7 +158,13 @@ function FormPessoa({ pessoa, perfil, aoFechar }: { pessoa: Pessoa | null; perfi
       const r = pessoa ? await atualizarPessoa(pessoa.id, dados) : await criarPessoa(dados);
       if (!r.ok) setErro(r.erro);
       else {
-        avisar(pessoa ? "Pessoa atualizada." : "Pessoa adicionada. No primeiro acesso, ela cria a senha com este e-mail.");
+        avisar(
+          !pessoa
+            ? "Pessoa adicionada. No primeiro acesso, ela cria a senha com este e-mail."
+            : trocaConta
+              ? "Pessoa atualizada. No próximo acesso, ela cria a senha com o e-mail novo."
+              : "Pessoa atualizada.",
+        );
         aoFechar();
       }
     });
@@ -200,6 +208,11 @@ function FormPessoa({ pessoa, perfil, aoFechar }: { pessoa: Pessoa | null; perfi
             <label className="grid gap-1">
               <span className="text-[0.875rem] font-semibold">E-mail</span>
               <input type="email" className={campo} value={d.email} onChange={(e) => setD({ ...d, email: e.target.value })} required />
+              {trocaConta && (
+                <span className="text-[0.8125rem] text-texto-2">
+                  Com o e-mail novo, a senha antiga deixa de valer: no próximo acesso, a pessoa cria outra.
+                </span>
+              )}
             </label>
             <label className="grid gap-1">
               <span className="text-[0.875rem] font-semibold">Frente</span>

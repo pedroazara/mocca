@@ -234,6 +234,8 @@ Como funciona:
 
 Aplique as migrações novas no Supabase (`npx supabase db push`) **antes** de publicar o código que depende delas. A barra lateral consulta `proposta` em toda página do painel: sem a migração `20261102120000_proposta.sql`, o painel inteiro e as escritas do Claude dão erro 500. A migração só acrescenta, então o código antigo continua funcionando com ela.
 
+**Exceção, as migrações de 2026-11-04** (`20261104120000` a `20261104150000`): aqui a ordem é a inversa. Publique o código primeiro e só depois rode o `npx supabase db push`. O código novo funciona com ou sem elas, mas a `20261104130000_ligacao_da_conta.sql` tira do banco a ligação automática da conta de que o código antigo dependia: com ela aplicada e o código antigo no ar, o primeiro acesso cria uma conta solta e a pessoa cai em "Acesso negado". Pelo mesmo motivo, depois de aplicá-las, não volte a Vercel para uma publicação anterior a elas.
+
 ## Estrutura
 
 ```
