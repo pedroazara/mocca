@@ -1,66 +1,103 @@
 "use client";
 
 import {
+  closestCenter,
   closestCorners,
   DndContext,
   DragOverlay,
   KeyboardSensor,
+  MeasuringStrategy,
   MouseSensor,
+  pointerWithin,
   TouchSensor,
   useDroppable,
   useSensor,
   useSensors,
+  type Active,
   type Announcements,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
+  type KeyboardCoordinateGetter,
+  type Over,
   type UniqueIdentifier,
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { CSS, getEventCoordinates } from "@dnd-kit/utilities";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useId, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import { criarTarefa, moverTarefa } from "@/app/painel/acoes";
 import { estiloControle } from "@/components/ui/campo";
+import { agrupar, moverNasColunas, visiveis, vizinhos, type Colunas, type Movimento } from "@/lib/painel/quadro";
 import { STATUS, rotuloStatus, type Status, type TarefaResumo } from "@/lib/painel/tipos";
 import { cn } from "@/lib/utils";
 import { usePainel } from "./contexto";
 import { CartaoTarefa } from "./tarefa-pecas";
 
-// Quadro (seção 9.3): A fazer · Fazendo · Em revisão · Feito. Arrastar entre
-// colunas muda o status; dentro da coluna, a ordem. Mouse, toque e teclado
-// (espaço pega, setas movem, espaço solta).
+// Quadro (seção 9.3, DUVIDAS 4q): A fazer · Fazendo · Em revisão · Feito.
+// Arrastar entre colunas muda o status; dentro da coluna, a ordem. Mouse, toque
+// e teclado (espaço pega, setas movem, espaço solta).
+//
+// Durante o arrasto, a tela mexe numa cópia das colunas (`arrasto`). Ao soltar,
+// o movimento entra como atualização otimista e fica na tela até o servidor
+// gravar e devolver as tarefas: o cartão não volta para o lugar antigo nesse
+// meio-tempo, nem quando dois movimentos seguidos ainda estão a caminho. O
+// servidor recebe os vizinhos (o cartão de cima e o de baixo) e calcula a posição.
 
-type Colunas = Record<Status, TarefaResumo[]>;
-const LIMITE_FEITO = 20;
+const ehColuna = (id: UniqueIdentifier) => STATUS.some((s) => s.valor === id);
 
-function agrupar(tarefas: TarefaResumo[]): Colunas {
-  const c: Colunas = { a_fazer: [], fazendo: [], em_revisao: [], feito: [] };
-  for (const t of tarefas) c[t.status].push(t);
-  for (const s of Object.keys(c) as Status[]) c[s].sort((a, b) => a.posicao - b.posicao);
-  return c;
+// Altura de referência do arrasto: o ponteiro (mouse e toque) ou, no teclado,
+// o meio do cartão arrastado.
+function alturaDoArrasto(e: { active: Active; activatorEvent: Event; delta: { y: number } }) {
+  const p = getEventCoordinates(e.activatorEvent);
+  if (p) return p.y + e.delta.y;
+  const r = e.active.rect.current.translated;
+  return r ? r.top + r.height / 2 : null;
 }
 
-function posicaoEntre(antes?: TarefaResumo, depois?: TarefaResumo) {
-  if (antes && depois) return (antes.posicao + depois.posicao) / 2;
-  if (antes) return antes.posicao + 1;
-  if (depois) return depois.posicao - 1;
-  return 1;
-}
+// Setas ← e → no teclado: vão para a coluna vizinha, no cartão mais perto da
+// mesma altura (ou no topo da coluna vazia). As do dnd-kit comparavam a borda
+// esquerda do cartão arrastado, que fica inclinado e sai um pouco da coluna: a
+// primeira seta para a direita descia o cartão na própria coluna. ↑ e ↓ seguem
+// as do dnd-kit. A coluna de cada cartão vem do SortableContext (id = status).
+const setasDoQuadro: KeyboardCoordinateGetter = (event, args) => {
+  const lado = event.code === "ArrowRight" ? 1 : event.code === "ArrowLeft" ? -1 : 0;
+  if (!lado) return sortableKeyboardCoordinates(event, args);
+  event.preventDefault();
+  const { active, collisionRect, droppableRects, droppableContainers } = args.context;
+  if (!active || !collisionRect) return;
+  const colunaDoCartao = (c: { id: UniqueIdentifier; data: { current?: Record<string, unknown> } }) =>
+    ehColuna(c.id) ? undefined : (c.data.current?.sortable as { containerId?: UniqueIdentifier } | undefined)?.containerId;
+  const atual = colunaDoCartao(active);
+  const alvo = STATUS[STATUS.findIndex((s) => s.valor === atual) + lado]?.valor;
+  if (!atual || !alvo) return;
+  const cartoes = droppableContainers
+    .getEnabled()
+    .filter((c) => c.id !== active.id && colunaDoCartao(c) === alvo)
+    .map((c) => droppableRects.get(c.id))
+    .filter((r) => r !== undefined);
+  const rect = cartoes.length
+    ? cartoes.reduce((perto, r) => (Math.abs(r.top - collisionRect.top) < Math.abs(perto.top - collisionRect.top) ? r : perto))
+    : droppableRects.get(alvo);
+  return rect ? { x: rect.left, y: rect.top } : undefined;
+};
+
+// Passou do cartão inteiro (o vão embaixo do último cartão da coluna).
+const passouDe = (y: number | null, over: Over) => y !== null && y > over.rect.top + over.rect.height;
 
 export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: TarefaResumo[]; semanaFiltro: number | null; feitasTodas: boolean }) {
   const { avisar, podeEditar } = usePainel();
-  const [colunas, setColunas] = useState<Colunas>(() => agrupar(tarefas));
+  const base = useMemo(() => agrupar(tarefas), [tarefas]);
+  const [otimista, aplicar] = useOptimistic(base, moverNasColunas);
+  const [arrasto, setArrasto] = useState<Colunas | null>(null);
+  const colunas = arrasto ?? otimista;
   const [ativo, setAtivo] = useState<TarefaResumo | null>(null);
-  const origem = useRef<{ status: Status; posicao: number } | null>(null);
+  const origem = useRef<Movimento | null>(null);
   const arrastou = useRef(false);
   const [, iniciar] = useTransition();
-
-  useEffect(() => {
-    if (!ativo) setColunas(agrupar(tarefas));
-  }, [tarefas, ativo]);
 
   // id estável: sem ele, o dnd-kit gera ids diferentes no servidor e no navegador
   const idDnd = useId();
@@ -71,14 +108,14 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     // Espaço pega e solta; o Enter fica para abrir a tarefa (CartaoArrastavel)
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: setasDoQuadro,
       keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space"] },
     }),
   );
 
-  const colunaDe = (id: UniqueIdentifier): Status | undefined => {
-    if (STATUS.some((s) => s.valor === id)) return id as Status;
-    return (Object.keys(colunas) as Status[]).find((s) => colunas[s].some((t) => t.id === id));
+  const colunaDe = (id: UniqueIdentifier, c: Colunas = colunas): Status | undefined => {
+    if (ehColuna(id)) return id as Status;
+    return (Object.keys(c) as Status[]).find((s) => c[s].some((t) => t.id === id));
   };
   const tituloDe = (id: UniqueIdentifier) => {
     for (const s of Object.keys(colunas) as Status[]) {
@@ -86,6 +123,25 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
       if (t) return t.titulo;
     }
     return "tarefa";
+  };
+  const mostrar = (s: Status, c: Colunas = colunas) => visiveis(s, c[s], feitasTodas);
+
+  // Quem manda é o ponteiro: a coluna embaixo dele e, nela, o cartão embaixo
+  // dele ou o mais perto. Antes, valiam os cantos do cartão arrastado, e o lugar
+  // em que ele caía dependia de onde tinha sido pego. No teclado (sem ponteiro),
+  // continua a regra dos cantos, que é a que as setas usam.
+  const colisao: CollisionDetection = (args) => {
+    if (!args.pointerCoordinates) return closestCorners(args);
+    const sob = pointerWithin(args);
+    const cartao = sob.find((c) => !ehColuna(c.id));
+    if (cartao) return [cartao];
+    const coluna =
+      sob.find((c) => ehColuna(c.id))?.id ??
+      closestCenter({ ...args, droppableContainers: args.droppableContainers.filter((d) => ehColuna(d.id)) })[0]?.id;
+    if (!coluna) return [];
+    const daColuna = args.droppableContainers.filter((d) => !ehColuna(d.id) && colunaDe(d.id) === coluna);
+    if (!daColuna.length) return [{ id: coluna }];
+    return closestCenter({ ...args, droppableContainers: daColuna }).slice(0, 1);
   };
 
   const anuncios: Announcements = {
@@ -98,60 +154,66 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
   };
 
   function inicio(e: DragStartEvent) {
-    const s = colunaDe(e.active.id)!;
-    const t = colunas[s].find((x) => x.id === e.active.id)!;
-    origem.current = { status: s, posicao: t.posicao };
+    const id = String(e.active.id);
+    const s = colunaDe(id)!;
+    origem.current = { id, status: s, ...vizinhos(mostrar(s), id) };
     arrastou.current = true;
-    setAtivo(t);
+    setArrasto(colunas);
+    setAtivo(colunas[s].find((x) => x.id === id) ?? null);
   }
 
+  // Passar para outra coluna: o cartão entra no lugar do cartão sob o ponteiro,
+  // ou depois dele se o ponteiro já passou do cartão (no vão do fim da coluna).
+  // Dali em diante, como dentro de uma coluna só, quem mostra o lugar é o
+  // SortableContext, e o `fim` grava exatamente o lugar mostrado.
   function sobre(e: DragOverEvent) {
     const { active, over } = e;
     if (!over) return;
     const de = colunaDe(active.id);
     const para = colunaDe(over.id);
     if (!de || !para || de === para) return;
-    setColunas((c) => {
-      const item = c[de].find((t) => t.id === active.id)!;
-      const destino = [...c[para]];
-      const idx = destino.findIndex((t) => t.id === over.id);
-      destino.splice(idx >= 0 ? idx : destino.length, 0, { ...item, status: para });
+    const abaixo = passouDe(alturaDoArrasto(e), over);
+    setArrasto((c) => {
+      const item = c?.[de].find((t) => t.id === active.id);
+      if (!c || !item) return c;
+      const destino = c[para].filter((t) => t.id !== active.id);
+      const i = destino.findIndex((t) => t.id === over.id);
+      destino.splice(i < 0 ? destino.length : abaixo ? i + 1 : i, 0, { ...item, status: para, concluido_em: null });
       return { ...c, [de]: c[de].filter((t) => t.id !== active.id), [para]: destino };
+    });
+  }
+
+  // Desfazer: a tarefa volta para a coluna e os vizinhos de antes.
+  function mover(m: Movimento) {
+    iniciar(async () => {
+      aplicar(m);
+      const r = await moverTarefa(m.id, m.status, m);
+      if (!r.ok) avisar(r.erro, { erro: true });
     });
   }
 
   function fim(e: DragEndEvent) {
     const { active, over } = e;
-    setAtivo(null);
-    window.setTimeout(() => (arrastou.current = false), 50);
+    const c = arrasto;
     const o = origem.current;
-    if (!over || !o) {
-      setColunas(agrupar(tarefas));
-      return;
-    }
-    const s = colunaDe(active.id)!;
-    let lista = colunas[s];
-    const de = lista.findIndex((t) => t.id === active.id);
-    const para = colunaDe(over.id) === s && over.id !== s ? lista.findIndex((t) => t.id === over.id) : de;
-    if (para !== de && para >= 0) lista = arrayMove(lista, de, para);
-    const idx = lista.findIndex((t) => t.id === active.id);
-    const pos = posicaoEntre(lista[idx - 1], lista[idx + 1]);
-    lista = lista.map((t) => (t.id === active.id ? { ...t, posicao: pos, status: s } : t));
-    setColunas((c) => ({ ...c, [s]: lista }));
-    if (s === o.status && pos === o.posicao) return;
+    origem.current = null;
+    setAtivo(null);
+    setArrasto(null);
+    window.setTimeout(() => (arrastou.current = false), 50);
+    if (!over || !c || !o) return;
     const id = String(active.id);
+    const s = colunaDe(id, c)!;
+    let lista = mostrar(s, c);
+    const de = lista.findIndex((t) => t.id === id);
+    const para = !ehColuna(over.id) && colunaDe(over.id, c) === s ? lista.findIndex((t) => t.id === over.id) : de;
+    if (para >= 0 && para !== de) lista = arrayMove(lista, de, para);
+    const m: Movimento = { id, status: s, ...vizinhos(lista, id) };
+    if (m.status === o.status && m.antes === o.antes && m.depois === o.depois) return;
     iniciar(async () => {
-      const r = await moverTarefa(id, s, pos);
-      if (!r.ok) {
-        avisar(r.erro, { erro: true });
-        setColunas(agrupar(tarefas));
-      } else if (s !== o.status) {
-        avisar(`Movida para ${rotuloStatus(s)}.`, {
-          desfazer: () => {
-            moverTarefa(id, o.status, o.posicao).then((d) => !d.ok && avisar(d.erro, { erro: true }));
-          },
-        });
-      }
+      aplicar(m);
+      const r = await moverTarefa(id, s, m);
+      if (!r.ok) avisar(r.erro, { erro: true });
+      else if (s !== o.status) avisar(`Movida para ${rotuloStatus(s)}.`, { desfazer: () => mover(o) });
     });
   }
 
@@ -159,13 +221,16 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
     <DndContext
       id={idDnd}
       sensors={sensores}
-      collisionDetection={closestCorners}
+      collisionDetection={colisao}
+      // as colunas mudam de altura quando um cartão passa de uma para outra
+      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       onDragStart={inicio}
       onDragOver={sobre}
       onDragEnd={fim}
       onDragCancel={() => {
+        origem.current = null;
         setAtivo(null);
-        setColunas(agrupar(tarefas));
+        setArrasto(null);
       }}
       accessibility={{
         announcements: anuncios,
@@ -179,18 +244,15 @@ export function Kanban({ tarefas, semanaFiltro, feitasTodas }: { tarefas: Tarefa
         <div className="grid min-w-[860px] grid-cols-4 gap-4">
           {STATUS.map((s) => {
             const lista = colunas[s.valor];
-            const visiveis =
-              s.valor === "feito" && !feitasTodas
-                ? [...lista].sort((a, b) => (b.concluido_em ?? "").localeCompare(a.concluido_em ?? "")).slice(0, LIMITE_FEITO).sort((a, b) => a.posicao - b.posicao)
-                : lista;
+            const vistas = mostrar(s.valor);
             return (
               <Coluna
                 key={s.valor}
                 status={s.valor}
                 rotulo={s.rotulo}
                 total={lista.length}
-                tarefas={visiveis}
-                ocultas={lista.length - visiveis.length}
+                tarefas={vistas}
+                ocultas={lista.length - vistas.length}
                 semanaFiltro={semanaFiltro}
                 podeEditar={podeEditar}
                 arrastou={arrastou}
@@ -242,7 +304,7 @@ function Coluna({
           isOver && "bg-superficie-2",
         )}
       >
-        <SortableContext items={tarefas.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext id={status} items={tarefas.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tarefas.map((t) => (
             <CartaoArrastavel key={t.id} tarefa={t} desabilitado={!podeEditar} arrastou={arrastou} />
           ))}

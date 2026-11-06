@@ -16,7 +16,8 @@ import {
   SQL_SITUACAO_PACOTE,
 } from "@/lib/email/mensagens";
 import { SQL_LIGAR_CONTA } from "@/lib/login";
-import { SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
+import type { Consulta } from "@/lib/banco";
+import { moverNoQuadro, SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
 
 const raiz = join(__dirname, "..");
 const db = new PGlite();
@@ -431,6 +432,80 @@ describe("RLS", () => {
       db.query("insert into anexo_entrega (semana_id, tipo, nome, arquivo) values ($1, 'docx', 'a.docx', decode('UEs=', 'base64'))", [s3]),
     ).rejects.toThrow();
     await db.query("delete from anexo_entrega");
+  });
+});
+
+describe("mover no quadro", () => {
+  const q: Consulta = async (sql, params) => (await db.query(sql, params as unknown[])).rows as never;
+  // uma coluna só para o teste: as tarefas de "em_revisao" que estes testes criam
+  const criar = async (titulo: string, posicao: number) =>
+    (await um<{ id: string }>("insert into tarefa (titulo, status, posicao) values ($1, 'em_revisao', $2) returning id", [titulo, posicao]))!.id;
+  const ordem = async (ids: string[]) =>
+    (
+      await db.query<{ titulo: string }>(
+        "select titulo from tarefa where id = any($1::uuid[]) and status = 'em_revisao' order by posicao, criado_em, id",
+        [ids],
+      )
+    ).rows.map((r) => r.titulo);
+
+  it("põe a tarefa entre os vizinhos, nas pontas e numa coluna vazia, e muda o status", async () => {
+    const [a, b, c] = [await criar("A", 10), await criar("B", 20), await criar("C", 30)];
+    const x = (await um<{ id: string }>("insert into tarefa (titulo, status, posicao) values ('X', 'a_fazer', 5) returning id"))!.id;
+    const todas = [a, b, c, x];
+    expect(await moverNoQuadro(q, x, "em_revisao", a, b)).toHaveLength(1);
+    expect(await ordem(todas)).toEqual(["A", "X", "B", "C"]);
+    await moverNoQuadro(q, x, "em_revisao", null, a);
+    expect(await ordem(todas)).toEqual(["X", "A", "B", "C"]);
+    await moverNoQuadro(q, x, "em_revisao", c, null);
+    expect(await ordem(todas)).toEqual(["A", "B", "C", "X"]);
+    // os vizinhos da tela saíram da coluna (outra pessoa mexeu): vai para o fim
+    await moverNoQuadro(q, a, "em_revisao", "00000000-0000-0000-0000-000000000000", null);
+    expect(await ordem(todas)).toEqual(["B", "C", "X", "A"]);
+    expect((await um<{ status: string }>("select status::text from tarefa where id = $1", [x]))!.status).toBe("em_revisao");
+    await db.query("delete from tarefa where id = any($1::uuid[])", [todas]);
+  });
+
+  it("com posições empatadas (como as do Trello), renumera a coluna sem mudar a ordem dos outros", async () => {
+    const [a, b, c] = [await criar("A", 1), await criar("B", 1), await criar("C", 1)];
+    const arquivada = await criar("Arquivada", 1);
+    await db.query("update tarefa set arquivada = true where id = $1", [arquivada]);
+    const lerArquivada = () => um("select posicao, atualizado_em::text as em from tarefa where id = $1", [arquivada]);
+    const arquivadaAntes = await lerArquivada();
+    const antes = await ordem([a, b, c]);
+    const [p, s] = antes; // a ordem que a tela mostra
+    const t = (await um<{ id: string }>("select id from tarefa where titulo = $1 and id = any($2::uuid[])", [antes[2], [a, b, c]]))!.id;
+    const ids: Record<string, string> = { A: a, B: b, C: c };
+    // a última vai para entre as duas primeiras, que estão empatadas
+    await moverNoQuadro(q, t, "em_revisao", ids[p], ids[s]);
+    expect(await ordem([a, b, c])).toEqual([p, antes[2], s]);
+    const pos = (await db.query<{ posicao: number }>("select posicao from tarefa where id = any($1::uuid[]) order by posicao", [[a, b, c]])).rows;
+    expect(new Set(pos.map((r) => r.posicao)).size).toBe(3);
+    // a arquivada fica de fora: nem posição nem data de alteração mudam
+    expect(await lerArquivada()).toEqual(arquivadaAntes);
+    await db.query("delete from tarefa where id = any($1::uuid[])", [[a, b, c, arquivada]]);
+  });
+
+  it("renumera quando o vão fica pequeno demais e quando os vizinhos estão invertidos", async () => {
+    const [a, b] = [await criar("A", 1), await criar("B", 1 + 1e-12)];
+    const x = await criar("X", 50);
+    await moverNoQuadro(q, x, "em_revisao", a, b);
+    expect(await ordem([a, b, x])).toEqual(["A", "X", "B"]);
+    // a tela viu B em cima de A (outra pessoa trocou os dois): fica logo depois de B
+    await db.query("update tarefa set posicao = 1 where id = $1", [b]);
+    await db.query("update tarefa set posicao = 2 where id = $1", [a]);
+    await moverNoQuadro(q, x, "em_revisao", a, b);
+    expect(await ordem([a, b, x])).toEqual(["B", "A", "X"]);
+    await db.query("delete from tarefa where id = any($1::uuid[])", [[a, b, x]]);
+  });
+
+  it("o orientador não move", async () => {
+    const leomar = (await um<{ auth_id: string }>("select auth_id from pessoa where apelido = 'Leomar'"))!.auth_id;
+    const x = await criar("X", 1);
+    await como({ usuario: leomar }, async () => {
+      expect(await moverNoQuadro(q, x, "feito", null, null)).toEqual([]);
+    });
+    expect((await um<{ status: string }>("select status::text from tarefa where id = $1", [x]))!.status).toBe("em_revisao");
+    await db.query("delete from tarefa where id = $1", [x]);
   });
 });
 

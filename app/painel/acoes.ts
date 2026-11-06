@@ -20,7 +20,7 @@ import {
   nomeDoArquivo,
   tamanhoArquivo,
 } from "@/lib/painel/anexos";
-import { SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
+import { moverNoQuadro, SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
 import { ehJpegBase64, normalizarLinkedin } from "@/lib/painel/perfil";
 import { planejarImportacao, type TrelloJson } from "@/lib/painel/trello";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -173,12 +173,11 @@ export async function definirEtiquetas(id: string, etiquetaIds: string[]) {
   });
 }
 
-// Kanban: muda o status e a posição (seção 9.3).
-export async function moverTarefa(id: string, status: Status, posicao: number) {
+// Quadro: muda o status e põe a tarefa entre os vizinhos que a pessoa viu
+// (seção 9.3, DUVIDAS 4q). A posição é calculada no servidor.
+export async function moverTarefa(id: string, status: Status, vizinhos: { antes: string | null; depois: string | null }) {
   return agir(async (q) => {
-    exigir(
-      await q("update tarefa set status = $2::status_tarefa, posicao = $3 where id = $1 returning id", [id, status, posicao]),
-    );
+    exigir(await moverNoQuadro(q, id, status, vizinhos.antes, vizinhos.depois));
     return id;
   });
 }

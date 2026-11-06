@@ -573,6 +573,7 @@ Bloco 4, **Tarefas da semana**:
   - Linha 3: prazo (com cor de estado), ícones de documento e de comentários com contagem, progresso do checklist "3/7", pilha de avatares à direita.
   - Se a tarefa for ligada à entrega do programa: pequeno pin caramelo no canto superior direito.
 - Arrastar entre colunas muda o status; arrastar dentro da coluna muda a ordem (campo `posicao`). Atualização otimista com toast "Movida para Fazendo · Desfazer".
+- O lugar é o do ponteiro (a coluna e o cartão embaixo dele), e o cartão fica onde foi solto até o servidor confirmar. A tela manda os vizinhos (o cartão de cima e o de baixo) e o servidor calcula a posição; se não há número entre eles (posições empatadas), renumera a coluna (DUVIDAS 4q). No teclado, ← e → levam para a coluna vizinha, na mesma altura.
 - Botão "+ Adicionar tarefa" no fim de cada coluna: cria inline só com título, na semana filtrada.
 - Coluna "Feito" mostra só as 20 mais recentes, com link "Ver todas".
 
