@@ -64,8 +64,10 @@ Com a [CLI do Supabase](https://supabase.com/docs/guides/cli) (pelo `npx`, sem i
 ```bash
 npx supabase login
 npx supabase link --project-ref SEU_PROJECT_REF
-npx supabase db push
+npx supabase db push --remote
 ```
+
+O `--remote` manda as migrações para o projeto ligado pelo `link`. Sem ele, as versões novas da CLI tentam um Supabase local no Docker (`127.0.0.1:54322`) e dão "connection refused". Antes de confirmar, o `db push` lista as migrações que vai aplicar.
 
 Depois rode o `supabase/seed.sql` uma vez no SQL Editor do Supabase (ele pode rodar de novo sem duplicar nada).
 
@@ -237,9 +239,9 @@ Como funciona:
 3. No Cloudflare Turnstile, cadastre o domínio da Vercel (e o domínio próprio, quando houver).
 4. Cada push na `main` publica o site; cada pull request ganha uma prévia.
 
-Aplique as migrações novas no Supabase (`npx supabase db push`) **antes** de publicar o código que depende delas. A barra lateral consulta `proposta` em toda página do painel: sem a migração `20261102120000_proposta.sql`, o painel inteiro e as escritas do Claude dão erro 500. A migração só acrescenta, então o código antigo continua funcionando com ela. O mesmo vale para a `20261106120000_anexo_entrega.sql`: sem ela, a tela Semana e a página de cada semana dão erro 500, porque o bloco da entrega lê os anexos.
+Aplique as migrações novas no Supabase (`npx supabase db push --remote`) **antes** de publicar o código que depende delas. A barra lateral consulta `proposta` em toda página do painel: sem a migração `20261102120000_proposta.sql`, o painel inteiro e as escritas do Claude dão erro 500. A migração só acrescenta, então o código antigo continua funcionando com ela. O mesmo vale para a `20261106120000_anexo_entrega.sql`: sem ela, a tela Semana e a página de cada semana dão erro 500, porque o bloco da entrega lê os anexos.
 
-**Exceção, as migrações de 2026-11-04** (`20261104120000` a `20261104150000`): aqui a ordem é a inversa. Publique o código primeiro e só depois rode o `npx supabase db push`. O código novo funciona com ou sem elas, mas a `20261104130000_ligacao_da_conta.sql` tira do banco a ligação automática da conta de que o código antigo dependia: com ela aplicada e o código antigo no ar, o primeiro acesso cria uma conta solta e a pessoa cai em "Acesso negado". Pelo mesmo motivo, depois de aplicá-las, não volte a Vercel para uma publicação anterior a elas.
+**Exceção, as migrações de 2026-11-04** (`20261104120000` a `20261104150000`): aqui a ordem é a inversa. Publique o código primeiro e só depois rode o `npx supabase db push --remote`. O código novo funciona com ou sem elas, mas a `20261104130000_ligacao_da_conta.sql` tira do banco a ligação automática da conta de que o código antigo dependia: com ela aplicada e o código antigo no ar, o primeiro acesso cria uma conta solta e a pessoa cai em "Acesso negado". Pelo mesmo motivo, depois de aplicá-las, não volte a Vercel para uma publicação anterior a elas.
 
 ## Estrutura
 
