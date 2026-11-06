@@ -13,7 +13,7 @@ import { fimDaSemanaIso, proximaReuniao } from "@/lib/painel/datas";
 import {
   bytesDoBase64,
   comecaComoPdf,
-  MAX_ANEXOS_POR_ENTREGA,
+  MAX_ANEXOS,
   MAX_FOTO_BYTES,
   MAX_MINIATURA_BYTES,
   MAX_PDF_BYTES,
@@ -373,47 +373,55 @@ export async function atualizarSemana(
   });
 }
 
-// ---------------------------------------------------------------- anexos da entrega
+// ---------------------------------------------------------------- anexos (fotos e PDFs)
+
+// De quem é o anexo: da entrega de uma semana ou de uma tarefa.
+export type DonoAnexo = { semana: string } | { tarefa: string };
+
+const colunaDoDono = (d: DonoAnexo) => ("tarefa" in d ? { coluna: "tarefa_id", id: d.tarefa } : { coluna: "semana_id", id: d.semana });
 
 async function gravarAnexo(
   q: Consulta,
   eu: PessoaLogada,
-  semanaId: string,
+  dono: DonoAnexo,
   a: { tipo: "foto" | "pdf"; nome: string; arquivo: string; miniatura: string | null },
 ) {
-  const [{ n }] = await q<{ n: number }>("select count(*)::int as n from anexo_entrega where semana_id = $1", [semanaId]);
-  if (n >= MAX_ANEXOS_POR_ENTREGA)
-    throw new Recusa(`A entrega já tem ${MAX_ANEXOS_POR_ENTREGA} anexos, o máximo. Remova algum para enviar outro.`);
+  const { coluna, id } = colunaDoDono(dono);
+  if (!id) throw new Recusa("Não foi possível anexar aqui.");
+  const [{ n }] = await q<{ n: number }>(`select count(*)::int as n from anexo_entrega where ${coluna} = $1`, [id]);
+  if (n >= MAX_ANEXOS)
+    throw new Recusa(`Já há ${MAX_ANEXOS} anexos aqui, o máximo. Remova algum para enviar outro.`);
   const [anexo] = await q<{ id: string }>(
-    `insert into anexo_entrega (semana_id, tipo, nome, arquivo, miniatura, enviado_por)
+    `insert into anexo_entrega (${coluna}, tipo, nome, arquivo, miniatura, enviado_por)
      values ($1, $2, $3, decode($4, 'base64'), decode($5, 'base64'), $6) returning id`,
-    [semanaId, a.tipo, a.nome, a.arquivo, a.miniatura, eu.id],
+    [id, a.tipo, a.nome, a.arquivo, a.miniatura, eu.id],
   );
   return anexo.id;
 }
 
 // Uma foto por chamada, já reduzida no navegador (lib/painel/anexos.ts).
-export async function adicionarFotoEntrega(semanaId: string, f: { nome: string; foto: string; miniatura: string }) {
+export async function anexarFoto(dono: DonoAnexo, f: { nome: string; foto: string; miniatura: string }) {
   return agir(async (q, eu) => {
     if (!ehJpegBase64(f.foto) || !ehJpegBase64(f.miniatura)) throw new Recusa("Não foi possível ler a foto. Tente outra imagem.");
     if (bytesDoBase64(f.foto) > MAX_FOTO_BYTES || bytesDoBase64(f.miniatura) > MAX_MINIATURA_BYTES)
       throw new Recusa("A foto ficou grande demais.");
     const nome = nomeDoArquivo(String(f.nome ?? ""), "jpg");
-    return gravarAnexo(q, eu, semanaId, { tipo: "foto", nome, arquivo: f.foto, miniatura: f.miniatura });
+    return gravarAnexo(q, eu, dono, { tipo: "foto", nome, arquivo: f.foto, miniatura: f.miniatura });
   });
 }
 
-// Um PDF por chamada, em FormData (semana, arquivo): vai em binário, sem o
-// acréscimo do base64, para os 4 MB caberem no limite da Vercel.
-export async function adicionarPdfEntrega(dados: FormData) {
+// Um PDF por chamada, em FormData (semana ou tarefa, e o arquivo): vai em
+// binário, sem o acréscimo do base64, para os 4 MB caberem no limite da Vercel.
+export async function anexarPdf(dados: FormData) {
   return agir(async (q, eu) => {
-    const semanaId = String(dados.get("semana") ?? "");
+    const tarefa = dados.get("tarefa");
+    const dono: DonoAnexo = tarefa ? { tarefa: String(tarefa) } : { semana: String(dados.get("semana") ?? "") };
     const arquivo = dados.get("arquivo");
     if (!(arquivo instanceof File)) throw new Recusa("Escolha um PDF.");
     if (arquivo.size > MAX_PDF_BYTES) throw new Recusa(`${arquivo.name} passa de ${tamanhoArquivo(MAX_PDF_BYTES)}.`);
     const bytes = new Uint8Array(await arquivo.arrayBuffer());
     if (!comecaComoPdf(bytes)) throw new Recusa(`${arquivo.name} não é um PDF.`);
-    return gravarAnexo(q, eu, semanaId, {
+    return gravarAnexo(q, eu, dono, {
       tipo: "pdf",
       nome: nomeDoArquivo(arquivo.name, "pdf"),
       arquivo: Buffer.from(bytes).toString("base64"),
@@ -422,14 +430,14 @@ export async function adicionarPdfEntrega(dados: FormData) {
   });
 }
 
-export async function legendarAnexoEntrega(id: string, legenda: string) {
+export async function legendarAnexo(id: string, legenda: string) {
   return agir(async (q) => {
     const l = texto(legenda, 300);
     exigir(await q("update anexo_entrega set legenda = $2 where id = $1 returning id", [id, l || null]));
   });
 }
 
-export async function removerAnexoEntrega(id: string) {
+export async function removerAnexo(id: string) {
   return agir(async (q) => {
     exigir(await q("delete from anexo_entrega where id = $1 returning id", [id]));
   });

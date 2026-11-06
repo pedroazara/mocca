@@ -89,9 +89,9 @@ export type Semana = {
   anotacoes: string | null;
 };
 
-// Anexo da entrega da semana (foto ou PDF). O arquivo em si vem da rota
-// /painel/anexos/{id}.
-export type AnexoEntrega = {
+// Anexo (foto ou PDF) da entrega da semana ou de uma tarefa. O arquivo em si
+// vem da rota /painel/anexos/{id}.
+export type Anexo = {
   id: string;
   tipo: "foto" | "pdf";
   nome: string;
@@ -162,6 +162,7 @@ export type TarefaCompleta = TarefaResumo & {
   contato_id: string | null;
   arquivada: boolean;
   lista_documentos: Documento[];
+  lista_anexos: Anexo[];
   lista_comentarios: Comentario[];
   historico: Historico[];
   // e-mails que levaram esta tarefa: o aviso dela ou o pacote da entrega da semana dela (o último de cada pessoa)

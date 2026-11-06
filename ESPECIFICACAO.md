@@ -606,7 +606,7 @@ Clicar numa tarefa abre uma **janela central** de até 1040 px (tela cheia no ce
    - Botão "Atribuir pessoa" abre uma lista com as pessoas da equipe; ao escolher, cria o bloco vazio.
    - Remover pessoa pede confirmação inline (não usar `confirm()`).
    - Regra: toda tarefa aberta deve ter pelo menos um `responsável`; sem isso, aparece um aviso amarelo "Sem responsável".
-6. **Documentos**: lista de links do Google Drive com ícone por tipo (Doc, Planilha, Apresentação, Pasta, PDF), título e tipo (`roteiro`, `registro`, `síntese`, `entregável`, `outro`). "+ Adicionar documento": cola a URL, o título é preenchido a partir da URL se possível (senão a pessoa digita). Validar que é um link `drive.google.com` ou `docs.google.com`.
+6. **Documentos**: lista de links do Google Drive com ícone por tipo (Doc, Planilha, Apresentação, Pasta, PDF), título e tipo (`roteiro`, `registro`, `síntese`, `entregável`, `outro`). "+ Adicionar documento": cola a URL, o título é preenchido a partir da URL se possível (senão a pessoa digita). Validar que é um link `drive.google.com` ou `docs.google.com`. "Anexar foto ou PDF" (ou arrastar os arquivos para a seção) guarda fotos e PDFs do computador na tarefa (DUVIDAS 4p): os PDFs entram na lista, com tamanho, quem enviou e quando, e abrem no leitor do navegador; as fotos ficam numa fileira de miniaturas embaixo, que abre a foto grande. As regras são as dos anexos da entrega (seção 9.1).
 7. **Comentários e histórico**: abas "Comentários" e "Histórico". Comentários em Markdown, com menção `@nome`. Histórico automático: criação, mudança de status, atribuição, prazo, conclusão de item (quem e quando).
 
 ### 9.5 Cronograma (`/painel/semanas`)
@@ -792,10 +792,11 @@ create table documento (
   check (tarefa_id is not null or semana_id is not null)
 );
 
--- fotos e PDFs da entrega da semana (DUVIDAS 4p), servidos por /painel/anexos/{id}
+-- fotos e PDFs da entrega da semana ou de uma tarefa (DUVIDAS 4p), servidos por /painel/anexos/{id}
 create table anexo_entrega (
   id           uuid primary key default gen_random_uuid(),
-  semana_id    uuid not null references semana(id) on delete cascade,
+  semana_id    uuid references semana(id) on delete cascade,
+  tarefa_id    uuid references tarefa(id) on delete cascade,   -- um dos dois, nunca os dois
   tipo         text not null check (tipo in ('foto', 'pdf')),
   nome         text not null,                 -- nome do arquivo, para o download
   arquivo      bytea not null,                -- foto: JPEG até 2 MB; PDF: até 4 MB

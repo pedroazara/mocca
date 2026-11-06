@@ -8,11 +8,11 @@ import { atualizarTarefa, criarReuniao, enviarPacoteDaSemana, moverParaSemana } 
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { Botao } from "@/components/ui/botao";
 import { dataCurta, dataHora, dataLonga, diaCurto, diasAtePrazo, estaAtrasada, textoPrazo } from "@/lib/painel/datas";
-import type { AnexoEntrega, Contato, Semana, SituacaoPacote, TarefaResumo } from "@/lib/painel/tipos";
+import type { Anexo, Contato, Semana, SituacaoPacote, TarefaResumo } from "@/lib/painel/tipos";
 import { cn, listaNomes } from "@/lib/utils";
 import { usePainel } from "./contexto";
 import { EstadoVazio, textoEnvio } from "./elementos";
-import { AnexosDaEntrega } from "./anexos-entrega";
+import { AnexosDaEntrega } from "./anexos";
 import {
   animarSaida,
   EVENTO_PASSOU_SEMANA,
@@ -45,7 +45,7 @@ export function VisaoSemana({
   tarefas: TarefaResumo[];
   contatosNovos: Contato[];
   documentosSemana: { id: string; titulo: string; url: string; tipo: string }[];
-  anexosEntrega: AnexoEntrega[];
+  anexosEntrega: Anexo[];
   pacote: SituacaoPacote[];
   proxima: { id: string | null; data: string | null; atrasadas: number; concluidas: number; contatos: number };
   base?: string;

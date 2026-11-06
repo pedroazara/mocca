@@ -1,4 +1,4 @@
-// Anexos da entrega da semana: fotos e PDFs. A foto é reduzida no navegador e
+// Anexos da entrega da semana e das tarefas: fotos e PDFs. A foto é reduzida no navegador e
 // vira JPEG: o arquivo original (e o GPS da câmera) não sai do aparelho, e o envio
 // fica leve mesmo no 4G do campo. A miniatura vai junto, para a grade não baixar
 // a foto inteira. O PDF vai como está, até 4 MB (cabe numa requisição da Vercel).
@@ -9,7 +9,7 @@ export const LADO_MINIATURA = 640;
 export const MAX_FOTO_BYTES = 2 * 1024 * 1024;
 export const MAX_MINIATURA_BYTES = 256 * 1024;
 export const MAX_PDF_BYTES = 4 * 1024 * 1024;
-export const MAX_ANEXOS_POR_ENTREGA = 40;
+export const MAX_ANEXOS = 40; // por entrega e por tarefa
 
 export const ehPdf = (f: { type: string; name: string }) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
 export const ehImagem = (f: { type: string; name: string }) => f.type.startsWith("image/") || /\.(heic|heif)$/i.test(f.name);

@@ -435,6 +435,44 @@ describe("RLS", () => {
   });
 });
 
+describe("anexos de tarefa", () => {
+  it("o anexo é da tarefa ou da semana, nunca dos dois nem de ninguém, e sai junto com a tarefa", async () => {
+    const t = (await um<{ id: string }>("insert into tarefa (titulo) values ('Com anexo') returning id"))!.id;
+    const s3 = (await um<{ id: string }>("select id from semana where numero = 3"))!.id;
+    const inserir = (semana: string | null, tarefa: string | null) =>
+      db.query(
+        `insert into anexo_entrega (semana_id, tarefa_id, tipo, nome, arquivo, miniatura)
+         values ($1, $2, 'foto', 'a.jpg', decode('/9j/', 'base64'), decode('/9j/', 'base64'))`,
+        [semana, tarefa],
+      );
+    await inserir(null, t);
+    await expect(inserir(s3, t)).rejects.toThrow();
+    await expect(inserir(null, null)).rejects.toThrow();
+    expect((await um<{ n: number }>("select count(*)::int n from anexo_entrega where tarefa_id = $1", [t]))!.n).toBe(1);
+    await db.query("delete from tarefa where id = $1", [t]);
+    expect((await um<{ n: number }>("select count(*)::int n from anexo_entrega where tarefa_id = $1", [t]))!.n).toBe(0);
+  });
+
+  it("membro anexa à tarefa em seu nome; orientador não", async () => {
+    const login = async (apelido: string) =>
+      (await um<{ auth_id: string; id: string }>("select auth_id, id from pessoa where apelido = $1", [apelido]))!;
+    const [gabriel, leomar] = [await login("Gabriel"), await login("Leomar")];
+    const t = (await um<{ id: string }>("insert into tarefa (titulo) values ('Relatório') returning id"))!.id;
+    const pdf = (por: string) =>
+      db.query("insert into anexo_entrega (tarefa_id, tipo, nome, arquivo, enviado_por) values ($1, 'pdf', 'r.pdf', $2, $3)", [
+        t,
+        new TextEncoder().encode("%PDF-1.7"),
+        por,
+      ]);
+    await como({ usuario: gabriel.auth_id }, () => pdf(gabriel.id));
+    await como({ usuario: leomar.auth_id }, async () => {
+      await expect(pdf(leomar.id)).rejects.toThrow();
+      expect((await um<{ n: number }>("select count(*)::int n from anexo_entrega where tarefa_id = $1", [t]))!.n).toBe(1);
+    });
+    await db.query("delete from tarefa where id = $1", [t]);
+  });
+});
+
 describe("mover no quadro", () => {
   const q: Consulta = async (sql, params) => (await db.query(sql, params as unknown[])).rows as never;
   // uma coluna só para o teste: as tarefas de "em_revisao" que estes testes criam
