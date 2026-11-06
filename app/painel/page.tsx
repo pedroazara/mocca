@@ -22,6 +22,7 @@ export default async function PaginaSemana({ searchParams }: { searchParams: Pro
             tarefas={d.tarefas}
             contatosNovos={d.contatosNovos}
             documentosSemana={d.documentosSemana}
+            anexosEntrega={d.anexosEntrega}
             pacote={d.pacote}
             proxima={d.proxima}
           />

@@ -538,6 +538,7 @@ A partir de 1280 px, duas colunas: a principal com a Entrega e as Tarefas da sem
 
 Bloco 1, **Entrega do programa** (cartão destacado com fundo `--superficie-2`):
 - Rótulo `ENTREGA DO AVANÇA CAFÉ`, título da entrega, prazo com contagem ("faltam 3 dias", em `--alerta` quando faltar ≤ 2 dias e `--erro` se atrasada), link do documento no Drive, tarefas ligadas à entrega com status.
+- **Fotos e PDFs** da entrega (DUVIDAS 4p): botão "Anexar" (várias de uma vez) ou arrastar os arquivos para o bloco. As fotos aparecem numa fileira de miniaturas (até 8; a última vira "+N") que abre a foto grande, com setas, legenda, baixar e remover; os PDFs, numa lista com nome, tamanho, quem enviou e quando, que abre no leitor do navegador. A foto é reduzida no navegador (JPEG, lado maior até 1600 px, sem o GPS da câmera); o PDF vai como está, até 4 MB (maior que isso, vai para o Drive e entra como link). Até 40 anexos por entrega. Admin e membro anexam, legendam e removem; o orientador só vê.
 
 Bloco 2, **Atenção**:
 - Lista curta: tarefas atrasadas de qualquer semana, tarefas sem responsável, contatos novos sem resposta há mais de 3 dias.
@@ -790,6 +791,19 @@ create table documento (
   check (tarefa_id is not null or semana_id is not null)
 );
 
+-- fotos e PDFs da entrega da semana (DUVIDAS 4p), servidos por /painel/anexos/{id}
+create table anexo_entrega (
+  id           uuid primary key default gen_random_uuid(),
+  semana_id    uuid not null references semana(id) on delete cascade,
+  tipo         text not null check (tipo in ('foto', 'pdf')),
+  nome         text not null,                 -- nome do arquivo, para o download
+  arquivo      bytea not null,                -- foto: JPEG até 2 MB; PDF: até 4 MB
+  miniatura    bytea,                         -- só da foto: JPEG até 256 KB
+  legenda      text,
+  enviado_por  uuid references pessoa(id),
+  criado_em    timestamptz not null default now()
+);
+
 create table reuniao (
   id          uuid primary key default gen_random_uuid(),
   data        timestamptz not null,
@@ -918,6 +932,7 @@ $$;
 | pessoa, etiqueta, configuracao | `sou_membro()` | `sou_admin()` | ninguém (desativar) |
 | token_api | `sou_admin()` | `sou_admin()` | ninguém (revogar) |
 | proposta | `sou_admin()` | insert só pelo service role; update `sou_admin()` | ninguém |
+| anexo_entrega | `sou_membro()` | `posso_editar()`, em nome próprio; depois de enviado, só a legenda muda | `posso_editar()` |
 
 O usuário anônimo (`anon`) não lê nem escreve em nenhuma tabela.
 

@@ -29,6 +29,7 @@ export default async function PaginaSemanaDoPrograma({ params }: { params: Promi
           tarefas={d.tarefas}
           contatosNovos={d.contatosNovos}
           documentosSemana={d.documentosSemana}
+          anexosEntrega={d.anexosEntrega}
           pacote={d.pacote}
           proxima={d.proxima}
           base="/painel/semanas"
