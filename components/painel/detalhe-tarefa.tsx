@@ -16,6 +16,7 @@ import {
   GripVertical,
   Link2,
   Mail,
+  Paperclip,
   Plus,
   Presentation,
   Send,
@@ -44,6 +45,7 @@ import {
   type TipoDocumento,
 } from "@/lib/painel/tipos";
 import { cn, listaNomes } from "@/lib/utils";
+import { AreaDeArquivos, CampoArquivos, LinhaPdf, Miniaturas, TextoEnviando, useAnexar } from "./anexos";
 import { usePainel } from "./contexto";
 import { textoEnvio } from "./elementos";
 import { Avatar, ChipEtiqueta, corPrazo } from "./elementos";
@@ -899,6 +901,9 @@ export function tituloPelaUrl(url: string) {
   return "";
 }
 
+// Links do Drive e, desde a DUVIDAS 4p, fotos e PDFs anexados do computador
+// (pelo botão ou arrastando para a seção). PDFs entram na lista com os links;
+// as fotos, numa fileira de miniaturas embaixo.
 function Documentos({ t }: { t: TarefaCompleta }) {
   const { podeEditar } = usePainel();
   const [aberto, setAberto] = useState(false);
@@ -907,101 +912,123 @@ function Documentos({ t }: { t: TarefaCompleta }) {
   const [tipo, setTipo] = useState<TipoDocumento>("outro");
   const [pendente, rodar] = useRodar();
   const valida = /^https:\/\/(drive|docs)\.google\.com\//.test(url);
+  const { enviar, enviando } = useAnexar({ tarefa: t.id }, t.lista_anexos.length);
+  const fotos = t.lista_anexos.filter((a) => a.tipo === "foto");
+  const pdfs = t.lista_anexos.filter((a) => a.tipo === "pdf");
+  const temLista = t.lista_documentos.length > 0 || pdfs.length > 0;
 
   return (
-    <Secao
-      id="documentos"
-      titulo="Documentos"
-      acao={
-        podeEditar &&
-        !aberto && (
-          <AcaoSecao onClick={() => setAberto(true)}>
-            <Plus aria-hidden /> Adicionar documento
-          </AcaoSecao>
-        )
-      }
-    >
-      {t.lista_documentos.length > 0 ? (
-        <ul className="flex flex-col divide-y divide-linha rounded-m border border-linha bg-superficie">
-          {t.lista_documentos.map((d) => {
-            const Icone = iconeDocumento(d.url);
-            return (
-              <li key={d.id} className="group flex items-center gap-3 px-3 py-2.5">
-                <Icone aria-hidden strokeWidth={1.75} className="size-[18px] shrink-0 text-caramelo" />
-                <a href={d.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-texto hover:underline">
-                  {d.titulo}
-                </a>
-                <span className="t-rotulo shrink-0 text-[0.6875rem] text-texto-2">{TIPOS_DOCUMENTO.find((x) => x.valor === d.tipo)?.rotulo}</span>
-                {podeEditar && (
-                  <button
-                    type="button"
-                    aria-label={`Remover ${d.titulo}`}
-                    onClick={() => rodar(() => acoes.removerDocumento(d.id))}
-                    className="rounded-p p-1 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
-                  >
-                    <Trash2 aria-hidden strokeWidth={1.75} className="size-3.5" />
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        !podeEditar && <p className="text-[0.875rem] text-texto-2">Nenhum documento ligado.</p>
-      )}
-      {aberto && (
-        <form
-          className="flex flex-col gap-2 rounded-m border border-linha bg-superficie p-3"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            await rodar(() => acoes.adicionarDocumento({ tarefaId: t.id, titulo: titulo || tituloPelaUrl(url), url, tipo }), "Documento ligado.");
-            setUrl("");
-            setTitulo("");
-            setTipo("outro");
-            setAberto(false);
-          }}
-        >
-          <input
-            autoFocus
-            value={url}
-            onChange={(e) => {
-              setUrl(e.target.value);
-              if (!titulo) setTitulo(tituloPelaUrl(e.target.value));
+    <AreaDeArquivos ativa={podeEditar} enviar={(l) => void enviar(l)}>
+      <Secao
+        id="documentos"
+        titulo="Documentos"
+        acao={
+          podeEditar && (
+            <div className="-mr-2 flex flex-wrap items-center justify-end gap-x-1">
+              <TextoEnviando enviando={enviando} />
+              <CampoArquivos
+                enviar={(l) => void enviar(l)}
+                enviando={Boolean(enviando)}
+                className="inline-flex h-8 items-center gap-1.5 rounded-m px-2 text-[0.875rem] font-semibold text-texto-2 transition-colors hover:bg-superficie-2 hover:text-texto"
+              >
+                <Paperclip aria-hidden strokeWidth={1.75} className="size-4" /> Anexar
+                <span className="hidden @md:inline">foto ou PDF</span>
+              </CampoArquivos>
+              {!aberto && (
+                <AcaoSecao onClick={() => setAberto(true)} className="mr-0 h-8 px-2 text-[0.875rem] [&_svg]:size-4">
+                  <Plus aria-hidden /> Link do Drive
+                </AcaoSecao>
+              )}
+            </div>
+          )
+        }
+      >
+        {temLista ? (
+          <ul className="flex flex-col divide-y divide-linha rounded-m border border-linha bg-superficie">
+            {t.lista_documentos.map((d) => {
+              const Icone = iconeDocumento(d.url);
+              return (
+                <li key={d.id} className="group flex items-center gap-3 px-3 py-2.5">
+                  <Icone aria-hidden strokeWidth={1.75} className="size-[18px] shrink-0 text-caramelo" />
+                  <a href={d.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-texto hover:underline">
+                    {d.titulo}
+                  </a>
+                  <span className="t-rotulo shrink-0 text-[0.6875rem] text-texto-2">{TIPOS_DOCUMENTO.find((x) => x.valor === d.tipo)?.rotulo}</span>
+                  {podeEditar && (
+                    <button
+                      type="button"
+                      aria-label={`Remover ${d.titulo}`}
+                      onClick={() => rodar(() => acoes.removerDocumento(d.id))}
+                      className="rounded-p p-1 text-texto-2 opacity-0 group-hover:opacity-100 hover:text-erro focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                    >
+                      <Trash2 aria-hidden strokeWidth={1.75} className="size-3.5" />
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+            {pdfs.map((p) => (
+              <LinhaPdf key={p.id} pdf={p} naLista />
+            ))}
+          </ul>
+        ) : (
+          !podeEditar && !fotos.length && <p className="text-[0.875rem] text-texto-2">Nenhum documento ligado.</p>
+        )}
+        <Miniaturas fotos={fotos} contexto={t.titulo} />
+        {aberto && (
+          <form
+            className="flex flex-col gap-2 rounded-m border border-linha bg-superficie p-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              await rodar(() => acoes.adicionarDocumento({ tarefaId: t.id, titulo: titulo || tituloPelaUrl(url), url, tipo }), "Documento ligado.");
+              setUrl("");
+              setTitulo("");
+              setTipo("outro");
+              setAberto(false);
             }}
-            placeholder="https://docs.google.com/document/d/…"
-            aria-label="Link do Google Drive"
-            aria-invalid={url && !valida ? true : undefined}
-            className={cn(estiloControle, "h-9")}
-          />
-          {url && !valida && <p className="t-pequeno text-erro">Use um link do Google Drive ou do Google Docs.</p>}
-          <div className="flex gap-2">
+          >
             <input
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              placeholder="Título"
-              aria-label="Título do documento"
-              maxLength={200}
-              className={cn(estiloControle, "h-9 flex-1")}
+              autoFocus
+              value={url}
+              onChange={(e) => {
+                setUrl(e.target.value);
+                if (!titulo) setTitulo(tituloPelaUrl(e.target.value));
+              }}
+              placeholder="https://docs.google.com/document/d/…"
+              aria-label="Link do Google Drive"
+              aria-invalid={url && !valida ? true : undefined}
+              className={cn(estiloControle, "h-9")}
             />
-            <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoDocumento)} aria-label="Tipo" className={cn(estiloControle, "h-9 w-auto")}>
-              {TIPOS_DOCUMENTO.map((x) => (
-                <option key={x.valor} value={x.valor}>
-                  {x.rotulo}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Botao type="button" variante="fantasma" tamanho="painel" onClick={() => setAberto(false)}>
-              Cancelar
-            </Botao>
-            <Botao type="submit" tamanho="painel" disabled={!valida || pendente}>
-              Ligar documento
-            </Botao>
-          </div>
-        </form>
-      )}
-    </Secao>
+            {url && !valida && <p className="t-pequeno text-erro">Use um link do Google Drive ou do Google Docs.</p>}
+            <div className="flex gap-2">
+              <input
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                placeholder="Título"
+                aria-label="Título do documento"
+                maxLength={200}
+                className={cn(estiloControle, "h-9 flex-1")}
+              />
+              <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoDocumento)} aria-label="Tipo" className={cn(estiloControle, "h-9 w-auto")}>
+                {TIPOS_DOCUMENTO.map((x) => (
+                  <option key={x.valor} value={x.valor}>
+                    {x.rotulo}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Botao type="button" variante="fantasma" tamanho="painel" onClick={() => setAberto(false)}>
+                Cancelar
+              </Botao>
+              <Botao type="submit" tamanho="painel" disabled={!valida || pendente}>
+                Ligar documento
+              </Botao>
+            </div>
+          </form>
+        )}
+      </Secao>
+    </AreaDeArquivos>
   );
 }
 

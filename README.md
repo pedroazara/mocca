@@ -90,7 +90,7 @@ Em `/painel`, só para quem está na equipe. Admin (Pedro) edita tudo, aprova o 
 | **Semana** (`/painel`) | A semana atual do programa: a entrega do Avança Café e o prazo, com as fotos e os PDFs anexados a ela, as tarefas da semana (uma linha por tarefa, com o anel dos passos feitos; os passos abrem ali mesmo), o que pede atenção (atrasadas, sem responsável, contatos sem resposta) e a próxima reunião. Arrastar uma tarefa abre a barra das 12 semanas para passá-la de semana, com o prazo junto. Setas para ir às outras semanas |
 | **Minhas tarefas** | Só o que tem você como responsável ou apoio, separado em atrasadas, esta semana, próximas semanas, anteriores e sem semana |
 | **Quadro** | Kanban (A fazer, Fazendo, Em revisão, Feito) com arrastar e soltar, também pelo teclado (espaço para pegar, setas para mover). Filtros por semana, pessoa, etiqueta e atrasadas |
-| **Tarefa** | Abre numa janela central (ou em página inteira), em duas colunas: descrição em Markdown, uma atribuição por pessoa com a sua lista de itens, documentos do Drive, comentários e histórico à esquerda; semana, prazo, etiquetas, entrega e origem à direita |
+| **Tarefa** | Abre numa janela central (ou em página inteira), em duas colunas: descrição em Markdown, uma atribuição por pessoa com a sua lista de itens, documentos do Drive e fotos e PDFs anexados, comentários e histórico à esquerda; semana, prazo, etiquetas, entrega e origem à direita |
 | **Semanas** | As 12 semanas do programa, com entrega, status, link do entregável, anotações e documentos da semana |
 | **Equipe** | Um cartão por pessoa com a frente de trabalho e os números (abertas, atrasadas, feitas na semana); a página de cada pessoa lista as tarefas dela. O admin adiciona, edita e desativa pessoas |
 | **Reuniões** | Pauta gerada da próxima reunião (entrega da semana, atrasadas, concluídas desde a última, contatos novos), presença, anotações, decisões e tarefas criadas na reunião |
@@ -239,7 +239,7 @@ Como funciona:
 3. No Cloudflare Turnstile, cadastre o domínio da Vercel (e o domínio próprio, quando houver).
 4. Cada push na `main` publica o site; cada pull request ganha uma prévia.
 
-Aplique as migrações novas no Supabase (`npx supabase db push --remote`) **antes** de publicar o código que depende delas. A barra lateral consulta `proposta` em toda página do painel: sem a migração `20261102120000_proposta.sql`, o painel inteiro e as escritas do Claude dão erro 500. A migração só acrescenta, então o código antigo continua funcionando com ela. O mesmo vale para a `20261106120000_anexo_entrega.sql`: sem ela, a tela Semana e a página de cada semana dão erro 500, porque o bloco da entrega lê os anexos.
+Aplique as migrações novas no Supabase (`npx supabase db push --remote`) **antes** de publicar o código que depende delas. A barra lateral consulta `proposta` em toda página do painel: sem a migração `20261102120000_proposta.sql`, o painel inteiro e as escritas do Claude dão erro 500. A migração só acrescenta, então o código antigo continua funcionando com ela. O mesmo vale para a `20261106120000_anexo_entrega.sql` (sem ela, a tela Semana e a página de cada semana dão erro 500, porque o bloco da entrega lê os anexos) e para a `20261106130000_anexo_tarefa.sql` (sem ela, a janela da tarefa dá erro, porque a seção Documentos lê os anexos da tarefa). As duas só acrescentam.
 
 **Exceção, as migrações de 2026-11-04** (`20261104120000` a `20261104150000`): aqui a ordem é a inversa. Publique o código primeiro e só depois rode o `npx supabase db push --remote`. O código novo funciona com ou sem elas, mas a `20261104130000_ligacao_da_conta.sql` tira do banco a ligação automática da conta de que o código antigo dependia: com ela aplicada e o código antigo no ar, o primeiro acesso cria uma conta solta e a pessoa cai em "Acesso negado". Pelo mesmo motivo, depois de aplicá-las, não volte a Vercel para uma publicação anterior a elas.
 
@@ -248,7 +248,7 @@ Aplique as migrações novas no Supabase (`npx supabase db push --remote`) **ant
 ```
 app/(publico)/        páginas públicas (Início, Como funciona, Equipe, Contato, Privacidade)
 app/painel/           painel da equipe (páginas, ações do servidor e a janela da tarefa)
-app/painel/anexos/    fotos e PDFs da entrega da semana, guardados no Postgres (só para a equipe)
+app/painel/anexos/    fotos e PDFs das tarefas e da entrega da semana, guardados no Postgres (só para a equipe)
 app/entrar/           login (e-mail e senha em produção; "entrar como" no modo local)
 app/api/contato/      POST do formulário (zod + Turnstile + registrar_contato)
 app/api/fotos/        fotos públicas da equipe, guardadas no Postgres

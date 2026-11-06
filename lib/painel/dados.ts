@@ -2,7 +2,7 @@ import "server-only";
 import type { Consulta } from "@/lib/banco";
 import { SQL_SITUACAO_PACOTE } from "@/lib/email/mensagens";
 import type {
-  AnexoEntrega,
+  Anexo,
   Configuracao,
   Contato,
   Etiqueta,
@@ -100,6 +100,10 @@ export async function tarefa(q: Consulta, id: string): Promise<TarefaCompleta | 
     `select ${CAMPOS_TAREFA}, t.descricao, t.criado_por, t.reuniao_id, t.contato_id, t.arquivada,
        coalesce((select json_agg(json_build_object('id', d.id, 'titulo', d.titulo, 'url', d.url, 'tipo', d.tipo, 'criado_em', d.criado_em) order by d.criado_em)
                    from documento d where d.tarefa_id = t.id), '[]'::json) as lista_documentos,
+       coalesce((select json_agg(json_build_object('id', a.id, 'tipo', a.tipo, 'nome', a.nome, 'tamanho', octet_length(a.arquivo),
+                                                   'legenda', a.legenda, 'enviado_por', a.enviado_por, 'criado_em', a.criado_em)
+                                 order by a.criado_em, a.id)
+                   from anexo_entrega a where a.tarefa_id = t.id), '[]'::json) as lista_anexos,
        coalesce((select json_agg(json_build_object('id', c.id, 'autor_id', c.autor_id, 'via_api', c.via_api, 'texto', c.texto, 'criado_em', c.criado_em) order by c.criado_em)
                    from comentario c where c.tarefa_id = t.id), '[]'::json) as lista_comentarios,
        coalesce((select json_agg(json_build_object('id', h.id, 'autor_id', h.autor_id, 'via_api', h.via_api, 'acao', h.acao, 'detalhe', h.detalhe, 'criado_em', h.criado_em) order by h.criado_em desc, h.id desc)
@@ -221,7 +225,7 @@ export async function documentosDaSemana(q: Consulta, semanaId: string) {
 
 // Só os dados: o arquivo vem da rota /painel/anexos/{id}, que fica em cache.
 export async function anexosDaEntrega(q: Consulta, semanaId: string) {
-  return q<AnexoEntrega>(
+  return q<Anexo>(
     `select id, tipo, nome, octet_length(arquivo) as tamanho, legenda, enviado_por, criado_em
        from anexo_entrega where semana_id = $1 order by criado_em, id`,
     [semanaId],
