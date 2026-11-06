@@ -90,7 +90,7 @@ export async function tarefas(q: Consulta, f: FiltroTarefas = {}) {
         and ($4::uuid is null or exists (select 1 from tarefa_etiqueta te where te.tarefa_id = t.id and te.etiqueta_id = $4))
         and (not $5::boolean or (t.prazo < now() and t.status <> 'feito'))
         and ($6::uuid is null or t.reuniao_id = $6)
-      order by t.posicao, t.criado_em`,
+      order by t.posicao, t.criado_em, t.id`,
     [f.semana ?? null, f.pessoa ?? null, f.status ?? null, f.etiqueta ?? null, Boolean(f.atrasadas), f.reuniao ?? null],
   );
 }

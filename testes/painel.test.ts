@@ -18,6 +18,7 @@ import {
 } from "@/lib/painel/datas";
 import { bytesDoBase64, comecaComoPdf, LADO_FOTO, medidasReduzidas, nomeDoArquivo, tamanhoArquivo } from "@/lib/painel/anexos";
 import { montarPauta, reuniaoAnteriorA } from "@/lib/painel/pauta";
+import { agrupar, LIMITE_FEITO, moverNasColunas, posicaoEntre, visiveis, vizinhos } from "@/lib/painel/quadro";
 import { ehJpegBase64, normalizarLinkedin } from "@/lib/painel/perfil";
 import { mudancasDaTarefa, prepararEdicao, resumirProposta } from "@/lib/painel/propostas";
 import type { Pedido } from "@/lib/api/servico";
@@ -157,6 +158,80 @@ const EQUIPE: PessoaApi[] = [
   { id: "h", nome: "Henrique Perez", apelido: "Henrique", email: "henrique.perez@exemplo.com", frente: null },
   { id: "o", nome: "Prof. Leomar Santos", apelido: "Leomar", email: "leomar.santos@exemplo.com", frente: null },
 ];
+
+describe("quadro", () => {
+  const ids = (l: TarefaResumo[]) => l.map((t) => t.id);
+
+  it("agrupa por coluna na ordem do servidor: posição, criação e id", () => {
+    const c = agrupar([
+      tarefa({ id: "b", posicao: 1, criado_em: "2026-10-20T10:00:00.000Z" }),
+      tarefa({ id: "a", posicao: 1, criado_em: "2026-10-20T10:00:00.000Z" }),
+      tarefa({ id: "c", posicao: 1, criado_em: "2026-10-19T10:00:00.000Z" }),
+      tarefa({ id: "z", posicao: 0.5 }),
+      tarefa({ id: "f", status: "feito", posicao: 3 }),
+    ]);
+    expect(ids(c.a_fazer)).toEqual(["z", "c", "a", "b"]);
+    expect(ids(c.feito)).toEqual(["f"]);
+    expect(c.fazendo).toEqual([]);
+  });
+
+  it("acha os vizinhos de cima e de baixo", () => {
+    const l = ["a", "b", "c"].map((id) => tarefa({ id }));
+    expect(vizinhos(l, "a")).toEqual({ antes: null, depois: "b" });
+    expect(vizinhos(l, "b")).toEqual({ antes: "a", depois: "c" });
+    expect(vizinhos(l, "c")).toEqual({ antes: "b", depois: null });
+  });
+
+  it("põe o cartão entre os vizinhos, muda o status e a data de conclusão", () => {
+    const c = agrupar([
+      tarefa({ id: "a", posicao: 1 }),
+      tarefa({ id: "b", posicao: 2 }),
+      tarefa({ id: "x", status: "fazendo", posicao: 1 }),
+      tarefa({ id: "f", status: "feito", posicao: 1, concluido_em: "2026-10-20T10:00:00.000Z" }),
+    ]);
+    const dentro = moverNasColunas(c, { id: "x", status: "a_fazer", antes: "a", depois: "b" });
+    expect(ids(dentro.a_fazer)).toEqual(["a", "x", "b"]);
+    expect(dentro.fazendo).toEqual([]);
+    expect(dentro.a_fazer[1].status).toBe("a_fazer");
+    expect(ids(moverNasColunas(c, { id: "x", status: "a_fazer", antes: null, depois: "a" }).a_fazer)).toEqual(["x", "a", "b"]);
+    expect(ids(moverNasColunas(c, { id: "x", status: "a_fazer", antes: "b", depois: null }).a_fazer)).toEqual(["a", "b", "x"]);
+    // dentro da mesma coluna
+    expect(ids(moverNasColunas(c, { id: "a", status: "a_fazer", antes: "b", depois: null }).a_fazer)).toEqual(["b", "a"]);
+    // vizinho que sumiu da coluna: vale o outro, ou o fim
+    expect(ids(moverNasColunas(c, { id: "x", status: "a_fazer", antes: "sumiu", depois: "b" }).a_fazer)).toEqual(["a", "x", "b"]);
+    expect(ids(moverNasColunas(c, { id: "x", status: "a_fazer", antes: "sumiu", depois: null }).a_fazer)).toEqual(["a", "b", "x"]);
+    // para Feito ganha a data de conclusão; saindo dela, perde
+    expect(moverNasColunas(c, { id: "x", status: "feito", antes: null, depois: null }).feito[1].concluido_em).not.toBeNull();
+    expect(moverNasColunas(c, { id: "f", status: "a_fazer", antes: null, depois: null }).a_fazer[2].concluido_em).toBeNull();
+    // tarefa que não está no quadro: nada muda
+    expect(moverNasColunas(c, { id: "?", status: "feito", antes: null, depois: null })).toBe(c);
+  });
+
+  it("Feito mostra as 20 mais recentes na ordem da coluna, e a que acabou de chegar não some", () => {
+    const feitas = Array.from({ length: LIMITE_FEITO + 3 }, (_, i) =>
+      tarefa({ id: `f${i}`, status: "feito", posicao: i, concluido_em: new Date(Date.UTC(2026, 9, 1 + i)).toISOString() }),
+    );
+    const chegou = tarefa({ id: "nova", status: "feito", concluido_em: null });
+    const lista = [feitas[0], chegou, ...feitas.slice(1)];
+    const vistas = visiveis("feito", lista, false);
+    expect(vistas).toHaveLength(LIMITE_FEITO);
+    expect(ids(vistas)).toContain("nova");
+    // as mais antigas saem, e a ordem da coluna fica
+    expect(ids(vistas).slice(0, 2)).toEqual(["nova", "f4"]);
+    expect(visiveis("feito", lista, true)).toBe(lista);
+    expect(visiveis("a_fazer", lista, false)).toBe(lista);
+  });
+
+  it("calcula a posição entre os vizinhos, e pede para renumerar quando não há número entre eles", () => {
+    expect(posicaoEntre(1, 2)).toBe(1.5);
+    expect(posicaoEntre(1, null)).toBe(2);
+    expect(posicaoEntre(null, 1)).toBe(0);
+    expect(posicaoEntre(1, 1)).toBeNull();
+    expect(posicaoEntre(2, 1)).toBeNull();
+    expect(posicaoEntre(1, 1 + Number.EPSILON)).toBeNull();
+    expect(posicaoEntre(null, null)).toBeNull();
+  });
+});
 
 describe("resolução de pessoa (API)", () => {
   const achou = (ref: string, lista = EQUIPE) => {
