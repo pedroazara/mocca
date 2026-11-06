@@ -10,10 +10,11 @@ export async function carregarSemana(q: Consulta, numero?: number) {
   const semanas = await dados.semanas(q);
   const atual = semanaAtual(semanas);
   const semana = semanas.find((s) => s.numero === numero) ?? atual ?? semanas[0];
-  const [tarefas, contatosNovos, documentosSemana, pacote, cfg, reunioes] = [
+  const [tarefas, contatosNovos, documentosSemana, anexosEntrega, pacote, cfg, reunioes] = [
     await dados.tarefas(q),
     await dados.contatos(q, { status: "novo" }),
     semana ? await dados.documentosDaSemana(q, semana.id) : [],
+    semana ? await dados.anexosDaEntrega(q, semana.id) : [],
     semana ? await dados.situacaoPacote(q, semana.id) : [],
     await dados.configuracao(q),
     await dados.reunioes(q),
@@ -38,6 +39,7 @@ export async function carregarSemana(q: Consulta, numero?: number) {
     tarefas,
     contatosNovos,
     documentosSemana,
+    anexosEntrega,
     pacote,
     proxima: {
       id: futura?.id ?? null,

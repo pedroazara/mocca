@@ -8,10 +8,11 @@ import { atualizarTarefa, criarReuniao, enviarPacoteDaSemana, moverParaSemana } 
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { Botao } from "@/components/ui/botao";
 import { dataCurta, dataHora, dataLonga, diaCurto, diasAtePrazo, estaAtrasada, textoPrazo } from "@/lib/painel/datas";
-import type { Contato, Semana, SituacaoPacote, TarefaResumo } from "@/lib/painel/tipos";
+import type { AnexoEntrega, Contato, Semana, SituacaoPacote, TarefaResumo } from "@/lib/painel/tipos";
 import { cn, listaNomes } from "@/lib/utils";
 import { usePainel } from "./contexto";
 import { EstadoVazio, textoEnvio } from "./elementos";
+import { AnexosDaEntrega } from "./anexos-entrega";
 import {
   animarSaida,
   EVENTO_PASSOU_SEMANA,
@@ -35,6 +36,7 @@ export function VisaoSemana({
   tarefas,
   contatosNovos,
   documentosSemana,
+  anexosEntrega,
   pacote,
   proxima,
   base = "/painel",
@@ -43,6 +45,7 @@ export function VisaoSemana({
   tarefas: TarefaResumo[];
   contatosNovos: Contato[];
   documentosSemana: { id: string; titulo: string; url: string; tipo: string }[];
+  anexosEntrega: AnexoEntrega[];
   pacote: SituacaoPacote[];
   proxima: { id: string | null; data: string | null; atrasadas: number; concluidas: number; contatos: number };
   base?: string;
@@ -215,6 +218,7 @@ export function VisaoSemana({
                   Nenhuma tarefa ligada à entrega ainda. Marque “Ligada à entrega do programa” numa tarefa da semana.
                 </p>
               )}
+              <AnexosDaEntrega key={semana.id} semana={semana} anexos={anexosEntrega} />
               <PacotePorEmail semana={semana} pacote={pacote} />
             </section>
           )}

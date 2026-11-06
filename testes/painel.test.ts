@@ -16,6 +16,7 @@ import {
   semanaDoDia,
   textoPrazo,
 } from "@/lib/painel/datas";
+import { bytesDoBase64, comecaComoPdf, LADO_FOTO, medidasReduzidas, nomeDoArquivo, tamanhoArquivo } from "@/lib/painel/anexos";
 import { montarPauta, reuniaoAnteriorA } from "@/lib/painel/pauta";
 import { ehJpegBase64, normalizarLinkedin } from "@/lib/painel/perfil";
 import { mudancasDaTarefa, prepararEdicao, resumirProposta } from "@/lib/painel/propostas";
@@ -312,6 +313,32 @@ describe("perfil da página Equipe", () => {
     expect(ehJpegBase64("/9j/4AAQSkZJRg==")).toBe(true);
     expect(ehJpegBase64(btoa("<svg onload=alert(1)>"))).toBe(false);
     expect(ehJpegBase64("/9j/<script>")).toBe(false);
+  });
+
+  it("reduz a foto da entrega pelo lado maior, sem ampliar", () => {
+    expect(medidasReduzidas(4032, 3024, LADO_FOTO)).toEqual({ largura: 1600, altura: 1200 });
+    expect(medidasReduzidas(3024, 4032, LADO_FOTO)).toEqual({ largura: 1200, altura: 1600 });
+    expect(medidasReduzidas(800, 600, LADO_FOTO)).toEqual({ largura: 800, altura: 600 });
+    expect(medidasReduzidas(20000, 10, 640)).toEqual({ largura: 640, altura: 1 });
+  });
+
+  it("conta os bytes do base64, com e sem preenchimento", () => {
+    for (const n of [0, 1, 2, 3, 4, 5, 1000]) expect(bytesDoBase64(Buffer.alloc(n).toString("base64"))).toBe(n);
+  });
+
+  it("anexo da entrega: nome limpo, tamanho legível e só PDF de verdade", () => {
+    expect(nomeDoArquivo("C:\\fotos\\IMG_1234.HEIC", "jpg")).toBe("IMG_1234.jpg");
+    expect(nomeDoArquivo("pasta/Relatório final.pdf", "pdf")).toBe("Relatório final.pdf");
+    expect(nomeDoArquivo("linha\nquebrada.pdf", "pdf")).toBe("linhaquebrada.pdf");
+    expect(nomeDoArquivo(".pdf", "pdf")).toBe("arquivo.pdf");
+    expect(nomeDoArquivo("x".repeat(300) + ".pdf", "pdf")).toHaveLength(194);
+    expect(tamanhoArquivo(300)).toBe("1 KB");
+    expect(tamanhoArquivo(850 * 1024)).toBe("850 KB");
+    expect(tamanhoArquivo(1.25 * 1024 * 1024)).toBe("1,3 MB");
+    expect(tamanhoArquivo(4 * 1024 * 1024)).toBe("4 MB");
+    expect(comecaComoPdf(new TextEncoder().encode("%PDF-1.7\n"))).toBe(true);
+    expect(comecaComoPdf(new TextEncoder().encode("<html>"))).toBe(false);
+    expect(comecaComoPdf(new TextEncoder().encode("%PDF"))).toBe(false);
   });
 
   it("cruza o cartão do site com a pessoa do painel pelo nome", () => {

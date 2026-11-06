@@ -2,6 +2,7 @@ import "server-only";
 import type { Consulta } from "@/lib/banco";
 import { SQL_SITUACAO_PACOTE } from "@/lib/email/mensagens";
 import type {
+  AnexoEntrega,
   Configuracao,
   Contato,
   Etiqueta,
@@ -214,6 +215,15 @@ export async function situacaoPacote(q: Consulta, semanaId: string) {
 export async function documentosDaSemana(q: Consulta, semanaId: string) {
   return q<{ id: string; titulo: string; url: string; tipo: string }>(
     "select id, titulo, url, tipo::text as tipo from documento where semana_id = $1 order by criado_em",
+    [semanaId],
+  );
+}
+
+// Só os dados: o arquivo vem da rota /painel/anexos/{id}, que fica em cache.
+export async function anexosDaEntrega(q: Consulta, semanaId: string) {
+  return q<AnexoEntrega>(
+    `select id, tipo, nome, octet_length(arquivo) as tamanho, legenda, enviado_por, criado_em
+       from anexo_entrega where semana_id = $1 order by criado_em, id`,
     [semanaId],
   );
 }

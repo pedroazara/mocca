@@ -89,6 +89,18 @@ export type Semana = {
   anotacoes: string | null;
 };
 
+// Anexo da entrega da semana (foto ou PDF). O arquivo em si vem da rota
+// /painel/anexos/{id}.
+export type AnexoEntrega = {
+  id: string;
+  tipo: "foto" | "pdf";
+  nome: string;
+  tamanho: number; // bytes
+  legenda: string | null;
+  enviado_por: string | null;
+  criado_em: string;
+};
+
 export type Etiqueta = { id: string; nome: string; token: string };
 
 export type Item = { id: string; texto: string; feito: boolean };

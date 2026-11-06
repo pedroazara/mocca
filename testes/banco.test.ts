@@ -366,6 +366,72 @@ describe("RLS", () => {
       [t.id],
     );
   });
+
+  it("anexos da entrega: a equipe vê, admin e membro enviam em seu nome, legendam e removem, e o arquivo não muda", async () => {
+    // os logins já foram ligados em testes anteriores
+    const login = async (apelido: string) =>
+      (await um<{ auth_id: string; id: string }>("select auth_id, id from pessoa where apelido = $1", [apelido]))!;
+    const [gabriel, pedro, leomar] = [await login("Gabriel"), await login("Pedro"), await login("Leomar")];
+    const s3 = (await um<{ id: string }>("select id from semana where numero = 3"))!.id;
+    const foto = (por: string) =>
+      um<{ id: string }>(
+        `insert into anexo_entrega (semana_id, tipo, nome, arquivo, miniatura, enviado_por)
+         values ($1, 'foto', 'campo.jpg', decode('/9j/AA==', 'base64'), decode('/9j/', 'base64'), $2) returning id`,
+        [s3, por],
+      );
+    const pdf = (por: string | null, bytes: Uint8Array = new TextEncoder().encode("%PDF-1.7")) =>
+      um<{ id: string }>(
+        "insert into anexo_entrega (semana_id, tipo, nome, arquivo, enviado_por) values ($1, 'pdf', 'relatorio.pdf', $2, $3) returning id",
+        [s3, bytes, por],
+      );
+
+    const [f, p] = await como({ usuario: gabriel.auth_id }, async () => {
+      // em nome de outra pessoa, não
+      await expect(foto(pedro.id)).rejects.toThrow();
+      return [(await foto(gabriel.id))!, (await pdf(gabriel.id))!];
+    });
+
+    await como({ usuario: leomar.auth_id }, async () => {
+      expect((await um<{ n: number }>("select count(*)::int n from anexo_entrega"))!.n).toBe(2);
+      await expect(foto(leomar.id)).rejects.toThrow();
+      expect((await db.query("update anexo_entrega set legenda = 'x'")).affectedRows).toBe(0);
+      expect((await db.query("delete from anexo_entrega")).affectedRows).toBe(0);
+    });
+
+    await como({ usuario: pedro.auth_id }, async () => {
+      await db.query("update anexo_entrega set legenda = 'Visita ao campo' where id = $1", [f.id]);
+      // só a legenda muda depois de enviado
+      await expect(db.query("update anexo_entrega set arquivo = decode('/9j/', 'base64') where id = $1", [f.id])).rejects.toThrow();
+      await expect(db.query("update anexo_entrega set nome = 'outro.jpg' where id = $1", [f.id])).rejects.toThrow();
+      const lida = await um<{ legenda: string; arquivo: string; mini: string; tamanho: number }>(
+        "select legenda, encode(arquivo, 'base64') arquivo, encode(miniatura, 'base64') mini, octet_length(arquivo) tamanho from anexo_entrega where id = $1",
+        [f.id],
+      );
+      expect(lida).toEqual({ legenda: "Visita ao campo", arquivo: "/9j/AA==", mini: "/9j/", tamanho: 4 });
+      expect((await db.query("delete from anexo_entrega where id = any($1)", [[f.id, p.id]])).affectedRows).toBe(2);
+    });
+
+    // foto até 2 MB e com miniatura; PDF até 4 MB e sem miniatura; legenda até 300
+    await expect(
+      db.query("insert into anexo_entrega (semana_id, tipo, nome, arquivo, miniatura) values ($1, 'foto', 'a.jpg', $2, decode('/9j/', 'base64'))", [
+        s3,
+        new Uint8Array(2 * 1024 * 1024 + 1),
+      ]),
+    ).rejects.toThrow();
+    await expect(
+      db.query("insert into anexo_entrega (semana_id, tipo, nome, arquivo) values ($1, 'foto', 'a.jpg', decode('/9j/', 'base64'))", [s3]),
+    ).rejects.toThrow();
+    await expect(pdf(null, new Uint8Array(4 * 1024 * 1024 + 1))).rejects.toThrow();
+    const grande = (await pdf(null, new Uint8Array(3 * 1024 * 1024)))!;
+    await expect(
+      db.query("update anexo_entrega set miniatura = decode('/9j/', 'base64') where id = $1", [grande.id]),
+    ).rejects.toThrow();
+    await expect(db.query("update anexo_entrega set legenda = $2 where id = $1", [grande.id, "x".repeat(301)])).rejects.toThrow();
+    await expect(
+      db.query("insert into anexo_entrega (semana_id, tipo, nome, arquivo) values ($1, 'docx', 'a.docx', decode('UEs=', 'base64'))", [s3]),
+    ).rejects.toThrow();
+    await db.query("delete from anexo_entrega");
+  });
 });
 
 describe("passar tarefa de semana", () => {
