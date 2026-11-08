@@ -6,6 +6,7 @@ import type {
   Configuracao,
   Contato,
   Etiqueta,
+  LinkEquipe,
   Perfil,
   Pessoa,
   Proposta,
@@ -232,6 +233,14 @@ export async function anexosDaEntrega(q: Consulta, semanaId: string) {
   );
 }
 
+// Links da equipe, agrupados na tela por categoria (sem categoria por último).
+export async function links(q: Consulta) {
+  return q<LinkEquipe>(
+    `select id, titulo, url, descricao, categoria, criado_por, criado_em
+       from link order by categoria nulls last, lower(titulo), criado_em`,
+  );
+}
+
 // Busca da paleta de comandos, sem diferenciar maiúsculas nem acentos
 // (translate em vez da extensão unaccent, que o banco local não tem).
 const semAcento = (expr: string) =>
@@ -239,7 +248,7 @@ const semAcento = (expr: string) =>
 
 export async function buscar(q: Consulta, termo: string) {
   const like = `%${termo.replace(/[%_\\]/g, "")}%`;
-  const [t, r] = [
+  const [t, r, l] = [
     await q<{ id: string; titulo: string; status: Status; semana: number | null }>(
       `select t.id, t.titulo, t.status::text as status, s.numero as semana
          from tarefa t left join semana s on s.id = t.semana_id
@@ -253,6 +262,13 @@ export async function buscar(q: Consulta, termo: string) {
         order by data desc limit 4`,
       [like],
     ),
+    await q<{ id: string; titulo: string; url: string; categoria: string | null }>(
+      `select id, titulo, url, categoria from link
+        where ${semAcento("titulo || ' ' || coalesce(descricao, '') || ' ' || coalesce(categoria, '') || ' ' || url")}
+              like ${semAcento("$1")}
+        order by lower(titulo) limit 6`,
+      [like],
+    ),
   ];
-  return { tarefas: t, reunioes: r };
+  return { tarefas: t, reunioes: r, links: l };
 }

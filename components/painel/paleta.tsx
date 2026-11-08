@@ -9,6 +9,7 @@ import {
   Flag,
   FolderOpen,
   Keyboard,
+  Link2,
   ListTodo,
   MessagesSquare,
   Plus,
@@ -59,7 +60,7 @@ export function PaletaComandos() {
   const [aberta, setAberta] = useState(false);
   const [atalhos, setAtalhos] = useState(false);
   const [termo, setTermo] = useState("");
-  const [resultados, setResultados] = useState<Resultados & { termo: string }>({ tarefas: [], reunioes: [], termo: "" });
+  const [resultados, setResultados] = useState<Resultados & { termo: string }>({ tarefas: [], reunioes: [], links: [], termo: "" });
   const [ativo, setAtivo] = useState(0);
   const lista = useRef<HTMLDivElement>(null);
 
@@ -136,6 +137,7 @@ export function PaletaComandos() {
       { id: "quadro", rotulo: "Quadro", detalhe: "G Q", Icone: Columns3, executar: ir("/painel/quadro") },
       { id: "arquivadas", rotulo: "Tarefas arquivadas", Icone: Archive, executar: ir("/painel/arquivadas") },
       { id: "arquivos", rotulo: "Arquivos do Drive", Icone: FolderOpen, executar: ir("/painel/arquivos") },
+      { id: "links", rotulo: "Links da equipe", Icone: Link2, executar: ir("/painel/links") },
       ...(podeEditar
         ? [
             {
@@ -166,7 +168,7 @@ export function PaletaComandos() {
     const lista: Grupo[] = [{ titulo: "Ações", opcoes: acoes }];
     if (!t) return lista;
 
-    const atual = resultados.termo === termo.trim() ? resultados : { tarefas: [], reunioes: [] };
+    const atual = resultados.termo === termo.trim() ? resultados : { tarefas: [], reunioes: [], links: [] };
     lista.push({
       titulo: "Tarefas",
       opcoes: atual.tarefas.map((x) => ({
@@ -220,6 +222,17 @@ export function PaletaComandos() {
         rotulo: `Reunião de ${dataCurta(r.data)}`,
         Icone: MessagesSquare,
         executar: ir(`/painel/reunioes/${r.id}`),
+      })),
+    });
+    // escolher um link abre o endereço numa aba nova
+    lista.push({
+      titulo: "Links",
+      opcoes: atual.links.map((l) => ({
+        id: `l-${l.id}`,
+        rotulo: l.titulo,
+        detalhe: l.categoria ?? undefined,
+        Icone: Link2,
+        executar: () => void window.open(l.url, "_blank", "noopener,noreferrer"),
       })),
     });
     return lista.filter((g) => g.opcoes.length);

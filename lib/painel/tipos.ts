@@ -211,6 +211,16 @@ export type Configuracao = {
   responsavel_contato_id: string | null;
 };
 
+export type LinkEquipe = {
+  id: string;
+  titulo: string;
+  url: string;
+  descricao: string | null;
+  categoria: string | null;
+  criado_por: string | null;
+  criado_em: string;
+};
+
 export type TokenApi = {
   id: string;
   nome: string;

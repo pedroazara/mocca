@@ -311,6 +311,7 @@ describe("importação do Trello", () => {
       { id: "c4", name: "Protótipo", idList: "LA", pos: 4 },
       { id: "c5", name: "Pitch", idList: "LF", pos: 5 },
       { id: "c6", name: "Pasta do Drive https://drive.google.com/drive/folders/xyz", idList: "LK" },
+      { id: "c7", name: "Portal do programa", desc: "Acesso: https://avancacafe.example.org/turma", idList: "LK" },
       { id: "c7", name: "Fora do escopo", idList: "LX" },
       { id: "c8", name: "Arquivado", idList: "L1", closed: true },
       { id: "c9", name: "Em lista fechada", idList: "LC" },
@@ -355,8 +356,14 @@ describe("importação do Trello", () => {
     expect(t.etiquetas).toEqual(["et-val"]);
     expect(t.prazo).toBe("2026-10-24T21:00:00.000Z");
     expect(t.documentos).toEqual([{ titulo: "Documento do Trello", url: "https://docs.google.com/document/d/abc" }]);
-    expect(plano.documentosSemana1).toEqual([{ titulo: "Pasta do Drive", url: "https://drive.google.com/drive/folders/xyz" }]);
-    expect(plano.totais).toEqual({ tarefas: 5, itens: 3, documentos: 2 });
+    expect(plano.totais).toEqual({ tarefas: 5, itens: 3, documentos: 1, links: 2 });
+  });
+
+  it("manda a lista Links para a página Links, com qualquer endereço", () => {
+    expect(plano.links).toEqual([
+      { titulo: "Pasta do Drive", url: "https://drive.google.com/drive/folders/xyz" },
+      { titulo: "Portal do programa", url: "https://avancacafe.example.org/turma" },
+    ]);
   });
 
   it("acha a pessoa por apelido, nome ou primeiro nome", () => {

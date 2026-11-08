@@ -211,6 +211,11 @@ export function PaginaConfiguracoes({ config, tokens, siteUrl }: { config: Confi
             <p className="text-texto">
               <span className="t-dado">{plano.totais.tarefas}</span> tarefas, <span className="t-dado">{plano.totais.itens}</span> itens,{" "}
               <span className="t-dado">{plano.totais.documentos}</span> documentos
+              {plano.totais.links > 0 && (
+                <>
+                  , <span className="t-dado">{plano.totais.links}</span> links para a página Links
+                </>
+              )}
               {plano.checklistsSemPessoa.length > 0 && (
                 <>
                   ; <span className="t-dado">{plano.checklistsSemPessoa.length}</span> checklists sem pessoa reconhecida

@@ -1051,7 +1051,7 @@ Mapeamento:
 | Lista "Semana 1", "Semana 2" | `semana_id` da semana correspondente, status `a_fazer` |
 | Lista "Em andamento" | status `fazendo` |
 | Lista "Finalizados" | status `feito` |
-| Lista "Links" | vira documentos da semana 1 (não vira tarefa) |
+| Lista "Links" | vira links da página Links do painel (não vira tarefa; ver DUVIDAS.md) |
 | Etiquetas | etiquetas de mesmo nome |
 | Checklist com nome de pessoa (ex.: "Marcos") | atribuição daquela pessoa com os itens do checklist; o primeiro checklist vira `responsável`, os demais `apoio` |
 | Membros do cartão | atribuições sem itens, se ainda não existirem |

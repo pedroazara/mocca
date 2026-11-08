@@ -68,6 +68,7 @@ export function mensagemDeErro(e: unknown): string {
   const texto = e instanceof Error ? e.message : String(e);
   if (/row-level security|permission denied/i.test(texto)) return "Você não tem permissão para fazer isso.";
   if (/documento_url_check|url ~/i.test(texto)) return "Use um link do Google Drive ou do Google Docs.";
+  if (/link_url_check/i.test(texto)) return "Use um link completo, começando com https://.";
   if (/duplicate key/i.test(texto)) return "Isso já existe.";
   if (/violates check constraint/i.test(texto)) return "Algum valor está fora do permitido.";
   console.error("[banco]", e);

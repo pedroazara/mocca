@@ -48,9 +48,9 @@ export type PlanoTarefa = {
 
 export type PlanoImportacao = {
   tarefas: PlanoTarefa[];
-  documentosSemana1: { titulo: string; url: string }[];
+  links: { titulo: string; url: string }[];
   checklistsSemPessoa: string[];
-  totais: { tarefas: number; itens: number; documentos: number };
+  totais: { tarefas: number; itens: number; documentos: number; links: number };
 };
 
 export const normalizar = (s: string) =>
@@ -61,6 +61,7 @@ export const normalizar = (s: string) =>
     .trim();
 
 const LINK_DRIVE = /https:\/\/(?:drive|docs)\.google\.com\/[^\s)\]>"']+/g;
+const LINK_QUALQUER = /https?:\/\/[^\s)\]>"']+/g;
 
 // Reduz o JSON do Trello ao que a importação usa (o arquivo original traz o
 // histórico inteiro do quadro e pode passar de alguns MB).
@@ -128,9 +129,9 @@ export function planejarImportacao(
 
   const plano: PlanoImportacao = {
     tarefas: [],
-    documentosSemana1: [],
+    links: [],
     checklistsSemPessoa: [],
-    totais: { tarefas: 0, itens: 0, documentos: 0 },
+    totais: { tarefas: 0, itens: 0, documentos: 0, links: 0 },
   };
 
   const cartoes = [...(json.cards ?? [])].filter((c) => !c.closed).sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
@@ -139,12 +140,16 @@ export function planejarImportacao(
     if (!lista) continue;
     const destino = destinoDaLista(lista.name);
     if (!destino) continue;
-    const links = [...new Set(`${c.name}\n${c.desc ?? ""}`.match(LINK_DRIVE) ?? [])];
+    const conteudo = `${c.name}\n${c.desc ?? ""}`;
 
+    // lista "Links": cada endereço do cartão vira um link da página Links
     if (destino === "links") {
-      for (const url of links) plano.documentosSemana1.push({ titulo: c.name.replace(LINK_DRIVE, "").trim() || "Link", url });
+      const titulo = c.name.replace(LINK_QUALQUER, "").trim() || "Link";
+      for (const url of new Set(conteudo.match(LINK_QUALQUER) ?? []))
+        if (!plano.links.some((l) => l.url === url)) plano.links.push({ titulo, url });
       continue;
     }
+    const links = [...new Set(conteudo.match(LINK_DRIVE) ?? [])];
 
     const atribuicoes: PlanoTarefa["atribuicoes"] = [];
     const checklists = [...(checklistsPorCartao.get(c.id) ?? [])].sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
@@ -186,7 +191,8 @@ export function planejarImportacao(
   plano.totais = {
     tarefas: plano.tarefas.length,
     itens: plano.tarefas.reduce((s, t) => s + t.atribuicoes.reduce((x, a) => x + a.itens.length, 0), 0),
-    documentos: plano.tarefas.reduce((s, t) => s + t.documentos.length, 0) + plano.documentosSemana1.length,
+    documentos: plano.tarefas.reduce((s, t) => s + t.documentos.length, 0),
+    links: plano.links.length,
   };
   return plano;
 }

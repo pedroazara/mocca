@@ -340,6 +340,64 @@ export async function apagarComentario(id: string) {
   });
 }
 
+// ---------------------------------------------------------------- links da equipe
+
+export type DadosLink = { titulo?: string | null; url: string; descricao?: string | null; categoria?: string | null };
+
+// Aceita o endereço colado sem "https://" (ex.: "avancacafe.com.br").
+function limparLink(d: DadosLink) {
+  let bruto = texto(d.url, 2000);
+  if (!bruto) throw new Recusa("Cole o endereço do link.");
+  if (/\s/.test(bruto)) throw new Recusa("Esse endereço não parece um link.");
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(bruto)) bruto = `https://${bruto}`;
+  let u: URL;
+  try {
+    u = new URL(bruto);
+  } catch {
+    throw new Recusa("Esse endereço não parece um link.");
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") throw new Recusa("Use um link que comece com https://.");
+  if (!u.hostname.includes(".") && u.hostname !== "localhost") throw new Recusa("Esse endereço não parece um link.");
+  return {
+    titulo: texto(d.titulo, 200) || u.hostname.replace(/^www\./, ""),
+    url: u.href,
+    descricao: texto(d.descricao, 500) || null,
+    categoria: texto(d.categoria, 60) || null,
+  };
+}
+
+export async function criarLink(d: DadosLink) {
+  return agir(async (q, eu) => {
+    const l = limparLink(d);
+    const [novo] = await q<{ id: string }>(
+      "insert into link (titulo, url, descricao, categoria, criado_por) values ($1, $2, $3, $4, $5) returning id",
+      [l.titulo, l.url, l.descricao, l.categoria, eu.id],
+    );
+    return novo.id;
+  });
+}
+
+export async function atualizarLink(id: string, d: DadosLink) {
+  return agir(async (q) => {
+    const l = limparLink(d);
+    exigir(
+      await q("update link set titulo = $2, url = $3, descricao = $4, categoria = $5 where id = $1 returning id", [
+        id,
+        l.titulo,
+        l.url,
+        l.descricao,
+        l.categoria,
+      ]),
+    );
+  });
+}
+
+export async function removerLink(id: string) {
+  return agir(async (q) => {
+    exigir(await q("delete from link where id = $1 returning id", [id]));
+  });
+}
+
 // ---------------------------------------------------------------- semanas
 
 export async function atualizarSemana(
@@ -823,14 +881,13 @@ export async function importarTrello(json: TrelloJson) {
       for (const d of t.documentos)
         await q("insert into documento (tarefa_id, titulo, url, tipo) values ($1, $2, $3, 'outro')", [nova.id, d.titulo, d.url]);
     }
-    const s1 = semanaId.get(1);
-    if (s1)
-      for (const d of plano.documentosSemana1)
-        await q(
-          `insert into documento (semana_id, titulo, url, tipo)
-           select $1, $2, $3, 'outro' where not exists (select 1 from documento where semana_id = $1 and url = $3)`,
-          [s1, d.titulo.slice(0, 200), d.url],
-        );
+    // a lista "Links" vai para a página Links; reimportar não duplica
+    for (const l of plano.links)
+      await q(
+        `insert into link (titulo, url, criado_por)
+         select $1, $2, $3 where not exists (select 1 from link where url = $2)`,
+        [l.titulo.slice(0, 200), l.url, eu.id],
+      );
     return { criadas, puladas };
   });
 }
@@ -853,6 +910,6 @@ export async function atualizarArquivos(): Promise<Resultado> {
 export async function buscarNoPainel(termo: string) {
   const eu = await pessoaLogada();
   const t = String(termo ?? "").trim().slice(0, 100);
-  if (!eu || t.length < 2) return { tarefas: [], reunioes: [] };
+  if (!eu || t.length < 2) return { tarefas: [], reunioes: [], links: [] };
   return comoUsuario(eu.authId, (q) => buscar(q, t));
 }

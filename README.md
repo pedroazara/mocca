@@ -95,11 +95,12 @@ Em `/painel`, só para quem está na equipe. Admin (Pedro) edita tudo, aprova o 
 | **Equipe** | Um cartão por pessoa com a frente de trabalho e os números (abertas, atrasadas, feitas na semana); a página de cada pessoa lista as tarefas dela. O admin adiciona, edita e desativa pessoas |
 | **Reuniões** | Pauta gerada da próxima reunião (entrega da semana, atrasadas, concluídas desde a última, contatos novos), presença, anotações, decisões e tarefas criadas na reunião |
 | **Arquivos** | A pasta do projeto no Google Drive: as pastas com o caminho, a busca em todas elas e os arquivos modificados por último. Cada arquivo mostra as tarefas, semanas e atas do painel em que aparece, e abre no Drive |
+| **Links** | Links que a equipe usa sempre (portal do Avança Café, formulários, referências, uma pasta ou planilha específica), agrupados por categoria e com filtro. Admin e membros adicionam, editam e removem; o orientador abre e copia. Aceita qualquer endereço, não só do Drive |
 | **Contatos** | Mensagens do formulário do site, com status, responsável, notas e exportação em CSV. Cada contato novo cria a tarefa "Responder contato" |
 | **Aprovações** (admin) | O que o Claude pediu com token e ainda não entrou no painel, um cartão por pedido no jeito do Quadro, com Aprovar, Editar e Recusar. Em alterações, mostra o valor de hoje riscado e o proposto. A barra lateral conta as pendentes |
 | **Configurações** (admin) | Reunião semanal, responsável pelos contatos, datas do programa, tokens da API, importação do Trello e tema |
 
-**Paleta de comandos:** `Ctrl/Cmd + K` ou `/` busca tarefas, pessoas, semanas, etiquetas e reuniões, e tem as ações rápidas (nova tarefa, nova reunião, alternar tema). Outros atalhos: `N` nova tarefa, `G S` / `G M` / `G Q` para Semana, Minhas tarefas e Quadro, e `?` mostra a lista. Com uma tarefa aberta: `E` edita o título, `A` atribui pessoa e `D` vai para o prazo. No Quadro, com o cartão em foco, `Enter` abre a tarefa e `Espaço` pega e solta.
+**Paleta de comandos:** `Ctrl/Cmd + K` ou `/` busca tarefas, pessoas, semanas, etiquetas, reuniões e links (escolher um link abre o endereço), e tem as ações rápidas (nova tarefa, nova reunião, alternar tema). Outros atalhos: `N` nova tarefa, `G S` / `G M` / `G Q` para Semana, Minhas tarefas e Quadro, e `?` mostra a lista. Com uma tarefa aberta: `E` edita o título, `A` atribui pessoa e `D` vai para o prazo. No Quadro, com o cartão em foco, `Enter` abre a tarefa e `Espaço` pega e solta.
 
 Mudanças feitas por outras pessoas aparecem sozinhas (Supabase Realtime em produção; a cada 15 s no modo local).
 
@@ -188,7 +189,7 @@ com o `tarefa.json`:
 
 ## Importar do Trello
 
-Em Configurações › Importar do Trello, envie o JSON exportado do quadro (menu do quadro › Imprimir, exportar e compartilhar › Exportar como JSON). A tela mostra a prévia antes de gravar. Listas "Semana N" viram tarefas da semana; "Em andamento" e "Finalizados" viram tarefas nesse status; checklists com o nome de uma pessoa viram a atribuição dela, com os itens; links do Drive viram documentos; a lista "Links" vai para os documentos da semana 1. Reimportar não duplica.
+Em Configurações › Importar do Trello, envie o JSON exportado do quadro (menu do quadro › Imprimir, exportar e compartilhar › Exportar como JSON). A tela mostra a prévia antes de gravar. Listas "Semana N" viram tarefas da semana; "Em andamento" e "Finalizados" viram tarefas nesse status; checklists com o nome de uma pessoa viram a atribuição dela, com os itens; links do Drive viram documentos; os endereços da lista "Links" vão para a página Links (qualquer site, não só o Drive). Reimportar não duplica.
 
 ## E-mails automáticos
 
@@ -239,7 +240,7 @@ Como funciona:
 3. No Cloudflare Turnstile, cadastre o domínio da Vercel (e o domínio próprio, quando houver).
 4. Cada push na `main` publica o site; cada pull request ganha uma prévia.
 
-Aplique as migrações novas no Supabase (`npx supabase db push --remote`) **antes** de publicar o código que depende delas. A barra lateral consulta `proposta` em toda página do painel: sem a migração `20261102120000_proposta.sql`, o painel inteiro e as escritas do Claude dão erro 500. A migração só acrescenta, então o código antigo continua funcionando com ela. O mesmo vale para a `20261106120000_anexo_entrega.sql` (sem ela, a tela Semana e a página de cada semana dão erro 500, porque o bloco da entrega lê os anexos) e para a `20261106130000_anexo_tarefa.sql` (sem ela, a janela da tarefa dá erro, porque a seção Documentos lê os anexos da tarefa). As duas só acrescentam.
+Aplique as migrações novas no Supabase (`npx supabase db push --remote`) **antes** de publicar o código que depende delas. A barra lateral consulta `proposta` em toda página do painel: sem a migração `20261102120000_proposta.sql`, o painel inteiro e as escritas do Claude dão erro 500. A migração só acrescenta, então o código antigo continua funcionando com ela. O mesmo vale para a `20261106120000_anexo_entrega.sql` (sem ela, a tela Semana e a página de cada semana dão erro 500, porque o bloco da entrega lê os anexos) e para a `20261106130000_anexo_tarefa.sql` (sem ela, a janela da tarefa dá erro, porque a seção Documentos lê os anexos da tarefa). As duas só acrescentam. Idem para a `20261108120000_links.sql`: sem ela, a página Links e a busca da paleta de comandos dão erro, porque a busca também procura nos links. Ela só acrescenta.
 
 **Exceção, as migrações de 2026-11-04** (`20261104120000` a `20261104150000`): aqui a ordem é a inversa. Publique o código primeiro e só depois rode o `npx supabase db push --remote`. O código novo funciona com ou sem elas, mas a `20261104130000_ligacao_da_conta.sql` tira do banco a ligação automática da conta de que o código antigo dependia: com ela aplicada e o código antigo no ar, o primeiro acesso cria uma conta solta e a pessoa cai em "Acesso negado". Pelo mesmo motivo, depois de aplicá-las, não volte a Vercel para uma publicação anterior a elas.
 
