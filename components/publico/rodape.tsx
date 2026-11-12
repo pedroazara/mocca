@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { CurvasDeNivel } from "./curvas-de-nivel";
+import { IconeInstagram } from "./icone-instagram";
 import { LogoHorizontal } from "./logo";
-import { COORDENADA_LAVRAS, linksPublicos } from "./navegacao";
+import { COORDENADA_LAVRAS, INSTAGRAM_MOCCA, linksPublicos } from "./navegacao";
 
 export function Rodape() {
   return (
@@ -11,6 +12,16 @@ export function Rodape() {
         <div className="max-w-xs">
           <LogoHorizontal altura={88} sempreEscura className="-ml-5" />
           <p className="mt-2 text-[0.9375rem] text-creme/80">Monitoramento de colheita de café, talhão por talhão.</p>
+          <a
+            href={INSTAGRAM_MOCCA.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex min-h-11 items-center gap-2 text-[0.9375rem] text-creme/90 underline-offset-[3px] hover:underline"
+          >
+            <IconeInstagram className="size-[18px] shrink-0" />
+            {INSTAGRAM_MOCCA.usuario}
+            <span className="sr-only"> no Instagram (abre em nova aba)</span>
+          </a>
         </div>
 
         <nav aria-label="Rodapé">

@@ -5,6 +5,7 @@ import type {
   Anexo,
   Configuracao,
   Contato,
+  ContatoWhatsapp,
   Etiqueta,
   LinkEquipe,
   Perfil,
@@ -32,10 +33,21 @@ export async function pessoas(q: Consulta) {
 // Só campos públicos: a página Equipe do site lê isto pelo service role.
 export async function perfis(q: Consulta) {
   return q<Perfil>(
-    `select p.id as pessoa_id, p.nome, f.linkedin,
+    `select p.id as pessoa_id, p.nome, f.linkedin, f.whatsapp,
             case when f.foto is not null
                  then '/api/fotos/' || p.id || '?v=' || extract(epoch from f.foto_em)::bigint end as foto_url
        from perfil_publico f join pessoa p on p.id = f.pessoa_id`,
+  );
+}
+
+// Quem atende pelo WhatsApp no site: gente ativa com número no painel (Equipe).
+// Também só campos públicos, lidos pelo service role.
+export async function whatsappsDoSite(q: Consulta) {
+  return q<ContatoWhatsapp>(
+    `select coalesce(nullif(trim(p.apelido), ''), split_part(p.nome, ' ', 1)) as nome, f.whatsapp as numero
+       from perfil_publico f join pessoa p on p.id = f.pessoa_id
+      where f.whatsapp is not null and p.ativo
+      order by p.nome`,
   );
 }
 

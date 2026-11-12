@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { FormularioContato } from "@/components/publico/formulario-contato";
-import { COORDENADA_LAVRAS, EMAIL_MOCCA } from "@/components/publico/navegacao";
+import { IconeInstagram } from "@/components/publico/icone-instagram";
+import { COORDENADA_LAVRAS, EMAIL_MOCCA, INSTAGRAM_MOCCA } from "@/components/publico/navegacao";
+import { WhatsappNoContato } from "@/components/publico/whatsapp";
 
 export const metadata: Metadata = {
   title: "Contato",
@@ -39,6 +41,14 @@ export default function Contato() {
               <Mail aria-hidden strokeWidth={1.75} className="mt-1 size-[22px] shrink-0 text-caramelo" />
               <a href={`mailto:${EMAIL_MOCCA}`} className="link min-w-0 break-words">
                 {EMAIL_MOCCA}
+              </a>
+            </div>
+            <WhatsappNoContato />
+            <div className="flex gap-4">
+              <IconeInstagram className="mt-1 size-[22px] shrink-0 text-caramelo" />
+              <a href={INSTAGRAM_MOCCA.href} target="_blank" rel="noopener noreferrer" className="link min-w-0 break-words">
+                {INSTAGRAM_MOCCA.usuario}
+                <span className="sr-only"> no Instagram (abre em nova aba)</span>
               </a>
             </div>
             <div className="flex gap-4">

@@ -7,3 +7,8 @@ export const linksPublicos = [
 export const COORDENADA_LAVRAS = "21°14′S 44°59′W";
 
 export const EMAIL_MOCCA = "moccaufla@gmail.com";
+
+export const INSTAGRAM_MOCCA = {
+  usuario: "@moccaagtech",
+  href: "https://www.instagram.com/moccaagtech/",
+} as const;

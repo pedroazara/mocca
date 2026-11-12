@@ -2,6 +2,10 @@ import { Cabecalho } from "@/components/publico/cabecalho";
 import { DefinicoesCurvas } from "@/components/publico/curvas-definicoes";
 import { Rodape } from "@/components/publico/rodape";
 
+// As páginas do site mostram dados do painel (WhatsApp de contato; foto e LinkedIn
+// na Equipe). Salvar no painel renova as páginas na hora; a hora é só uma folga.
+export const revalidate = 3600;
+
 export default function LayoutPublico({ children }: { children: React.ReactNode }) {
   return (
     <>

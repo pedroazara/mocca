@@ -9,7 +9,7 @@ import { criarPessoa, atualizarPessoa, definirAtivo, type DadosPessoa } from "@/
 import { Botao } from "@/components/ui/botao";
 import { estiloControle } from "@/components/ui/campo";
 import { estaAtrasada } from "@/lib/painel/datas";
-import { recortarFoto } from "@/lib/painel/perfil";
+import { formatarWhatsapp, mascaraWhatsapp, recortarFoto } from "@/lib/painel/perfil";
 import type { PapelPainel, Perfil, Pessoa, TarefaResumo } from "@/lib/painel/tipos";
 import { cn } from "@/lib/utils";
 import { usePainel } from "./contexto";
@@ -17,7 +17,8 @@ import { Avatar } from "./elementos";
 
 // Equipe (seção 9.8): cartão por pessoa com números da semana; o admin
 // adiciona, edita e desativa (nunca apaga: o histórico fica). Foto e LinkedIn
-// aparecem também na página Equipe do site.
+// aparecem também na página Equipe do site; quem tem WhatsApp preenchido vira
+// botão de contato no site.
 
 const CORES = ["#2F5F86", "#4A2C1D", "#7A3F7A", "#3F6B4A", "#8F4A1F", "#5A5048", "#A2412F", "#3D6E70"];
 const PAPEIS: Record<PapelPainel, string> = { admin: "admin", membro: "membro", orientador: "orientador" };
@@ -51,6 +52,7 @@ export function GradeEquipe({ tarefas, perfis }: { tarefas: TarefaResumo[]; perf
             <p className="t-rotulo mt-0.5 text-[0.6875rem] text-texto-2">
               {PAPEIS[p.papel]}
               {!p.ativo && " · inativo"}
+              {p.ativo && perfilDe(p.id)?.whatsapp && " · whatsapp no site"}
             </p>
           </div>
           {ehAdmin && (
@@ -122,6 +124,7 @@ function FormPessoa({ pessoa, perfil, aoFechar }: { pessoa: Pessoa | null; perfi
     papel: pessoa?.papel ?? "membro",
     cor: pessoa?.cor ?? CORES[0],
     linkedin: perfil?.linkedin ?? "",
+    whatsapp: perfil?.whatsapp ? formatarWhatsapp(perfil.whatsapp) : "",
   });
   // a foto nova ainda só existe no navegador: é recortada ao salvar
   const [fotoNova, setFotoNova] = useState<{ url: string; posicao: number } | null>(null);
@@ -227,6 +230,21 @@ function FormPessoa({ pessoa, perfil, aoFechar }: { pessoa: Pessoa | null; perfi
                 onChange={(e) => setD({ ...d, linkedin: e.target.value })}
                 placeholder="linkedin.com/in/seu-nome"
               />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-[0.875rem] font-semibold">WhatsApp no site</span>
+              <input
+                type="tel"
+                inputMode="tel"
+                autoComplete="off"
+                className={campo}
+                value={d.whatsapp ?? ""}
+                onChange={(e) => setD({ ...d, whatsapp: mascaraWhatsapp(e.target.value) })}
+                placeholder="(35) 99999-9999"
+              />
+              <span className="text-[0.8125rem] text-texto-2">
+                Com DDD. Quem tem número aqui aparece no site como botão de WhatsApp. Vazio, não aparece.
+              </span>
             </label>
             <fieldset>
               <legend className="mb-1.5 text-[0.875rem] font-semibold">Foto no site</legend>

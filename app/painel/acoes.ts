@@ -21,7 +21,7 @@ import {
   tamanhoArquivo,
 } from "@/lib/painel/anexos";
 import { moverNoQuadro, SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
-import { ehJpegBase64, normalizarLinkedin } from "@/lib/painel/perfil";
+import { ehJpegBase64, normalizarLinkedin, normalizarWhatsapp } from "@/lib/painel/perfil";
 import { planejarImportacao, type TrelloJson } from "@/lib/painel/trello";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type {
@@ -643,6 +643,7 @@ export type DadosPessoa = {
   papel: PapelPainel;
   cor: string;
   linkedin?: string | null;
+  whatsapp?: string | null; // como a pessoa digitar; vazio tira o botão do site
   foto?: string | null; // JPEG em base64; null apaga; ausente mantém a atual
 };
 
@@ -656,6 +657,8 @@ function validarPessoa(d: DadosPessoa) {
   if (!/^#[0-9a-fA-F]{6}$/.test(d.cor)) throw new Recusa("Escolha uma cor.");
   const linkedin = d.linkedin ? normalizarLinkedin(texto(d.linkedin, 300)) : null;
   if (d.linkedin && !linkedin) throw new Recusa("Use o link do perfil no LinkedIn (linkedin.com/in/…).");
+  const whatsapp = d.whatsapp?.trim() ? normalizarWhatsapp(texto(d.whatsapp, 40)) : null;
+  if (d.whatsapp?.trim() && !whatsapp) throw new Recusa("Confira o WhatsApp: use o número com DDD, como (35) 99999-9999.");
   if (d.foto && d.foto.length > MAX_FOTO_BASE64) throw new Recusa("A foto ficou grande demais.");
   if (typeof d.foto === "string" && !ehJpegBase64(d.foto)) throw new Recusa("Não foi possível ler a foto. Tente outra imagem.");
   return {
@@ -664,24 +667,28 @@ function validarPessoa(d: DadosPessoa) {
     apelido: d.apelido ? texto(d.apelido, 40) : null,
     frente: d.frente ? texto(d.frente, 200) : null,
     linkedin,
+    whatsapp,
     foto: d.foto,
   };
 }
 
 async function gravarPerfil(q: Consulta, id: string, v: ReturnType<typeof validarPessoa>) {
   await q(
-    `insert into perfil_publico (pessoa_id, linkedin) values ($1, $2)
-     on conflict (pessoa_id) do update set linkedin = excluded.linkedin`,
-    [id, v.linkedin],
+    `insert into perfil_publico (pessoa_id, linkedin, whatsapp) values ($1, $2, $3)
+     on conflict (pessoa_id) do update set linkedin = excluded.linkedin, whatsapp = excluded.whatsapp`,
+    [id, v.linkedin, v.whatsapp],
   );
   if (v.foto !== undefined)
     await q("update perfil_publico set foto = decode($2, 'base64'), foto_em = now() where pessoa_id = $1", [id, v.foto]);
 }
 
-// A página Equipe do site fica em cache: foto e LinkedIn novos precisam renová-la.
+// As páginas do site ficam em cache: foto e LinkedIn novos precisam renovar a
+// Equipe, e o WhatsApp aparece em todas estas (chamada final, "Produtores de café", Contato).
+const PAGINAS_COM_PERFIL = ["/", "/como-funciona", "/equipe", "/contato"];
+
 async function agirNaEquipe<T>(fn: (q: Consulta) => Promise<T>) {
   const r = await agir(fn);
-  if (r.ok) revalidatePath("/equipe");
+  if (r.ok) for (const pagina of PAGINAS_COM_PERFIL) revalidatePath(pagina);
   return r;
 }
 
