@@ -14,6 +14,8 @@ export const estilosBotao = cva(
         secundario: "border border-texto bg-transparent text-texto hover:bg-superficie-2",
         fantasma: "bg-transparent text-texto-2 hover:bg-superficie-2 hover:text-texto",
         claro: "bg-creme text-espresso hover:bg-creme/85",
+        // o secundário desses mesmos fundos escuros (botões de WhatsApp)
+        claroContorno: "border border-creme/60 bg-transparent text-creme hover:bg-creme/10",
       },
       tamanho: {
         site: "h-11 px-5 text-base",

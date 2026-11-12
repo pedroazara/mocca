@@ -2,8 +2,10 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Botao } from "@/components/ui/botao";
 import { CurvasDeNivel } from "./curvas-de-nivel";
+import { WhatsappNoEscuro } from "./whatsapp";
 
 // Chamada final (seção 6.3, bloco 7): fundo espresso, texto creme, curvas de nível.
+// Embaixo do botão, o WhatsApp de quem tem número no painel.
 export function ChamadaFinal({
   titulo = "Quer testar o MoCCa na sua lavoura?",
   texto = "Estamos procurando produtores e parceiros para os testes de campo. Se a sua fazenda já usa mapas de solo ou de adubação, queremos pôr o mapa da colheita ao lado deles.",
@@ -19,12 +21,15 @@ export function ChamadaFinal({
           <h2 className="t-h1 max-w-[18ch] text-creme md:text-[2.75rem]">{titulo}</h2>
           <p className="medida mt-4 text-creme/85">{texto}</p>
         </div>
-        <Botao asChild variante="claro" className="shrink-0">
-          <Link href="/contato">
-            Fale com a equipe
-            <ArrowRight aria-hidden />
-          </Link>
-        </Botao>
+        <div className="flex shrink-0 flex-col items-start gap-5 md:items-end">
+          <Botao asChild variante="claro">
+            <Link href="/contato">
+              Fale com a equipe
+              <ArrowRight aria-hidden />
+            </Link>
+          </Botao>
+          <WhatsappNoEscuro alinhar="fim" />
+        </div>
       </div>
     </section>
   );

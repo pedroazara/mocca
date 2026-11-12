@@ -5,7 +5,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   SQL_ATRIBUICAO,
   SQL_AVISOS_PENDENTES,
@@ -18,6 +18,10 @@ import {
 import { SQL_LIGAR_CONTA } from "@/lib/login";
 import type { Consulta } from "@/lib/banco";
 import { moverNoQuadro, SQL_MOVER_PARA_SEMANA } from "@/lib/painel/mover";
+
+// as consultas do painel só rodam no servidor; aqui o teste é o servidor
+vi.mock("server-only", () => ({}));
+const { whatsappsDoSite } = await import("@/lib/painel/dados");
 
 const raiz = join(__dirname, "..");
 const db = new PGlite();
@@ -355,6 +359,33 @@ describe("RLS", () => {
     const pessoaId = (await um<{ id: string }>("select id from pessoa where apelido = 'Marcos'"))!.id;
     for (const url of ["javascript:alert(1)", "https://linkedin.com.exemplo.com/in/x", "http://linkedin.com/in/x"])
       await expect(db.query("insert into perfil_publico (pessoa_id, linkedin) values ($1, $2)", [pessoaId, url])).rejects.toThrow();
+  });
+
+  it("WhatsApp do site: só dígitos com 55 e DDD, e a lista traz só gente ativa", async () => {
+    const idDe = async (apelido: string) => (await um<{ id: string }>("select id from pessoa where apelido = $1", [apelido]))!.id;
+    const gravar = async (apelido: string, numero: string) =>
+      db.query(
+        `insert into perfil_publico (pessoa_id, whatsapp) values ($1, $2)
+         on conflict (pessoa_id) do update set whatsapp = excluded.whatsapp`,
+        [await idDe(apelido), numero],
+      );
+    for (const numero of ["(35) 99999-8888", "35999998888", "+5535999998888", "5505999998888", "55359999988881"])
+      await expect(gravar("Marcos", numero)).rejects.toThrow();
+
+    await gravar("Pinotti", "5535999998888");
+    await gravar("Henrique", "553538221234");
+    // o site lê pelo service role: apelido e número, em ordem de nome
+    const q: Consulta = async (sql, params) => (await db.query(sql, params)).rows as never;
+    const lista = () => como("service_role", () => whatsappsDoSite(q));
+    expect(await lista()).toEqual([
+      { nome: "Henrique", numero: "553538221234" },
+      { nome: "Pinotti", numero: "5535999998888" },
+    ]);
+
+    await db.query("update pessoa set ativo = false where apelido = 'Pinotti'");
+    expect(await lista()).toEqual([{ nome: "Henrique", numero: "553538221234" }]);
+    await db.query("update pessoa set ativo = true where apelido = 'Pinotti'");
+    await db.query("delete from perfil_publico where pessoa_id in ($1, $2)", [await idDe("Pinotti"), await idDe("Henrique")]);
   });
 
   it("documento só aceita links do Google Drive e Docs", async () => {

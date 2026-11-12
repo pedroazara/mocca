@@ -19,7 +19,14 @@ import {
 import { bytesDoBase64, comecaComoPdf, LADO_FOTO, medidasReduzidas, nomeDoArquivo, tamanhoArquivo } from "@/lib/painel/anexos";
 import { montarPauta, reuniaoAnteriorA } from "@/lib/painel/pauta";
 import { agrupar, LIMITE_FEITO, moverNasColunas, posicaoEntre, visiveis, vizinhos } from "@/lib/painel/quadro";
-import { ehJpegBase64, normalizarLinkedin } from "@/lib/painel/perfil";
+import {
+  ehJpegBase64,
+  formatarWhatsapp,
+  linkWhatsapp,
+  mascaraWhatsapp,
+  normalizarLinkedin,
+  normalizarWhatsapp,
+} from "@/lib/painel/perfil";
 import { mudancasDaTarefa, prepararEdicao, resumirProposta } from "@/lib/painel/propostas";
 import type { Pedido } from "@/lib/api/servico";
 import type { Contato, Proposta, Semana, TarefaResumo } from "@/lib/painel/tipos";
@@ -423,8 +430,23 @@ describe("perfil da página Equipe", () => {
     expect(comecaComoPdf(new TextEncoder().encode("%PDF"))).toBe(false);
   });
 
+  it("WhatsApp do site: guarda com 55 e DDD, do jeito que a pessoa digitar", () => {
+    expect(normalizarWhatsapp("(35) 99999-8888")).toBe("5535999998888");
+    expect(normalizarWhatsapp("+55 35 99999-8888")).toBe("5535999998888");
+    expect(normalizarWhatsapp("035 3822-1234")).toBe("553538221234");
+    expect(normalizarWhatsapp("55 99999-8888")).toBe("5555999998888"); // DDD 55, sem o código do país
+    expect(normalizarWhatsapp("99999-8888")).toBeNull(); // sem DDD
+    expect(normalizarWhatsapp("+1 415 555 0100")).toBeNull();
+    expect(normalizarWhatsapp("não tenho")).toBeNull();
+    expect(formatarWhatsapp("5535999998888")).toBe("(35) 99999-8888");
+    expect(formatarWhatsapp("553538221234")).toBe("(35) 3822-1234");
+    expect(mascaraWhatsapp("+55 35 99999-8888")).toBe("(35) 99999-8888");
+    expect(mascaraWhatsapp("3599999")).toBe("(35) 9999-9");
+    expect(linkWhatsapp("5535999998888", "Olá, MoCCa!")).toBe("https://wa.me/5535999998888?text=Ol%C3%A1%2C%20MoCCa!");
+  });
+
   it("cruza o cartão do site com a pessoa do painel pelo nome", () => {
-    const perfil = { pessoa_id: "1", nome: "GABRIEL Leonardo", linkedin: "https://linkedin.com/in/g", foto_url: "/api/fotos/1?v=2" };
+    const perfil = { pessoa_id: "1", nome: "GABRIEL Leonardo", linkedin: "https://linkedin.com/in/g", foto_url: "/api/fotos/1?v=2", whatsapp: null };
     const [gabriel, pedro] = estudantes;
     expect(comPerfil(gabriel, [perfil])).toMatchObject({ linkedin: perfil.linkedin, foto: perfil.foto_url, frase: gabriel.frase });
     expect(comPerfil(pedro, [perfil])).toBe(pedro);

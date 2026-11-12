@@ -75,7 +75,11 @@ export type Perfil = {
   nome: string;
   linkedin: string | null;
   foto_url: string | null;
+  whatsapp: string | null; // só dígitos, com 55 e DDD; quem tem aparece como contato no site
 };
+
+// Quem atende pelo WhatsApp no site: apelido (ou primeiro nome) e o número com 55 e DDD.
+export type ContatoWhatsapp = { nome: string; numero: string };
 
 export type Semana = {
   id: string;

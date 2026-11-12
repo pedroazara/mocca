@@ -1,5 +1,8 @@
-// Foto e LinkedIn da pessoa na página Equipe do site. A foto é sempre um JPEG 4:3
-// recortado no navegador: o arquivo original (e o GPS da câmera) não sai do aparelho.
+// Foto e LinkedIn da pessoa na página Equipe do site, e o WhatsApp de quem atende
+// pelo site. A foto é sempre um JPEG 4:3 recortado no navegador: o arquivo original
+// (e o GPS da câmera) não sai do aparelho.
+
+import { formatarTelefone, soDigitos } from "@/lib/validacao/contato";
 
 const LARGURA_FOTO = 960;
 const PROPORCAO_FOTO = 4 / 3;
@@ -19,6 +22,30 @@ export function normalizarLinkedin(valor: string) {
     return null;
   }
 }
+
+// WhatsApp de contato no site. Aceita o número como a pessoa digitar, com ou sem
+// +55, e devolve só dígitos com 55 e DDD (o formato do wa.me). Devolve null se
+// não for um telefone brasileiro com DDD.
+export function normalizarWhatsapp(valor: string) {
+  if (/^\s*\+(?!\s*55)/.test(valor)) return null; // código de outro país
+  const d = soDigitos(valor).replace(/^0+/, "");
+  const n = d.length === 12 || d.length === 13 ? d : `55${d}`;
+  return /^55[1-9][0-9]{9,10}$/.test(n) ? n : null;
+}
+
+// Como o número guardado aparece na tela: (35) 99999-8888.
+export const formatarWhatsapp = (numero: string) => formatarTelefone(numero.slice(2));
+
+// Máscara do campo no painel. Quem cola o número inteiro, com +55, fica só com DDD e número.
+export function mascaraWhatsapp(valor: string) {
+  const d = soDigitos(valor);
+  return formatarTelefone(d.length > 11 && d.startsWith("55") ? d.slice(2) : d);
+}
+
+// A conversa abre com uma primeira mensagem, para a equipe saber de onde a pessoa veio.
+export const MENSAGEM_WHATSAPP = "Olá! Vi o site do MoCCa e quero saber mais.";
+export const linkWhatsapp = (numero: string, mensagem = MENSAGEM_WHATSAPP) =>
+  `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
 
 // O servidor só guarda JPEG: em base64, todo JPEG começa com "/9j/".
 export const ehJpegBase64 = (base64: string) => /^\/9j\/[A-Za-z0-9+/]+={0,2}$/.test(base64);
