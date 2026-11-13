@@ -219,7 +219,7 @@ const talhoesDaVinheta = lavoura.talhoes.map((t, i) => ({
 }));
 
 // curvas de nível por cima, bem leves, como na GradeTalhoes
-function CurvasDaLavoura() {
+export function CurvasDaLavoura() {
   const c = curvas.cartao;
   return (
     <use
@@ -265,6 +265,17 @@ function caminhoDaColhedora(): [number, number, number][] {
     }
   });
   return rota;
+}
+
+// A mesma lavoura para o painel da colhedora (Início): os talhões e o caminho.
+export function lavouraDoPainel() {
+  return {
+    largura: lavoura.largura,
+    altura: lavoura.altura,
+    contorno: lavoura.contorno,
+    talhoes: talhoesDaVinheta,
+    caminho: caminhoDaColhedora(),
+  };
 }
 
 export function VinhetaLocaliza({ className }: { className?: string }) {

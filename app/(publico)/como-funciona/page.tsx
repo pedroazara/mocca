@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import { ChamadaFinal } from "@/components/publico/chamada-final";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { DiagramaColhedora } from "@/components/publico/diagrama-colhedora";
-import { LegendaProducao } from "@/components/publico/grade-talhoes";
+import { GradeTalhoes, LegendaProducao, mapas } from "@/components/publico/grade-talhoes";
+import { MapaTalhoesInterativo } from "@/components/publico/mapa-talhoes-interativo";
 import { VinhetaLocaliza, VinhetaMapeia, VinhetaMede } from "@/components/publico/passos-ilustrados";
 import { PilhaCamadas, RotulosCamadas } from "@/components/publico/pilha-camadas";
 import { VinhetaReconstroi } from "@/components/publico/vinheta-reconstroi";
 import { VinhetaSacas } from "@/components/publico/vinheta-sacas";
 import { Acordeao, ItemAcordeao } from "@/components/ui/acordeao";
+import { infosDosTalhoes } from "@/lib/talhao-info";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -89,7 +91,12 @@ const maturacao = [
   { nome: "Boia", cor: "bg-espresso" },
 ];
 
-// o que o produtor faz com a colheita no mapa
+// talhão que já vem escolhido no mapa da seção "O resultado"
+const TALHAO_DESTAQUE = 6;
+// números ilustrativos de cada talhão para o mapa interativo
+const INFOS = infosDosTalhoes(mapas.grande);
+
+// o que o produtor faz com a colheita no mapa (seção "A colheita é a camada que falta")
 const usos = [
   "Conferir se a adubação deu resultado em cada talhão.",
   "Levar a produção de cada talhão para a recomendação de adubação.",
@@ -121,7 +128,7 @@ const perguntas = [
   {
     pergunta: "Quando estará disponível?",
     resposta:
-      "Ainda não há data. O MoCCa é um protótipo em desenvolvimento, e o próximo passo são os testes de campo com produtores. Se você quer acompanhar ou participar, fale com a equipe.",
+      "Ainda não há data de lançamento. Hoje o MoCCa está em testes de bancada, e o primeiro piloto em campo está previsto até a safra de 2027. Se você quer acompanhar ou participar, fale com a equipe.",
   },
 ];
 
@@ -243,7 +250,66 @@ export default function ComoFunciona() {
         </div>
       </section>
 
-      {/* 2. Onde fica */}
+      {/* 2. O problema: a colheita é a camada que falta na agricultura de precisão */}
+      <section id="problema" className="secao scroll-mt-24 border-t border-linha">
+        <div className="conteiner">
+          <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
+            <div>
+              <p className="t-rotulo text-texto-2">O problema</p>
+              <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">A colheita é a camada que falta.</h2>
+            </div>
+            <p className="medida text-texto-2 lg:pt-8">
+              Quem faz agricultura de precisão costuma ter mapa de solo, de adubação em taxa variável e imagem de
+              satélite ou drone. Quem irriga tem também o mapa da irrigação. A colheita, que mostra o resultado de
+              tudo isso, quase sempre fica fora do mapa: vira o total da safra. O MoCCa mede o café na colhedora e
+              põe a produção no mapa, talhão por talhão.
+            </p>
+          </div>
+
+          <figure className="mt-12 rounded-g border border-linha bg-superficie p-5 md:p-8">
+            {/* celular: cada pilha com os nomes à direita; do tablet em diante: pilha, nomes, pilha */}
+            <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-x-3 gap-y-4 md:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1fr)] md:gap-x-6 lg:grid-cols-[minmax(0,1fr)_11rem_minmax(0,1fr)]">
+              <p className="t-rotulo col-span-2 text-texto-2 md:col-span-1 md:col-start-1 md:row-start-1">
+                Sem monitoramento da colheita
+              </p>
+              <PilhaCamadas
+                colheita="vazia"
+                titulo="Ilustração: três camadas da mesma lavoura, uma sobre a outra (solo e adubação, irrigação, imagem de satélite ou drone). No alto, a camada da colheita, que mostra o resultado, está vazia. Um fio pontilhado liga o mesmo ponto em todas as camadas e termina numa interrogação. Não se sabe quanto café saiu dali."
+                className="ml-auto max-w-[400px] md:mx-auto md:col-start-1 md:row-start-2"
+              />
+              <RotulosCamadas className="md:col-start-2 md:row-start-2" />
+
+              <p className="t-rotulo col-span-2 mt-6 text-link md:col-span-1 md:col-start-3 md:row-start-1 md:mt-0">
+                Com o MoCCa
+              </p>
+              <PilhaCamadas
+                colheita="talhao"
+                titulo="Ilustração: as mesmas três camadas da lavoura. No alto, a colheita medida pelo MoCCa, com cada talhão numa faixa de produção. O talhão marcado está na faixa mais baixa."
+                className="ml-auto max-w-[400px] md:mx-auto md:col-start-3 md:row-start-2"
+              />
+              <RotulosCamadas className="md:hidden" />
+            </div>
+            <figcaption className="mt-6 flex flex-col gap-3 border-t border-linha pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <span className="t-rotulo text-texto-2">Ilustração</span>
+              <LegendaProducao />
+            </figcaption>
+          </figure>
+
+          <div className="mt-10">
+            <p className="t-rotulo text-texto-2">Com a colheita no mapa, dá para</p>
+            <ul className="mt-4 grid gap-4 md:grid-cols-3 md:gap-6">
+              {usos.map((uso) => (
+                <li key={uso} className="flex gap-3 text-texto">
+                  <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-caramelo" />
+                  <span>{uso}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Onde fica */}
       <section id="onde-fica" className="secao scroll-mt-24 bg-superficie">
         <div className="conteiner grid items-center gap-10 lg:grid-cols-[1fr_1.3fr] lg:gap-16">
           <div>
@@ -265,7 +331,7 @@ export default function ComoFunciona() {
         </div>
       </section>
 
-      {/* 3. Passo a passo */}
+      {/* 4. Passo a passo */}
       <section className="secao">
         <div className="conteiner">
           <p className="t-rotulo text-texto-2">Passo a passo</p>
@@ -312,45 +378,45 @@ export default function ComoFunciona() {
         </div>
       </section>
 
-      {/* 4. O resultado: uma camada a mais */}
-      <section id="camada" className="secao scroll-mt-24 bg-superficie">
-        <div className="conteiner grid items-center gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
-          <div>
-            <p className="t-rotulo text-texto-2">O resultado</p>
-            <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">Uma camada a mais nos seus mapas.</h2>
-            <p className="medida mt-4 text-texto-2">
-              Os mapas de solo, adubação e irrigação mostram o que a lavoura tem e o que recebeu. A imagem de satélite
-              ou de drone mostra como ela se desenvolveu. O mapa do MoCCa mostra o resultado: quanto café foi colhido
-              em cada talhão na safra.
-            </p>
-            <p className="t-rotulo mt-8 text-texto-2">Com a colheita no mapa, dá para</p>
-            <ul className="mt-4 space-y-3">
-              {usos.map((uso) => (
-                <li key={uso} className="flex gap-3 text-texto">
-                  <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-caramelo" />
-                  <span>{uso}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <figure className="rounded-g border border-linha bg-fundo p-5 md:p-8">
-            <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-x-3 md:grid-cols-[minmax(0,1fr)_9rem] md:gap-x-6">
-              <PilhaCamadas
-                colheita="talhao"
-                titulo="Ilustração: as camadas da mesma lavoura, uma sobre a outra (solo e adubação, irrigação, imagem de satélite ou drone). No alto, a colheita medida pelo MoCCa, com cada talhão numa faixa de produção."
-                className="mx-auto max-w-[400px]"
+      {/* 5. O resultado: a produção de cada talhão no mapa */}
+      <section id="resultado" className="secao relative isolate scroll-mt-24 overflow-hidden border-y border-linha bg-superficie">
+        <div className="conteiner grid items-center gap-12 lg:grid-cols-[1.35fr_1fr] lg:gap-16">
+          <figure className="order-2 lg:order-1">
+            <MapaTalhoesInterativo mapa={mapas.grande} infos={INFOS} inicial={TALHAO_DESTAQUE}>
+              <GradeTalhoes
+                variante="grande"
+                numeros
+                titulo="Mapa ilustrativo com a produção de cada talhão em cinco faixas"
               />
-              <RotulosCamadas />
-            </div>
-            <figcaption className="mt-6 flex flex-col gap-3 border-t border-linha pt-4 sm:flex-row sm:items-center sm:justify-between">
-              <span className="t-rotulo text-texto-2">Ilustração</span>
+            </MapaTalhoesInterativo>
+            <figcaption className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span className="t-pequeno text-texto-2">Mapa ilustrativo. Dados reais virão dos testes de campo.</span>
               <LegendaProducao />
             </figcaption>
           </figure>
+
+          <div className="order-1 lg:order-2">
+            <p className="t-rotulo text-texto-2">O resultado</p>
+            <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">A produção de cada talhão, no mapa.</h2>
+            <p className="medida mt-4 text-texto-2">
+              Os mapas de solo, adubação e irrigação mostram o que a lavoura tem e o que recebeu. A imagem de satélite
+              ou de drone mostra como ela se desenvolveu. O mapa do MoCCa mostra o resultado: quanto café saiu de
+              cada talhão na safra.
+            </p>
+            <p className="medida mt-4 text-texto-2">
+              Ao lado dos mapas que você já usa, fica mais fácil decidir onde ajustar a adubação em taxa variável e
+              o manejo.
+            </p>
+            {/* os números de cada talhão estão no cartão do mapa; aqui só o convite para explorar */}
+            <p className="mt-6 flex items-start gap-3 font-medium text-texto">
+              <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-caramelo" />
+              Escolha um talhão no mapa para ver os números.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* 5. Perguntas frequentes */}
+      {/* 6. Perguntas frequentes */}
       <section id="perguntas" className="secao scroll-mt-24">
         <div className="conteiner grid gap-10 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
           <div>

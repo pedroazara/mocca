@@ -33,7 +33,7 @@ Outros comandos:
 | `npm test` | Testes (Vitest): migrações e RLS num Postgres embutido, aprovação das propostas do Claude, schema do contato, datas, pauta, resolução de pessoas da API, importação do Trello e leitura do Drive (com o Google simulado) |
 | `npm run lint` / `npm run typecheck` | ESLint e TypeScript |
 | `npm run gerar:curvas` | Regera as curvas de nível do fundo (`components/publico/curvas-dados.ts`) |
-| `npm run gerar:produtividade` | Regera o mapa de produtividade ilustrativo do hero (`components/publico/produtividade-dados.ts`) |
+| `npm run gerar:produtividade` | Regera o mapa de produtividade ilustrativo (`components/publico/produtividade-dados.ts`), usado na imagem de compartilhamento (`lib/og.tsx`); o componente `MapaProdutividade` saiu do Início |
 | `npm run gerar:icones` | Regera `favicon.ico`, `icon.png` e `apple-icon.png` a partir de `assets/logo/mocca-icone-app.png` |
 
 ## Variáveis de ambiente

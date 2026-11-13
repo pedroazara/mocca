@@ -193,19 +193,20 @@ Cartões: borda 1 px `--linha`, fundo `--superficie`, raio `--raio-m`. Sem borda
 ## Elementos gráficos
 
 1. **Curvas de nível**: linhas finas (1 px) em caramelo com transparência, geradas uma vez (`scripts/gerar-curvas.mjs`). Fundo do hero, rodapé e chamada final. Nunca atrás de texto pequeno. No painel, bem mais fracas: no canto do fundo da tela (14%, fixas, os cartões passam por cima), no espaço livre da barra lateral e à direita do bloco da entrega (a partir de `md`). Nunca dentro de cartões nem na janela da tarefa.
-2. **Mapa de produtividade** (hero): as curvas de nível do fundo atravessam a lavoura, e as faixas entre elas ganham as 5 cores de produção aos poucos, sem contorno de lavoura, até a mancha mais forte, marcada com um anel e um ponto. Legenda "Baixa → Alta" e o rótulo "Mapa ilustrativo" (`scripts/gerar-produtividade.mjs`).
+2. **Mapa de produtividade** (imagem de compartilhamento; saiu do Início em 2026-11-12): as curvas de nível do fundo atravessam a lavoura, e as faixas entre elas ganham as 5 cores de produção aos poucos, sem contorno de lavoura, até a mancha mais forte, marcada com um anel e um ponto. Legenda "Baixa → Alta" e o rótulo "Mapa ilustrativo" (`scripts/gerar-produtividade.mjs`).
 3. **Grade de talhões**: retângulos irregulares nas 5 faixas, para a seção "O que você passa a ver" e a vinheta "Mapeia".
 4. **Pilha de camadas**: a mesma lavoura em placas deitadas. De baixo para cima: solo e adubação (pontos de amostragem e zonas de dose, em texto-2), irrigação (mangueiras de gotejo e adutora em `--agua`), satélite ou drone (pés de café em fileiras, coloridos pelo vigor, em `--ndvi-1` a `--ndvi-5`, do vermelho ao verde, como nos mapas de verdade) e, no alto, a colheita nas cores de produção. Sem o MoCCa, a placa da colheita fica só tracejada, com uma interrogação. As placas usam `--camada` (`--superficie` no claro, `--superficie-2` no escuro). As cores do vigor e da água são físicas e iguais nos dois temas (o azul fica um pouco mais claro no escuro), como as cores dos frutos.
 5. **Símbolo**: o grão com pin só aparece como logo (cabeçalho, rodapé, ícone do navegador e barra lateral recolhida do painel). Não é usado como marcador em mapas, listas, passos ou estados vazios: nos mapas, a posição é um anel com um ponto; nas listas, um ponto caramelo (pedido do Pedro).
-6. **Coordenadas**: `21°14′S 44°59′W` (Lavras, MG) em JetBrains Mono, como detalhe.
+6. **Painel da colhedora** (Início): ilustração vetorial da colhedora vista de frente, com volume e sombra, nas medidas do esquema de `/como-funciona`. A máquina, o café e o MoCCa têm cores físicas, iguais nos dois temas (a pintura da máquina usa tons de caramelo); céu, morros e chão mudam com o tema. O MoCCa é uma caixa creme com contorno vermelho e o símbolo, a outra exceção à regra do item 5. Sem cartões nem números por cima do desenho: só o selo com a etapa da vez.
+7. **Coordenadas**: `21°14′S 44°59′W` (Lavras, MG) em JetBrains Mono, como detalhe.
 
 Fotos: reais, cantos de 16 px, sem filtros fortes. Nada de banco de imagens genérico.
 
 ## Movimento
 
 - Transições de 150 a 200 ms, `ease-out`.
-- Hero parado.
-- Animação só onde explica o funcionamento: vinheta "Mede" (esteira andando e laser mapeando o café).
+- O topo do Início é o painel da colhedora, que anda com a rolagem da página: a máquina trabalhando, o MoCCa encaixando por cima da esteira de saída (com a câmera chegando perto da leitura do relevo do café) e a câmera se afastando até o mapa da fazenda, onde os talhões ganham a cor da produção. O painel gruda abaixo do cabeçalho enquanto as etapas passam.
+- Fora do painel, animação só onde explica o funcionamento: as vinhetas do passo a passo, em `/como-funciona`.
 - Exceção: ao passar o mouse na logo do site, o grão abre (as metades se afastam na direção do vinco) e o pin cresce 18% a partir da ponta, com um leve repique (240 ms). Não vale em telas de toque.
 - Tudo desligado com `prefers-reduced-motion: reduce`.
 
