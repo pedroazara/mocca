@@ -23,6 +23,62 @@ function coordenada([x, y]: [number, number]) {
   return [`21°14′${seg(2 + (y / 150) * 10)}″S`, `44°59′${seg(4 + ((240 - x) / 240) * 12)}″W`];
 }
 
+export type CaminhoDaColhedora = [number, number, number][]; // x, y e a faixa por onde passa (-1 nas manobras)
+
+// As medidas do caminho: a distância percorrida em cada ponto e onde começa e
+// termina a passada em cada faixa de talhões.
+export function medirCaminho(caminho: CaminhoDaColhedora) {
+  const s = [0];
+  for (let i = 1; i < caminho.length; i++)
+    s.push(s[i - 1] + Math.hypot(caminho[i][0] - caminho[i - 1][0], caminho[i][1] - caminho[i - 1][1]));
+  const faixas: { ini: number; fim: number; ida: boolean }[] = [];
+  caminho.forEach(([x, , f], i) => {
+    if (f < 0) return;
+    if (!faixas[f]) faixas[f] = { ini: s[i], fim: s[i], ida: true };
+    else faixas[f] = { ...faixas[f], fim: s[i], ida: x > caminho[i - 1][0] };
+  });
+  return { s, faixas, total: s[s.length - 1] };
+}
+
+// Onde a colhedora está depois de andar `andou` e o pedaço de cada faixa que já
+// ganhou cor: de fora da lavoura até ela. Também serve o painel do Início, que
+// anda com a rolagem da página em vez do relógio.
+export function lugarNoCaminho(caminho: CaminhoDaColhedora, medida: ReturnType<typeof medirCaminho>, andou: number) {
+  const ponto = (d: number): [number, number] => {
+    let i = medida.s.findIndex((s) => s >= d);
+    if (i < 1) i = i < 0 ? caminho.length - 1 : 1;
+    const u = limitar((d - medida.s[i - 1]) / (medida.s[i] - medida.s[i - 1] || 1));
+    const [a, b] = [caminho[i - 1], caminho[i]];
+    return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
+  };
+  const aqui = ponto(andou);
+  const pintado = medida.faixas.map((f) => {
+    if (andou <= f.ini) return null;
+    if (andou >= f.fim) return [-20, 260];
+    return f.ida ? [-20, aqui[0]] : [aqui[0], 260];
+  });
+  return { aqui, pintado, ponto };
+}
+
+// O percurso da colhedora no tempo, para a vinheta "Localiza".
+function usePercursoDaColhedora<T extends Element>(caminho: CaminhoDaColhedora) {
+  const percurso = useMemo(() => {
+    const medida = medirCaminho(caminho);
+    const termina = COMECA + medida.total / VELOCIDADE;
+    const apaga = termina + 2.6;
+    return { medida, termina, apaga, ciclo: apaga + 1.3 };
+  }, [caminho]);
+
+  const [tela, t] = useRelogioDaVinheta<T>(percurso.ciclo, percurso.termina + 1);
+  const andou = limitar((t - COMECA) / (percurso.termina - COMECA)) * percurso.medida.total;
+  const apaga = 1 - suave(limitar((t - percurso.apaga) / 0.9));
+  const alfa = Math.min(limitar(t / 0.5), apaga);
+  const { aqui, pintado, ponto } = lugarNoCaminho(caminho, percurso.medida, andou);
+  const posicao = coordenada(ponto(Math.floor(andou / LEITURA) * LEITURA));
+
+  return { tela, aqui, posicao, pintado, apaga, alfa };
+}
+
 export function VinhetaLocalizaAnimada({
   contorno,
   talhoes,
@@ -32,51 +88,14 @@ export function VinhetaLocalizaAnimada({
 }: {
   contorno: string;
   talhoes: TalhaoDaVinheta[];
-  caminho: [number, number, number][]; // x, y e a faixa por onde passa (-1 nas manobras)
+  caminho: CaminhoDaColhedora;
   fundo?: ReactNode;
   className?: string;
 }) {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
-
-  // distância percorrida em cada ponto e onde começa e termina a passada em cada faixa
-  const percurso = useMemo(() => {
-    const s = [0];
-    for (let i = 1; i < caminho.length; i++)
-      s.push(s[i - 1] + Math.hypot(caminho[i][0] - caminho[i - 1][0], caminho[i][1] - caminho[i - 1][1]));
-    const faixas: { ini: number; fim: number; ida: boolean }[] = [];
-    caminho.forEach(([x, , f], i) => {
-      if (f < 0) return;
-      if (!faixas[f]) faixas[f] = { ini: s[i], fim: s[i], ida: true };
-      else faixas[f] = { ...faixas[f], fim: s[i], ida: x > caminho[i - 1][0] };
-    });
-    const termina = COMECA + s[s.length - 1] / VELOCIDADE;
-    const apaga = termina + 2.6;
-    return { s, faixas, termina, apaga, ciclo: apaga + 1.3 };
-  }, [caminho]);
-
-  const [tela, t] = useRelogioDaVinheta<SVGSVGElement>(percurso.ciclo, percurso.termina + 1);
-  const total = percurso.s[percurso.s.length - 1];
-  const andou = limitar((t - COMECA) / (percurso.termina - COMECA)) * total;
-  const apaga = 1 - suave(limitar((t - percurso.apaga) / 0.9));
-  const alfa = Math.min(limitar(t / 0.5), apaga);
-
-  const ponto = (d: number): [number, number] => {
-    let i = percurso.s.findIndex((s) => s >= d);
-    if (i < 1) i = i < 0 ? caminho.length - 1 : 1;
-    const u = limitar((d - percurso.s[i - 1]) / (percurso.s[i] - percurso.s[i - 1] || 1));
-    const [a, b] = [caminho[i - 1], caminho[i]];
-    return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
-  };
-  const aqui = ponto(andou);
-  const [lat, lon] = coordenada(ponto(Math.floor(andou / LEITURA) * LEITURA));
+  const { tela, aqui, posicao, pintado, apaga, alfa } = usePercursoDaColhedora<SVGSVGElement>(caminho);
+  const [lat, lon] = posicao;
   const [px, py] = [DX + aqui[0] * ESCALA, DY + aqui[1] * ESCALA];
-
-  // o pedaço de cada faixa que já ganhou cor: de fora da lavoura até a colhedora
-  const pintado = percurso.faixas.map((f) => {
-    if (andou <= f.ini) return null;
-    if (andou >= f.fim) return [-20, 260];
-    return f.ida ? [-20, aqui[0]] : [aqui[0], 260];
-  });
 
   return (
     <svg ref={tela} viewBox="0 0 240 150" aria-hidden className={cn("h-auto w-full", className)}>

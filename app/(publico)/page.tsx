@@ -5,17 +5,11 @@ import { ChamadaFinal } from "@/components/publico/chamada-final";
 import { CurvasDeNivel } from "@/components/publico/curvas-de-nivel";
 import { DiagramaColhedora } from "@/components/publico/diagrama-colhedora";
 import { RamoCafe } from "@/components/publico/ilustracoes-publico";
-import { MapaProdutividade } from "@/components/publico/mapa-produtividade";
-import { GradeTalhoes, LegendaProducao, mapas } from "@/components/publico/grade-talhoes";
-import { MapaTalhoesInterativo } from "@/components/publico/mapa-talhoes-interativo";
-import { PilhaCamadas, RotulosCamadas } from "@/components/publico/pilha-camadas";
-import { VinhetaLocaliza, VinhetaMapeia, VinhetaMede } from "@/components/publico/passos-ilustrados";
-import { VinhetaReconstroi } from "@/components/publico/vinheta-reconstroi";
-import { VinhetaSacas } from "@/components/publico/vinheta-sacas";
+import { PainelColhedora } from "@/components/publico/painel-colhedora";
+import { PrototipoBancada } from "@/components/publico/prototipo-bancada";
 import { WhatsappNoEscuro } from "@/components/publico/whatsapp";
 import { Botao } from "@/components/ui/botao";
 import { Chip, type EstadoChip } from "@/components/ui/chip";
-import { infosDosTalhoes } from "@/lib/talhao-info";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -25,52 +19,56 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-// o que o produtor faz com a colheita no mapa (seção "A colheita é a camada que falta")
-const usos = [
-  "Conferir se a adubação deu resultado em cada talhão.",
-  "Levar a produção de cada talhão para a recomendação de adubação.",
-  "Achar o talhão fraco antes de decidir poda ou renovação.",
-];
-
-const passos = [
+// As três etapas do painel da colhedora, em uma frase cada. O problema, o passo a
+// passo e o mapa interativo ficam em /como-funciona.
+const resumo = [
   {
-    numero: "01",
-    titulo: "Mede",
-    texto: "Uma tecnologia instalada na colhedora mede o volume de café que passa por ela.",
-    Vinheta: VinhetaMede,
+    titulo: "Mede na colhedora",
+    texto: "O equipamento fica no alto da máquina, na saída do café, e mede o volume que passa o tempo todo.",
   },
   {
-    numero: "02",
-    titulo: "Reconstrói",
-    texto: "O café medido vira um modelo 3D, com a cor de cada fruto.",
-    Vinheta: VinhetaReconstroi,
+    titulo: "Localiza cada medida",
+    texto: "Cada medida guarda a posição por GPS e vira uma estimativa de sacas de 60 kg.",
   },
   {
-    numero: "03",
-    titulo: "Calcula",
-    texto: "O volume medido vira uma estimativa de sacas de 60 kg.",
-    Vinheta: VinhetaSacas,
-  },
-  {
-    numero: "04",
-    titulo: "Localiza",
-    texto: "Cada medida recebe a posição por GPS.",
-    Vinheta: VinhetaLocaliza,
-  },
-  {
-    numero: "05",
-    titulo: "Mapeia",
-    texto: "O volume vira um mapa de produção por talhão.",
-    Vinheta: VinhetaMapeia,
+    titulo: "Mostra no mapa",
+    texto: "Somadas, as medidas formam o mapa de produção da lavoura, talhão por talhão.",
   },
 ];
 
-const etapas: { texto: string; estado: EstadoChip; rotulo: string }[] = [
-  { texto: "Protótipo funcional de medição de volume", estado: "ok", rotulo: "concluído" },
-  { texto: "Pesquisa com cafeicultores de Minas Gerais", estado: "ok", rotulo: "concluído" },
-  { texto: "Pré-aceleração no programa Avança Café", estado: "info", rotulo: "em andamento" },
-  // TODO(pedro): confirmar a previsão dos testes de campo (seção 16).
-  { texto: "Testes de campo na safra 2027", estado: "neutro", rotulo: "planejado" },
+// Estágio informado pelo Pedro em 2026-11-12: protótipo de testes em bancada, com a
+// equipe comparando tecnologias e métodos de medição; primeiro piloto até a safra de 2027.
+const etapas: { titulo: string; detalhe: string; estado: EstadoChip; rotulo: string }[] = [
+  {
+    titulo: "Pesquisa com produtores",
+    detalhe: "Conversas com cafeicultores de Minas Gerais para entender como a colheita é acompanhada hoje.",
+    estado: "ok",
+    rotulo: "concluído",
+  },
+  {
+    titulo: "Protótipo de bancada",
+    detalhe: "Uma esteira com o equipamento de medição por cima, montada para testar fora da lavoura.",
+    estado: "ok",
+    rotulo: "concluído",
+  },
+  {
+    titulo: "Testes de medição",
+    detalhe: "Comparação de tecnologias e métodos de medição no protótipo.",
+    estado: "info",
+    rotulo: "em andamento",
+  },
+  {
+    titulo: "Avança Café",
+    detalhe: "Programa de pré-aceleração coordenado pela Embrapa Café.",
+    estado: "info",
+    rotulo: "em andamento",
+  },
+  {
+    titulo: "Primeiro piloto em campo",
+    detalhe: "O equipamento na colhedora, em uma lavoura. Previsto até a safra de 2027.",
+    estado: "neutro",
+    rotulo: "planejado",
+  },
 ];
 
 // os dois públicos da seção "Para quem"; cada botão abre o formulário já com o perfil escolhido
@@ -97,196 +95,66 @@ const publicos = [
   },
 ];
 
-// talhão do cartão flutuante na seção "O que você passa a ver"
-const TALHAO_DESTAQUE = 6;
-// números ilustrativos de cada talhão para o mapa interativo
-const INFOS = infosDosTalhoes(mapas.grande);
-
 export default function Inicio() {
 
   return (
     <>
-      {/* 1. Hero */}
-      {/* as curvas de nível do fundo vêm do próprio mapa (ver MapaProdutividade) */}
-      <section className="relative isolate overflow-hidden">
-        <div className="conteiner grid items-center gap-12 pt-10 pb-16 md:pt-16 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pt-20 lg:pb-24">
-          <div>
-            <p className="t-rotulo text-link">Agricultura de precisão no café</p>
-            <h1 className="t-display mt-5 max-w-[14ch] text-texto">
-              Cada saca tem um <span className="text-caramelo">endereço</span>.
-            </h1>
-            <p className="medida mt-6 max-w-[56ch] text-[1.125rem] leading-[1.65] text-texto-2">
-              No fim da safra, você sabe quantas sacas colheu na fazenda inteira, mas não de onde elas vieram. O
-              MoCCa mede o café na colhedora e mostra quanto saiu de cada talhão.
-            </p>
-            {/* o cabeçalho já tem "Fale com a equipe": aqui o botão principal leva o produtor ao formulário */}
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Botao asChild>
-                <Link href="/contato?perfil=produtor">
-                  Quero testar na lavoura
-                  <ArrowRight aria-hidden />
-                </Link>
-              </Botao>
-              <Botao asChild variante="secundario">
-                <Link href="/como-funciona">Veja como funciona</Link>
-              </Botao>
-            </div>
-          </div>
-
-          <figure className="relative mx-auto w-full max-w-[600px]">
-            <MapaProdutividade />
-            <figcaption className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <span className="t-rotulo text-texto-2">Mapa ilustrativo</span>
-              <LegendaProducao />
-            </figcaption>
-          </figure>
-        </div>
-      </section>
-
-      {/* 2. O problema: a colheita é a camada que falta na agricultura de precisão */}
-      <section className="secao bg-superficie">
-        <div className="conteiner">
-          <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
+      {/* 1. Topo: a frase, os botões e o painel da colhedora com o MoCCa */}
+      {/* overflow-x-clip, e não hidden: o painel gruda na tela enquanto a página rola */}
+      <section className="relative isolate overflow-x-clip">
+        <CurvasDeNivel
+          conjunto="rodape"
+          className="absolute inset-x-0 top-0 -z-10 h-[34rem] w-full text-caramelo/20 [mask-image:linear-gradient(to_bottom,black_40%,transparent)]"
+        />
+        <div className="conteiner pt-10 pb-16 md:pt-14 lg:pb-24">
+          <div className="grid gap-6 lg:grid-cols-[1.05fr_1fr] lg:items-end lg:gap-16">
             <div>
-              <p className="t-rotulo text-texto-2">O problema</p>
-              <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">A colheita é a camada que falta.</h2>
+              <p className="t-rotulo text-link">Agricultura de precisão no café</p>
+              <h1 className="t-display mt-5 max-w-[14ch] text-texto">
+                Cada saca tem um <span className="text-caramelo">endereço</span>.
+              </h1>
             </div>
-            <p className="medida text-texto-2 lg:pt-8">
-              Quem faz agricultura de precisão costuma ter mapa de solo, de adubação em taxa variável e imagem de
-              satélite ou drone. Quem irriga tem também o mapa da irrigação. A colheita, que mostra o resultado de
-              tudo isso, quase sempre fica fora do mapa: vira o total da safra. O MoCCa mede o café na colhedora e
-              põe a produção no mapa, talhão por talhão.
-            </p>
-          </div>
-
-          <figure className="mt-12 rounded-g border border-linha bg-fundo p-5 md:p-8">
-            {/* celular: cada pilha com os nomes à direita; do tablet em diante: pilha, nomes, pilha */}
-            <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-x-3 gap-y-4 md:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1fr)] md:gap-x-6 lg:grid-cols-[minmax(0,1fr)_11rem_minmax(0,1fr)]">
-              <p className="t-rotulo col-span-2 text-texto-2 md:col-span-1 md:col-start-1 md:row-start-1">
-                Sem monitoramento da colheita
-              </p>
-              <PilhaCamadas
-                colheita="vazia"
-                titulo="Ilustração: três camadas da mesma lavoura, uma sobre a outra (solo e adubação, irrigação, imagem de satélite ou drone). No alto, a camada da colheita, que mostra o resultado, está vazia. Um fio pontilhado liga o mesmo ponto em todas as camadas e termina numa interrogação. Não se sabe quanto café saiu dali."
-                className="ml-auto max-w-[400px] md:mx-auto md:col-start-1 md:row-start-2"
-              />
-              <RotulosCamadas className="md:col-start-2 md:row-start-2" />
-
-              <p className="t-rotulo col-span-2 mt-6 text-link md:col-span-1 md:col-start-3 md:row-start-1 md:mt-0">
-                Com o MoCCa
-              </p>
-              <PilhaCamadas
-                colheita="talhao"
-                titulo="Ilustração: as mesmas três camadas da lavoura. No alto, a colheita medida pelo MoCCa, com cada talhão numa faixa de produção. O talhão marcado está na faixa mais baixa."
-                className="ml-auto max-w-[400px] md:mx-auto md:col-start-3 md:row-start-2"
-              />
-              <RotulosCamadas className="md:hidden" />
-            </div>
-            <figcaption className="mt-6 flex flex-col gap-3 border-t border-linha pt-4 sm:flex-row sm:items-center sm:justify-between">
-              <span className="t-rotulo text-texto-2">Ilustração</span>
-              <LegendaProducao />
-            </figcaption>
-          </figure>
-
-          <div className="mt-10">
-            <p className="t-rotulo text-texto-2">Com a colheita no mapa, dá para</p>
-            <ul className="mt-4 grid gap-4 md:grid-cols-3 md:gap-6">
-              {usos.map((uso) => (
-                <li key={uso} className="flex gap-3 text-texto">
-                  <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-caramelo" />
-                  <span>{uso}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Como funciona (resumo) */}
-      <section className="secao">
-        <div className="conteiner">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="t-rotulo text-texto-2">Como funciona</p>
-              <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">Medir enquanto colhe.</h2>
+              <p className="medida text-[1.125rem] leading-[1.65] text-texto-2">
+                No fim da safra, você sabe quantas sacas colheu na fazenda inteira, mas não de onde elas vieram. O
+                MoCCa vai na colhedora, mede o café que passa e mostra quanto saiu de cada talhão.
+              </p>
+              {/* o cabeçalho já tem "Fale com a equipe": aqui o botão principal leva o produtor ao formulário */}
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <Botao asChild>
+                  <Link href="/contato?perfil=produtor">
+                    Quero testar na lavoura
+                    <ArrowRight aria-hidden />
+                  </Link>
+                </Botao>
+                <Botao asChild variante="secundario">
+                  <Link href="/como-funciona">Veja como funciona</Link>
+                </Botao>
+              </div>
             </div>
-            <Link href="/como-funciona" className="link inline-flex items-center gap-1.5 font-medium">
-              Detalhes técnicos
-              <ArrowRight aria-hidden strokeWidth={1.75} className="size-[18px]" />
-            </Link>
           </div>
 
-          {/* 5 passos. No celular, vinheta pequena ao lado do texto (a seção fica com menos da metade da
-              altura); 2 por linha no tablet e, em telas largas, 3 em cima e 2 embaixo, centrados */}
-          <ol className="mt-12 grid gap-y-8 md:grid-cols-4 md:gap-x-8 md:gap-y-10 lg:grid-cols-6">
-            {passos.map(({ numero, titulo, texto, Vinheta }, i) => (
-              <li
-                key={numero}
-                className={cn(
-                  "relative grid grid-cols-[minmax(0,5fr)_minmax(0,6fr)] items-center gap-x-4 md:col-span-2 md:block",
-                  i === 3 && "lg:col-start-2",
-                  i === passos.length - 1 && "md:col-start-2 lg:col-start-auto",
-                )}
-              >
-                <div className="flex aspect-[16/10] items-center justify-center overflow-hidden rounded-g border border-linha bg-superficie p-2 md:p-5">
-                  <Vinheta className="max-h-full" />
-                </div>
-                <div>
-                  <div
-                    className={cn(
-                      "flex items-center gap-3 md:mt-6",
-                      i !== 2 &&
-                        i < passos.length - 1 &&
-                        "lg:after:ml-2 lg:after:-mr-8 lg:after:h-0 lg:after:flex-1 lg:after:border-t-2 lg:after:border-dotted lg:after:border-caramelo/60 lg:after:content-['']",
-                    )}
-                  >
-                    <span className="t-dado text-[0.875rem] font-medium text-link">{numero}</span>
-                  </div>
-                  <h3 className="t-h3 mt-1 text-texto md:mt-3">{titulo}</h3>
-                  <p className="mt-1 max-w-[36ch] text-texto-2 md:mt-2">{texto}</p>
-                </div>
+          <PainelColhedora className="mt-10 lg:mt-12" />
+
+          {/* o que o painel mostra, em três frases; a explicação completa está em Como funciona */}
+          <ol className="mt-10 grid gap-6 md:grid-cols-3 md:gap-8">
+            {resumo.map(({ titulo, texto }, i) => (
+              <li key={titulo} className="border-t border-linha pt-5">
+                <p className="t-dado text-[0.875rem] font-medium text-link">{String(i + 1).padStart(2, "0")}</p>
+                <h2 className="t-h3 mt-2 text-texto">{titulo}</h2>
+                <p className="mt-2 max-w-[38ch] text-texto-2">{texto}</p>
               </li>
             ))}
           </ol>
+          <Link href="/como-funciona" className="link mt-8 inline-flex items-center gap-1.5 font-medium">
+            Veja o passo a passo
+            <ArrowRight aria-hidden strokeWidth={1.75} className="size-[18px]" />
+          </Link>
         </div>
       </section>
 
-      {/* 4. O que você passa a ver */}
-      <section className="secao relative isolate overflow-hidden border-y border-linha">
-        <div className="conteiner grid items-center gap-12 lg:grid-cols-[1.35fr_1fr] lg:gap-16">
-          <figure className="order-2 lg:order-1">
-            <MapaTalhoesInterativo mapa={mapas.grande} infos={INFOS} inicial={TALHAO_DESTAQUE}>
-              <GradeTalhoes
-                variante="grande"
-                numeros
-                titulo="Mapa ilustrativo com a produção de cada talhão em cinco faixas"
-              />
-            </MapaTalhoesInterativo>
-            <figcaption className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <span className="t-pequeno text-texto-2">Mapa ilustrativo. Dados reais virão dos testes de campo.</span>
-              <LegendaProducao />
-            </figcaption>
-          </figure>
-
-          <div className="order-1 lg:order-2">
-            <p className="t-rotulo text-texto-2">O que você passa a ver</p>
-            <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">A produção de cada talhão, no mapa.</h2>
-            <p className="medida mt-4 text-texto-2">
-              O mapa do MoCCa mostra quanto café saiu de cada talhão na safra. Ao lado dos mapas de solo, adubação
-              e irrigação que você já usa, fica mais fácil decidir onde ajustar a adubação em taxa variável e o
-              manejo.
-            </p>
-            {/* os números de cada talhão estão no cartão do mapa; aqui só o convite para explorar */}
-            <p className="mt-6 flex items-start gap-3 font-medium text-texto">
-              <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-caramelo" />
-              Escolha um talhão no mapa para ver os números.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. Para quem */}
-      <section className="secao">
+      {/* 2. Para quem */}
+      <section className="secao border-t border-linha">
         <div className="conteiner">
           <p className="t-rotulo text-texto-2">Para quem</p>
           <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">Quem ganha com o mapa.</h2>
@@ -321,20 +189,26 @@ export default function Inicio() {
         </div>
       </section>
 
-      {/* 6. Estágio do projeto */}
+      {/* 3. Estágio do projeto */}
       <section className="secao bg-superficie">
         <div className="conteiner grid gap-10 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
           <div>
             <p className="t-rotulo text-texto-2">Estágio do projeto</p>
             <h2 className="t-h2 mt-3 text-texto md:text-[2rem]">Onde estamos.</h2>
             <p className="medida mt-4 text-texto-2">
-              O MoCCa é um protótipo em desenvolvimento, feito por estudantes da Universidade Federal de Lavras.
-              Os primeiros mapas de produção virão dos testes de campo.
+              O MoCCa é um projeto de estudantes da Universidade Federal de Lavras e hoje está em testes de bancada. O
+              próximo passo é levar o equipamento para a colhedora, no primeiro piloto em campo, até a safra de 2027.
             </p>
+            <figure className="mt-8 max-w-[30rem] rounded-g border border-linha bg-fundo p-5 md:p-6">
+              <PrototipoBancada className="text-texto [--desenho-destaque:var(--caramelo)] [--fundo-desenho:var(--fundo)]" />
+              <figcaption className="t-pequeno mt-3 text-texto-2">
+                Protótipo de testes em bancada. Desenho ilustrativo.
+              </figcaption>
+            </figure>
           </div>
           <ol className="relative">
             {etapas.map((e, i) => (
-              <li key={e.texto} className="relative flex gap-5 pb-8 last:pb-0">
+              <li key={e.titulo} className="relative flex gap-5 pb-8 last:pb-0">
                 {i < etapas.length - 1 && (
                   <span
                     aria-hidden
@@ -357,9 +231,12 @@ export default function Inicio() {
                   {e.estado === "info" && <span className="size-2.5 rounded-full bg-caramelo" />}
                 </span>
                 <div className="flex flex-1 flex-col gap-2 border-b border-linha pb-8 sm:flex-row sm:items-start sm:justify-between sm:gap-6 [li:last-child_&]:border-0 [li:last-child_&]:pb-0">
-                  <p className="font-medium text-texto">{e.texto}</p>
+                  <div>
+                    <p className="font-medium text-texto">{e.titulo}</p>
+                    <p className="mt-1 max-w-[52ch] text-texto-2">{e.detalhe}</p>
+                  </div>
                   {/* no celular a coluna estica os filhos: o selo fica do tamanho do texto */}
-                  <Chip estado={e.estado} className="self-start">
+                  <Chip estado={e.estado} className="shrink-0 self-start">
                     {e.rotulo}
                   </Chip>
                 </div>
@@ -369,7 +246,7 @@ export default function Inicio() {
         </div>
       </section>
 
-      {/* 7. Chamada final */}
+      {/* 4. Chamada final */}
       <ChamadaFinal />
     </>
   );
